@@ -38,7 +38,7 @@ class PurchaseGraph(nx.Graph):
         nx.draw(self, pos, nodelist=filtered_nodes, labels=labels, **DRAW_OPTIONS)
 
     def to_json(self) -> dict:
-        return json_graph.node_link_data(self, edges="edges")
+        return json.dumps(json_graph.node_link_data(self, edges="edges"), indent=2)
 
     def add_edge_via(self, u_of_edge, v_of_edge, coords: list, **attr):
         """

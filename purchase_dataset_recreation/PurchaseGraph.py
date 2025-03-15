@@ -33,9 +33,10 @@ class PurchaseGraph(nx.Graph):
             for node in self.nodes()
             if not self.nodes[node].get("invisible", False)
         }
-        labels = {node: node for node in filtered_nodes}
+        # if the node is invisible, we replace the label with a dot
+        filtered_labels = {label: label if label in filtered_nodes else "·" for label in self.nodes()} 
 
-        nx.draw(self, pos, nodelist=filtered_nodes, labels=labels, **DRAW_OPTIONS)
+        nx.draw(self, pos, nodelist=filtered_nodes, labels=filtered_labels, **DRAW_OPTIONS)
 
     def to_json(self) -> dict:
         return json.dumps(json_graph.node_link_data(self, edges="edges"), indent=2)

@@ -24,7 +24,9 @@ The distance between the nodes are set as follows:
 - In the example graph b+, the distance between the nodes F and T is 1.5 units. All other distances are set relative to this distance. Nodes this close also appear in other graphs, so we are using this as a reference across all graphs. (Shown red is the 1.5 unit distance between node centers, the blue line shows the resulting line length)
 - We are only using distances and positions in 0.5 steps. This appears to be the step size used in the original graphs.
 
-![Example distance metrix in the b+ graph](BPlusExample.png)
+| Original Graph | Recreated Graph |
+|----------------|-----------------|
+| ![Example distance metrics in the b+ graph](BPlusExample.png) | ![Recreated b+ graph using networkx](BPlusRecreation.png) |
 
 ## Functionality Files
 

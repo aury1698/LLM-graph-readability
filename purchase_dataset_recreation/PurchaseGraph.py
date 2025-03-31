@@ -20,6 +20,17 @@ DRAW_OPTIONS = {
 
 
 class PurchaseGraph(nx.Graph):
+    """
+    PurchaseGraph is a subclass of networkx.Graph that adds
+    an additional method to draw the graph with edges, which
+    can be bent at specified coordinates.
+
+    This is used to draw the graphs in the purchase dataset.
+
+    Additionally, it adds a method to convert the graph to
+    json format, which is used to save the graph to a file.
+    """
+
     def __init__(self, purchase_name: str):
         super().__init__()
         self.purchase_name = purchase_name
@@ -34,9 +45,13 @@ class PurchaseGraph(nx.Graph):
             if not self.nodes[node].get("invisible", False)
         }
         # if the node is invisible, we replace the label with a dot
-        filtered_labels = {label: label if label in filtered_nodes else "·" for label in self.nodes()} 
+        filtered_labels = {
+            label: label if label in filtered_nodes else "·" for label in self.nodes()
+        }
 
-        nx.draw(self, pos, nodelist=filtered_nodes, labels=filtered_labels, **DRAW_OPTIONS)
+        nx.draw(
+            self, pos, nodelist=filtered_nodes, labels=filtered_labels, **DRAW_OPTIONS
+        )
 
     def to_json(self) -> dict:
         return json.dumps(json_graph.node_link_data(self, edges="edges"), indent=2)
@@ -59,13 +74,12 @@ class PurchaseGraph(nx.Graph):
             self.add_edge(u_of_edge, node1, **attr)
 
             for i in range(1, len(coords)):
-                node2 = f"{u_of_edge}_{v_of_edge}_via{i + 1}"
-                self.add_node(
-                    f"{u_of_edge}_{v_of_edge}_via{i + 1}", pos=coords[i], invisible=True
-                )
-                # add edge between the two nodes, purposedly not adding the **attr
+                node2 = f"{u_of_edge}_{v_of_edge}_via{i}"
+                self.add_node(node2, pos=coords[i], invisible=True)
+                # add edge between the two nodes, purposfully not adding the **attr
                 self.add_edge(node1, node2)
                 node1 = node2
+
             self.add_edge(node1, v_of_edge)
 
 

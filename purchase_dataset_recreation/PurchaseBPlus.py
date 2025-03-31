@@ -1,7 +1,7 @@
 from PurchaseGraph import PurchaseGraph
 import matplotlib.pyplot as plt
 
-BPlus = PurchaseGraph("B+")
+BPlus = PurchaseGraph("b+")
 
 BPlus.add_node("A", pos=(2.0, 9.5))
 BPlus.add_node("E", pos=(3.0, 7.5))

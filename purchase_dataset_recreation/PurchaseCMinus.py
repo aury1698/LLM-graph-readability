@@ -1,7 +1,7 @@
 from PurchaseGraph import PurchaseGraph
 import matplotlib.pyplot as plt
 
-CMinus = PurchaseGraph("C-")
+CMinus = PurchaseGraph("c-")
 
 CMinus.add_node("A", pos=(2.0, 8.0))
 CMinus.add_node("E", pos=(2.5, 6.0))

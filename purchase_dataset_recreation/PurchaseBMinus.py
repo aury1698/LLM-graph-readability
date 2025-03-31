@@ -1,7 +1,7 @@
 from PurchaseGraph import PurchaseGraph
 import matplotlib.pyplot as plt
 
-BMinus = PurchaseGraph("B-")
+BMinus = PurchaseGraph("b-")
 """
 The "b-" graph's node positions are equivalent to b+'s.
 Additionally, also the connecting edges are the same as b+.

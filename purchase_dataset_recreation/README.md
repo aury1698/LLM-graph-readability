@@ -26,7 +26,7 @@ The distance between the nodes are set as follows:
 
 | Original Graph | Recreated Graph |
 |----------------|-----------------|
-| ![Example distance metrics in the b+ graph](BPlusExample.png) | ![Recreated b+ graph using networkx](BPlusRecreation.png) |
+| ![Example distance metrics in the b+ graph](example/BPlusExample.png) | ![Recreated b+ graph using networkx](example/BPlusRecreation.png) |
 
 ## Functionality Files
 

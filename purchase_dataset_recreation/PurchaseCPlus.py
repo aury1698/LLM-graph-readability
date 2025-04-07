@@ -59,8 +59,6 @@ CPlus.add_edge_via("T", "G", [(8.0, 2.0), (10.0, 2.0), (10.5, 2.5)])
 
 
 if __name__ == "__main__":
-    print(CPlus.to_json())
-
     CPlus.draw()
     plt.axis("scaled")
     plt.show()

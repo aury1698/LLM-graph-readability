@@ -62,8 +62,6 @@ BPlus.add_edge("I", "P")
 
 
 if __name__ == "__main__":
-    print(BPlus.to_json())
-
     BPlus.draw()
     plt.axis("scaled")
     plt.show()

@@ -75,8 +75,6 @@ SPlus.add_edge_via("M", "P", [(18.5, 5.0), (21.5, 5.0)])
 
 
 if __name__ == "__main__":
-    print(SPlus.to_json())
-
     SPlus.draw()
     plt.axis("scaled")
     plt.show()

@@ -71,8 +71,6 @@ CMinus.add_edge("Q", "R")
 
 
 if __name__ == "__main__":
-    print(CMinus.to_json())
-
     CMinus.draw()
     plt.axis("scaled")
     plt.show()

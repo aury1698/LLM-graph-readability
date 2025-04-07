@@ -73,8 +73,6 @@ OMinus.add_edge("Q", "P")
 OMinus.add_edge("T", "G")
 
 if __name__ == "__main__":
-    print(OMinus.to_json())
-
     OMinus.draw()
     plt.axis("scaled")
     plt.show()

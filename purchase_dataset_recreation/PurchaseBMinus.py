@@ -66,8 +66,6 @@ BMinus.add_edge_via("I", "P", [(10.5, 3.5), (10.0, 3.0)])
 
 
 if __name__ == "__main__":
-    print(BMinus.to_json())
-
     BMinus.draw()
     plt.axis("scaled")
     plt.show()

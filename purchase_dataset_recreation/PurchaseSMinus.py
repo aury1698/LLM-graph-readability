@@ -83,8 +83,6 @@ SMinus.add_edge_via("O", "P", [(21.0, 11.0)])
 
 
 if __name__ == "__main__":
-    print(SMinus.to_json())
-
     SMinus.draw()
     plt.axis("scaled")
     plt.show()

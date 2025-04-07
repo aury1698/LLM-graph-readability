@@ -66,8 +66,6 @@ OPlus.add_edge("Q", "P")
 
 
 if __name__ == "__main__":
-    print(OPlus.to_json())
-
     OPlus.draw()
     plt.axis("scaled")
     plt.show()

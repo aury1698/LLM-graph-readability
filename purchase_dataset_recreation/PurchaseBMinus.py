@@ -1,4 +1,4 @@
-from PurchaseGraph import PurchaseGraph
+from PurchaseGraph import PurchaseGraph, DRAW_FIGSIZE, DRAW_DPI
 import matplotlib.pyplot as plt
 
 BMinus = PurchaseGraph("b-")
@@ -66,6 +66,10 @@ BMinus.add_edge_via("I", "P", [(10.5, 3.5), (10.0, 3.0)])
 
 
 if __name__ == "__main__":
+    fig = plt.figure(figsize=(DRAW_FIGSIZE), dpi=DRAW_DPI)
     BMinus.draw()
     plt.axis("scaled")
-    plt.show()
+    plt.savefig(
+        f"dataset_png/{BMinus.purchase_name}.png",
+        dpi=DRAW_DPI,
+    )

@@ -6,17 +6,22 @@ DRAW_OPTIONS = {
     # node styling
     "node_color": "white",
     "edgecolors": "black",
-    "node_size": 1000,
-    "linewidths": 3,
+    "node_size": 1300,
+    "linewidths": 2.7,
     "with_labels": True,
-    "font_size": 11,
+    "font_size": 13,
     "font_weight": "bold",
     "font_family": "monospace",
     # edge styling
     "edge_color": "black",
     # general line styling
-    "width": 3,
+    "width": 2.7,
 }
+
+DRAW_WIDTH = 1024
+DRAW_HEIGHT = 1024
+DRAW_DPI = 170
+DRAW_FIGSIZE = (DRAW_WIDTH / DRAW_DPI, DRAW_HEIGHT / DRAW_DPI)
 
 
 class PurchaseGraph(nx.Graph):
@@ -35,7 +40,7 @@ class PurchaseGraph(nx.Graph):
         super().__init__()
         self.purchase_name = purchase_name
 
-    def draw(self):
+    def draw(self, ax=None):
         pos = nx.get_node_attributes(self, "pos")
 
         # filter out invisible nodes, additionally the invisible labels must be manually excluded.
@@ -46,11 +51,16 @@ class PurchaseGraph(nx.Graph):
         }
         # if the node is invisible, we replace the label with a dot
         filtered_labels = {
-            label: label if label in filtered_nodes else "·" for label in self.nodes()
+            label: label if label in filtered_nodes else "" for label in self.nodes()
         }
 
         nx.draw(
-            self, pos, nodelist=filtered_nodes, labels=filtered_labels, **DRAW_OPTIONS
+            self,
+            pos,
+            ax,
+            nodelist=filtered_nodes,
+            labels=filtered_labels,
+            **DRAW_OPTIONS,
         )
 
     def to_json(self) -> dict:

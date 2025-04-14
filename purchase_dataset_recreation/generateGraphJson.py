@@ -10,29 +10,48 @@ from PurchaseSMinus import SMinus
 
 
 if __name__ == "__main__":
-    with open("BPlus.json", "w") as f:
-        f.write(BPlus.to_json())
+    graph = BPlus
 
-    with open("BMinus.json", "w") as f:
-        f.write(BMinus.to_json())
+    with open(f"dataset_json/{graph.purchase_name}.json", "w") as f:
+        f.write(graph.to_json())
 
-    with open("CPlus.json", "w") as f:
-        f.write(CPlus.to_json())
+    graph = BMinus
 
-    with open("CMinus.json", "w") as f:
-        f.write(CMinus.to_json())
+    with open(f"dataset_json/{graph.purchase_name}.json", "w") as f:
+        f.write(graph.to_json())
 
-    with open("OPlus.json", "w") as f:
-        f.write(OPlus.to_json())
+    graph = CPlus
 
-    with open("OMinus.json", "w") as f:
-        f.write(OMinus.to_json())
+    with open(f"dataset_json/{graph.purchase_name}.json", "w") as f:
+        f.write(graph.to_json())
 
-    with open("MPlus.json", "w") as f:
-        f.write(MPlus.to_json())
+    graph = CMinus
 
-    with open("SPlus.json", "w") as f:
-        f.write(SPlus.to_json())
+    with open(f"dataset_json/{graph.purchase_name}.json", "w") as f:
+        f.write(graph.to_json())
 
-    with open("SMinus.json", "w") as f:
-        f.write(SMinus.to_json())
+    graph = MPlus
+
+    with open(f"dataset_json/{graph.purchase_name}.json", "w") as f:
+        f.write(graph.to_json())
+
+    graph = OPlus
+
+    with open(f"dataset_json/{graph.purchase_name}.json", "w") as f:
+        f.write(graph.to_json())
+
+    graph = OMinus
+
+    with open(f"dataset_json/{graph.purchase_name}.json", "w") as f:
+        f.write(graph.to_json())
+
+    graph = SPlus
+
+    with open(f"dataset_json/{graph.purchase_name}.json", "w") as f:
+        f.write(graph.to_json())
+
+    graph = SMinus
+
+    with open(f"dataset_json/{graph.purchase_name}.json", "w") as f:
+        f.write(graph.to_json())
+

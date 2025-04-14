@@ -1,4 +1,4 @@
-from PurchaseGraph import PurchaseGraph
+from PurchaseGraph import PurchaseGraph, DRAW_FIGSIZE, DRAW_DPI
 import matplotlib.pyplot as plt
 
 CPlus = PurchaseGraph("c+")
@@ -59,6 +59,10 @@ CPlus.add_edge_via("T", "G", [(8.0, 2.0), (10.0, 2.0), (10.5, 2.5)])
 
 
 if __name__ == "__main__":
+    fig = plt.figure(figsize=(DRAW_FIGSIZE), dpi=DRAW_DPI)
     CPlus.draw()
     plt.axis("scaled")
-    plt.show()
+    plt.savefig(
+        f"dataset_png/{CPlus.purchase_name}.png",
+        dpi=DRAW_DPI,
+    )

@@ -1,4 +1,4 @@
-from PurchaseGraph import PurchaseGraph
+from PurchaseGraph import PurchaseGraph, DRAW_FIGSIZE, DRAW_DPI
 import matplotlib.pyplot as plt
 
 OPlus = PurchaseGraph("o+")
@@ -60,12 +60,16 @@ OPlus.add_edge("R", "Q")
 OPlus.add_edge("J", "I")
 OPlus.add_edge("J", "Q")
 
-OPlus.add_edge_via("I", "P", [(8.0,2.0)])
+OPlus.add_edge_via("I", "P", [(8.0, 2.0)])
 
 OPlus.add_edge("Q", "P")
 
 
 if __name__ == "__main__":
+    fig = plt.figure(figsize=(DRAW_FIGSIZE), dpi=DRAW_DPI)
     OPlus.draw()
     plt.axis("scaled")
-    plt.show()
+    plt.savefig(
+        f"dataset_png/{OPlus.purchase_name}.png",
+        dpi=DRAW_DPI,
+    )

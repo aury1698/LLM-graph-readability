@@ -1,4 +1,4 @@
-from PurchaseGraph import PurchaseGraph
+from PurchaseGraph import PurchaseGraph, DRAW_FIGSIZE, DRAW_DPI
 import matplotlib.pyplot as plt
 
 BPlus = PurchaseGraph("b+")
@@ -62,6 +62,10 @@ BPlus.add_edge("I", "P")
 
 
 if __name__ == "__main__":
+    fig = plt.figure(figsize=(DRAW_FIGSIZE), dpi=DRAW_DPI)
     BPlus.draw()
     plt.axis("scaled")
-    plt.show()
+    plt.savefig(
+        f"dataset_png/{BPlus.purchase_name}.png",
+        dpi=DRAW_DPI,
+    )

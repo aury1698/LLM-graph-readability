@@ -66,6 +66,16 @@ MPlus.add_edge_via("Q", "L", [(11.0, 0.5)])
 
 
 if __name__ == "__main__":
+    # needs overriding for different scale
+    DRAW_WIDTH = 1024
+    DRAW_HEIGHT = 1024
+    DRAW_DPI = 120
+    DRAW_FIGSIZE = (DRAW_WIDTH / DRAW_DPI, DRAW_HEIGHT / DRAW_DPI)
+
+    fig = plt.figure(figsize=(DRAW_FIGSIZE), dpi=DRAW_DPI)
     MPlus.draw()
     plt.axis("scaled")
-    plt.show()
+    plt.savefig(
+        f"dataset_png/{MPlus.purchase_name}.png",
+        dpi=DRAW_DPI,
+    )

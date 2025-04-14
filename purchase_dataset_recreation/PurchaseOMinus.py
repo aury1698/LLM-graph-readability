@@ -1,4 +1,4 @@
-from PurchaseGraph import PurchaseGraph
+from PurchaseGraph import PurchaseGraph, DRAW_FIGSIZE, DRAW_DPI
 import matplotlib.pyplot as plt
 
 OMinus = PurchaseGraph("o-")
@@ -73,6 +73,10 @@ OMinus.add_edge("Q", "P")
 OMinus.add_edge("T", "G")
 
 if __name__ == "__main__":
+    fig = plt.figure(figsize=(DRAW_FIGSIZE), dpi=DRAW_DPI)
     OMinus.draw()
     plt.axis("scaled")
-    plt.show()
+    plt.savefig(
+        f"dataset_png/{OMinus.purchase_name}.png",
+        dpi=DRAW_DPI,
+    )

@@ -1,4 +1,4 @@
-from PurchaseGraph import PurchaseGraph
+from PurchaseGraph import PurchaseGraph, DRAW_FIGSIZE, DRAW_DPI
 import matplotlib.pyplot as plt
 
 SMinus = PurchaseGraph("s-")
@@ -83,6 +83,16 @@ SMinus.add_edge_via("O", "P", [(21.0, 11.0)])
 
 
 if __name__ == "__main__":
+    # needs overriding for different scale
+    DRAW_WIDTH = 1024
+    DRAW_HEIGHT = 1024
+    DRAW_DPI = 80
+    DRAW_FIGSIZE = (DRAW_WIDTH / DRAW_DPI, DRAW_HEIGHT / DRAW_DPI)
+
+    fig = plt.figure(figsize=(DRAW_FIGSIZE), dpi=DRAW_DPI)
     SMinus.draw()
     plt.axis("scaled")
-    plt.show()
+    plt.savefig(
+        f"dataset_png/{SMinus.purchase_name}.png",
+        dpi=DRAW_DPI,
+    )

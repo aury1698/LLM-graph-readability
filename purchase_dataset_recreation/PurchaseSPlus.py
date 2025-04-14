@@ -75,6 +75,16 @@ SPlus.add_edge_via("M", "P", [(18.5, 5.0), (21.5, 5.0)])
 
 
 if __name__ == "__main__":
+    # needs overriding for different scale
+    DRAW_WIDTH = 1024
+    DRAW_HEIGHT = 1024
+    DRAW_DPI = 90
+    DRAW_FIGSIZE = (DRAW_WIDTH / DRAW_DPI, DRAW_HEIGHT / DRAW_DPI)
+
+    fig = plt.figure(figsize=(DRAW_FIGSIZE), dpi=DRAW_DPI)
     SPlus.draw()
     plt.axis("scaled")
-    plt.show()
+    plt.savefig(
+        f"dataset_png/{SPlus.purchase_name}.png",
+        dpi=DRAW_DPI,
+    )

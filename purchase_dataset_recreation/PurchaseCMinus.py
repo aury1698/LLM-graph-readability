@@ -1,4 +1,4 @@
-from PurchaseGraph import PurchaseGraph
+from PurchaseGraph import PurchaseGraph, DRAW_FIGSIZE, DRAW_DPI
 import matplotlib.pyplot as plt
 
 CMinus = PurchaseGraph("c-")
@@ -71,6 +71,10 @@ CMinus.add_edge("Q", "R")
 
 
 if __name__ == "__main__":
+    fig = plt.figure(figsize=(DRAW_FIGSIZE), dpi=DRAW_DPI)
     CMinus.draw()
     plt.axis("scaled")
-    plt.show()
+    plt.savefig(
+        f"dataset_png/{CMinus.purchase_name}.png",
+        dpi=DRAW_DPI,
+    )

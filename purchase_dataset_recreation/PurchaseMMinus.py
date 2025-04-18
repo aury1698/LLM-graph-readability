@@ -5,9 +5,9 @@ MMinus = PurchaseGraph("m-")
 
 MMinus.add_node("O", pos=(0.5, 3.0))
 
-MMinus.add_node("N", pos=(1.0, 6.5))
+MMinus.add_node("N", pos=(1.125, 6.375))
 MMinus.add_node("S", pos=(2.0, 6.25))
-MMinus.add_node("F", pos=(3.0, 6.25))
+MMinus.add_node("F", pos=(3.0, 6.375))
 
 MMinus.add_node("A", pos=(2.25, 10.5))
 MMinus.add_node("E", pos=(2.5, 7.5))

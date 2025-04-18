@@ -18,9 +18,9 @@ OMinus.add_node("S", pos=(3.25, 7.0))
 OMinus.add_node("B", pos=(3.0, 5.0))
 OMinus.add_node("T", pos=(3.0, 3.0))
 
-OMinus.add_node("N", pos=(6.0, 8.5))
-OMinus.add_node("C", pos=(5.5, 7.0))
-OMinus.add_node("G", pos=(5.0, 5.5))
+OMinus.add_node("N", pos=(6.25, 8.5))
+OMinus.add_node("C", pos=(5.75, 7.0))
+OMinus.add_node("G", pos=(5.25, 5.5))
 OMinus.add_node("H", pos=(5.75, 3.5))
 
 OMinus.add_node("R", pos=(7.75, 7.0))

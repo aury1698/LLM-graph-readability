@@ -3,17 +3,17 @@ import matplotlib.pyplot as plt
 
 MPlus = PurchaseGraph("m+")
 
-MPlus.add_node("S", pos=(4.0, 7.0))
+MPlus.add_node("S", pos=(4.0, 7.25))
 MPlus.add_node("A", pos=(5.0, 10.25))
 
 MPlus.add_node("R", pos=(5.25, 2.0))
 
-MPlus.add_node("E", pos=(5.75, 7.5))
-MPlus.add_node("F", pos=(6.5, 5.0))
+MPlus.add_node("E", pos=(5.75, 7.75))
+MPlus.add_node("F", pos=(6.5, 5.25))
 
 MPlus.add_node("N", pos=(8.5, 10.5))
 MPlus.add_node("B", pos=(7.5, 8.25))
-MPlus.add_node("T", pos=(8.0, 6.0))
+MPlus.add_node("T", pos=(8.0, 6.25))
 MPlus.add_node("J", pos=(7.75, 4.25))
 
 MPlus.add_node("C", pos=(9.25, 9.0))

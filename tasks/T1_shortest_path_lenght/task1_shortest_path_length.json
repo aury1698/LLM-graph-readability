@@ -1,0 +1,122 @@
+{
+  "task1_shortest_path_length":{
+    "description": "Given the visual representation of a graph, find the length of the shortest path between two highlighted nodes.",
+    
+    "prompts": {
+      "zero_shot": {
+        "no_cot": {
+            "system_message": "You are a third-year Computer Science student, capable of working with visual representations of graphs. In the next messages, you will be given a visual representation of a graph. In the visual representation all nodes are yellow circles with a black border and a black letter label. Be careful: nodes are ONLY connected if there is a visible CONTINUOUS black straight line between them, even if it has bends. The absence of a line between two nodes indicates NO connection between them and a line passing near a node WITHOUT touching its border does NOT count. Be careful of crossings between lines. - A PATH is a sequence of nodes where each consecutive pair is directly linked by a black line. - The LENGTH of a path is the number of edges (lines) traversed. Your task will be to determine the length of the SHORTEST path between the two nodes highlighted (minimum number of edges traversed). To ensure accuracy: 1. Explicitly verify every edge in the path (e.g., 'Is node X directly connected to node Y?'). 2. Explore all possible paths systematically using breadth-first search. 3. Do not assume connections: rely only on visible black lines. 4. Check neighbors of neighbors (e.g., indirect paths might be shorter).Provide only the final answer in this format: Length: X, Path: [A, B, C, ..., Z].",
+            "user_message": "Please determine the length of the shortest path between the two nodes with a THICK RED border in the graph. The length is defined as the number of edges (black lines) traversed to connect the two nodes. Use only the visual representation of the graph to identify the path. Each node is labeled with a black letter, and nodes are only connected if there is a visible black line between them. Provide: 1) The length of the shortest path (i.e., number of edges), and 2) The list of node labels that form that path in the correct order from start to end. Before answering, verify that: 1) Each consecutive node in the path is connected by a black line, 2) No shorter valid path exists. 3) Check all possible paths from the start node, considering every visible connection: it's crucial to explore all neighbors of each node in the path, especially those that might lead to the target node more quickly. Provide only the final answer in this format: Length: X, Path: [A, B, C, ..., Z]."
+
+        },
+        "cot": {
+            "system_message": "You are a third-year Computer Science student, capable of working with visual representations of graphs. In the next messages, you will be given a visual representation of a graph. In the visual representation all nodes are yellow circles with a black border and a black letter label. Be careful: nodes are ONLY connected if there is a visible CONTINUOUS black straight line between them, even if it has bends. The absence of a line between two nodes indicates NO connection between them and a line passing near a node WITHOUT touching its border does NOT count. Be careful of crossings between lines. - A PATH is a sequence of nodes where each consecutive pair is directly linked by a black line. - The LENGTH of a path is the number of edges (lines) traversed. Your task will be to determine the length of the SHORTEST path between the two nodes highlighted (minimum number of edges traversed). To ensure accuracy: 1. Explicitly verify every edge in the path (e.g., 'Is node X directly connected to node Y?'). 2. Explore all possible paths systematically using breadth-first search. 3. Do not assume connections: rely only on visible black lines. 4. Check neighbors of neighbors (e.g., indirect paths might be shorter). Show your reasoning process before providing your final answer in this format: Length: X, Path: [A, B, C, ..., Z].",
+            "user_message": "Please determine the length of the shortest path between the two nodes with a THICK RED border in the graph. The length is defined as the number of edges (black lines) traversed to connect the two nodes. Use only the visual representation of the graph to identify the path. Each node is labeled with a black letter, and nodes are only connected if there is a visible black line between them. Provide: 1) The length of the shortest path (i.e., number of edges), and 2) The list of node labels that form that path in the correct order from start to end. Before answering, verify that: 1) Each consecutive node in the path is connected by a black line, 2) No shorter valid path exists. 3) Check all possible paths from the start node, considering every visible connection: it's crucial to explore all neighbors of each node in the path, especially those that might lead to the target node more quickly. Show your reasoning process before providing your final answer in this format: Length: X, Path: [A, B, C, ..., Z]."
+
+        }
+      },
+  
+      "few_shot": {
+        "no_cot": {
+          "system_message": "You are a third-year Computer Science student, capable of working with visual representations of graphs. In the next messages, you will be given a visual representation of a graph. In the visual representation all nodes are yellow circles with a black border and a black letter label. Be careful: nodes are ONLY connected if there is a visible CONTINUOUS black straight line between them, even if it has bends. The absence of a line between two nodes indicates NO connection between them and a line passing near a node WITHOUT touching its border does NOT count. Be careful of crossings between lines. - A PATH is a sequence of nodes where each consecutive pair is directly linked by a black line. - The LENGTH of a path is the number of edges (lines) traversed. Your task will be to determine the length of the SHORTEST path between the two nodes highlighted (minimum number of edges traversed). To ensure accuracy: 1. Explicitly verify every edge in the path (e.g., 'Is node X directly connected to node Y?'). 2. Explore all possible paths systematically using breadth-first search. 3. Do not assume connections: rely only on visible black lines. 4. Check neighbors of neighbors (e.g., indirect paths might be shorter).Provide only the final answer in this format: Length: X, Path: [A, B, C, ..., Z].",
+          "user_message": "Please determine the length of the shortest path between the two nodes with a THICK RED border in the graph. The length is defined as the number of edges (black lines) traversed to connect the two nodes. Use only the visual representation of the graph to identify the path. Each node is labeled with a black letter, and nodes are only connected if there is a visible black line between them. Provide: 1) The length of the shortest path (i.e., number of edges), and 2) The list of node labels that form that path in the correct order from start to end. Before answering, verify that: 1) Each consecutive node in the path is connected by a black line, 2) No shorter valid path exists. 3) Check all possible paths from the start node, considering every visible connection: it's crucial to explore all neighbors of each node in the path, especially those that might lead to the target node more quickly. Provide only the final answer in this format: Length: X, Path: [A, B, C, ..., Z].",
+          "examples": [
+            {
+              "image_path": "../../images_graphs/yellow_practice_graphs/1_Practice.png",
+              "output": "Length: 2, Path: [F, E, M]"
+            },
+            {
+              "image_path": "../../images_graphs/yellow_practice_graphs/2_Practice.png",
+              "output": "Length: 3, Path: [I, H, G, F]"
+            },
+            {
+              "image_path": "../../images_graphs/yellow_practice_graphs/3_Practice.png",
+              "output": "Length: 3, Path: [M, J, I, C] or [M, E, B, C]"
+            },
+            {
+              "image_path": "../../images_graphs/yellow_practice_graphs/4_Practice.png",
+              "output": "Length: 1, Path: [B, H]"
+            },
+            {
+              "image_path": "../../images_graphs/yellow_practice_graphs/5_Practice.png",
+              "output": "Length: 2, Path: [M, E, B]"
+            },
+            {
+              "image_path": "../../images_graphs/yellow_practice_graphs/6_Practice.png",
+              "output": "Length: 1, Path: [I, J]"
+            }
+          ]
+        },
+        "cot": {
+          "system_message": "You are a third-year Computer Science student, capable of working with visual representations of graphs. In the next messages, you will be given a visual representation of a graph. In the visual representation all nodes are yellow circles with a black border and a black letter label. Be careful: nodes are ONLY connected if there is a visible CONTINUOUS black straight line between them, even if it has bends. The absence of a line between two nodes indicates NO connection between them and a line passing near a node WITHOUT touching its border does NOT count. Be careful of crossings between lines. - A PATH is a sequence of nodes where each consecutive pair is directly linked by a black line. - The LENGTH of a path is the number of edges (lines) traversed. Your task will be to determine the length of the SHORTEST path between the two nodes highlighted (minimum number of edges traversed). To ensure accuracy: 1. Explicitly verify every edge in the path (e.g., 'Is node X directly connected to node Y?'). 2. Explore all possible paths systematically using breadth-first search. 3. Do not assume connections: rely only on visible black lines. 4. Check neighbors of neighbors (e.g., indirect paths might be shorter).Provide only the final answer in this format: Length: X, Path: [A, B, C, ..., Z].",
+          "user_message": "Please determine the length of the shortest path between the two nodes with a THICK RED border in the graph. The length is defined as the number of edges (black lines) traversed to connect the two nodes. Use only the visual representation of the graph to identify the path. Each node is labeled with a black letter, and nodes are only connected if there is a visible black line between them. Provide: 1) The length of the shortest path (i.e., number of edges), and 2) The list of node labels that form that path in the correct order from start to end. Before answering, verify that: 1) Each consecutive node in the path is connected by a black line, 2) No shorter valid path exists. 3) Check all possible paths from the start node, considering every visible connection: it's crucial to explore all neighbors of each node in the path, especially those that might lead to the target node more quickly. Show your reasoning process before providing your final answer in this format: Length: X, Path: [A, B, C, ..., Z].",
+          "examples": [
+            {
+              "image_path": "../../images_graphs/yellow_practice_graphs/1_Practice.png",
+              "output": "Step-by-step reasoning. The two nodes with a thick red border are labeled F and M. I begin a breadth-first search (BFS) from node F. - Level 1: F is directly connected to K, E and G. - Level 2: From node E, I can reach M. So the path is F → E → M. This is a valid path of length 2. I verify that no shorter path exists and this is the minimal number of edges to connect F and M. Final Answer: Length: 2, Path: [F, E, M]"
+            },
+            {
+                "image_path": "../../images_graphs/yellow_practice_graphs/2_Practice.png",
+                "output": "Step-by-step reasoning. The two nodes with a thick red border are labeled I and F. Starting from node I, I perform a breadth-first search.- Level 1: I is directly connected to J, C, and H. - Level 2: From J, I can reach M; from C, I can reach O, N, and B; from H, I can reach G and B. - Level 3: From G, I can reach F. At this point, I have reached the target node F. So the path is: I → H → G → F. I verify that no shorter path exists, and this is the minimal number of edges to connect I and F. Final Answer: Length: 3, Path: [I, H, G, F]"
+            }, 
+            {
+                "image_path": "../../images_graphs/yellow_practice_graphs/3_Practice.png",
+                "output": "Step-by-step reasoning. The two nodes with a thick red border are labeled C and M. Starting from node M, I perform a breadth-first search.- Level 1: M is directly connected to J and E. - Level 2: From J, I can reach I; from E, I can reach B and F. - Level 3: From F I can reach G and K; from B, I can reach the target node C; from node I, I can reach the target node C as well. So there are two possible paths, and they are: M → J → I → C and M → E → B → C. I verify that no shorter path exists, and this is the minimal number of edges to connect M and C.Final Answer: Length: 3, Path: [M, J, I, C] or [M, E, B, C]"
+            },
+            {
+                "image_path": "../../images_graphs/yellow_practice_graphs/4_Practice.png",
+                "output": "Step-by-step reasoning. The two nodes with a thick red border are labeled B and H. I begin a breadth-first search (BFS) from node B. - Level 1: B is directly connected to N, C, E and the target node H. So the path between B and H is B → H. This is a valid path of length 1. I verify that no shorter path exists and this is the minimal number of edges to connect B and H. Final Answer: Length: 1, Path: [B , H]"
+            },
+            {
+                "image_path": "../../images_graphs/yellow_practice_graphs/5_Practice.png",
+                "output": "Step-by-step reasoning. The two nodes with a thick red border are labeled M and B. I begin a breadth-first search (BFS) from node M. - Level 1: M is directly connected to J and E. - Level 2: From node J, I can reach I. From node E, I can reach the target node B. So the path is M → E → B. This is a valid path of length 2. I verify that no shorter path exists and this is the minimal number of edges to connect M and B. Final Answer: Length: 2, Path: [M, E, B]."
+            },
+            {
+                "image_path": "../../images_graphs/yellow_practice_graphs/6_Practice.png",
+                "output": "Step-by-step reasoning. The two nodes with a thick red border are labeled I and J. I begin a breadth-first search (BFS) from node I. - Level 1: I is directly connected to C, H and the target node J. So the path between I and J is I → J. This is a valid path of length 1. I verify that no shorter path exists and this is the minimal number of edges to connect I and J. Final Answer: Length: 1, Path: [I , J]."
+            }
+          ]
+        }
+      }
+    },
+
+    "ground_truth": {
+      "FD-FR": {
+        "length": 2,
+        "path": ["G", "H", "I"]
+      },
+      "FD-K": {
+        "length": 3,
+        "path": ["M", "E", "B", "N"]
+      },
+      "PG": {
+        "length": 3,
+        "path": ["G", "H", "B", "N"]
+      },
+      "PGS": {
+        "length": 2,
+        "path": ["L", "E", "B", "H"]
+      },
+      "POGBa": {
+          "length": 3,
+          "path": ["E", "M", "J", "D"]
+      },
+      "POGBb": {
+          "length": 3,
+          "path": ["M", "E", "B", "H"]
+      },
+      "SEIS": {
+          "length": 4,
+          "path": [
+            ["C", "B", "H", "G", "X"],
+            ["C", "B", "E", "F", "X"]
+          ]
+      },
+      "Tu": {
+          "length": 1,
+          "path": ["O", "P"]
+      }      
+    }
+  }
+}
+  

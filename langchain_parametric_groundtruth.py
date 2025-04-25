@@ -8,6 +8,7 @@ from langchain_core.messages import HumanMessage
 from google import genai
 from google.genai import types
 
+
 # 1. Initialize the model
 def initialize_model(model_name):
     """Initialize the model based on the model name."""
@@ -36,8 +37,8 @@ def load_task_data(task_file):
 
 
 # 3. Create the prompt
-def create_prompt(model_name, system_msg, user_msg, file_uri, mode):
-    """Create a prompt compatible with the specified model and mode."""
+def create_prompt(model_name, system_msg, user_msg, file_uri):
+    """Create a prompt compatible with the specified model"""
     if model_name == "gpt-4o":
         return HumanMessage(
             content=[
@@ -62,8 +63,8 @@ def create_prompt(model_name, system_msg, user_msg, file_uri, mode):
 
 
 # 4.Configure the model
-def configure_model(model_name, system_msg, mode):
-    """Configure the model based on the mode and system message."""
+def configure_model(model_name, system_msg):
+    """Configure the model and return the configuration."""
     if model_name == "gemini-2.5-pro-exp-03-25":
         return types.GenerateContentConfig(
             temperature=0.1,
@@ -71,7 +72,7 @@ def configure_model(model_name, system_msg, mode):
             system_instruction=[types.Part.from_text(text=system_msg)],
         )
     elif model_name == "gpt-4o":
-        return None  # GPT-4o non richiede configurazioni aggiuntive
+        return None  #add config for gpt-4o if needed (need to check the documentation) 
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 
@@ -82,6 +83,7 @@ def invoke_model(model_name, model, prompt, config=None):
     if model_name == "gpt-4o":
         response = model.invoke([prompt])
         return response.content, None
+    
     elif model_name == "gemini-2.5-pro-exp-03-25":
         start_time = time.time()
         response = model.models.generate_content(
@@ -110,21 +112,24 @@ import re
 
 def parse_model_response(response, task):
     if task == "task1_shortest_path_length":
-        # Cerca "Length: X, Path: [A, B, C]"
+        # Search "Length: X, Path: [A, B, C]"
         match = re.search(r"Length:\s*(\d+),\s*Path:\s*\[([A-Z,\s]+)\]", response)
         if match:
             length = int(match.group(1))
             path = match.group(2).replace(" ", "").split(",")
             return {"length": length, "path": path}
+        else:
+            print(f"Warning: Unable to parse response for task '{task}'. Response: {response}")
+            
     elif task == "task2_min_nodes_removal":
-        # Cerca "Nodes to remove: X, Cut Set: [A, B]"
+        # Search "Nodes to remove: X, Cut Set: [A, B]"
         match = re.search(r"Nodes to remove:\s*(\d+),\s*Cut Set:\s*\[([A-Z,\s]+)\]", response)
         if match:
             nodes_to_remove = int(match.group(1))
             cut_set = match.group(2).replace(" ", "").split(",")
             return {"nodes_to_remove": nodes_to_remove, "cut_set": cut_set}
     elif task == "task3_min_edges_removal":
-        # Cerca "Edges to remove: X, Cut Set: [(A, B), (C, D)]"
+        # Search "Edges to remove: X, Cut Set: [(A, B), (C, D)]"
         match = re.search(r"Edges to remove:\s*(\d+),\s*Cut Set:\s*\[\(([A-Z,\s\(\)]+)\)\]", response)
         if match:
             edges_to_remove = int(match.group(1))
@@ -132,30 +137,7 @@ def parse_model_response(response, task):
             return {"edges_to_remove": edges_to_remove, "cut_set": cut_set}
     return None
 
-#7. Evaluate the response
-def evaluate_model_response(response, task, ground_truth):
-    parsed_response = parse_model_response(response, task)
-    if not parsed_response:
-        return 0.0  # Risposta non valida
 
-    if task == "task1_shortest_path_length":
-        # Confronta la lunghezza
-        is_correct_length = parsed_response["length"] == ground_truth["length"]
-
-        # Confronta il path (singolo o multiplo)
-        if "paths" in ground_truth:  # Caso con più path validi
-            is_correct_path = is_path_correct(parsed_response["path"], ground_truth["paths"])
-        else:  # Caso con un singolo path
-            is_correct_path = (
-                parsed_response["path"] == ground_truth["path"] or
-                parsed_response["path"] == ground_truth["path"][::-1]
-            )
-
-        # Calcola l'accuracy
-        return 1.0 if is_correct_length and is_correct_path else 0.0
-
-    #Fallo per gli altri due task con elif
-    return 0.0
 
 def is_path_correct(predicted_path, ground_truth_paths):
     for gt_path in ground_truth_paths:
@@ -166,7 +148,7 @@ def is_path_correct(predicted_path, ground_truth_paths):
 
 def calculate_accuracy(task, parsed_response, ground_truth):
     if task == "task1_shortest_path_length":
-        #For now the accuracy only checks the length of the path, not if the path itself is correct
+        #For now the accuracy only checks whether the length of the path is correct, not if the path itself is correct
         is_correct_length = parsed_response["length"] == ground_truth["length"]
         is_correct_path = (
             parsed_response["path"] == ground_truth["path"] or
@@ -184,6 +166,29 @@ def calculate_accuracy(task, parsed_response, ground_truth):
     return 0.0
 
 
+def load_ground_truth(data, task, image_name):
+    try:
+        return data[task]["ground_truth"][image_name]
+    except KeyError as e:
+        raise KeyError(f"Key error: {e}. Please check the JSON structure for task '{task}' and image '{image_name}'.")
+
+def compute_metrics(task, response, ground_truth, base_metrics=None):
+    """
+    Compute all metrics, including accuracy, and return them as a dictionary.
+    """
+    #Initialize the metrics dictionary
+    metrics = base_metrics if base_metrics else {}
+
+    # Compare the model response with the ground truth
+    parsed_response = parse_model_response(response, task)
+    if not parsed_response:
+        print("Error: Unable to parse the model response.")
+    else:
+        accuracy = calculate_accuracy(task, parsed_response, ground_truth)
+        metrics["Accuracy"] = accuracy
+
+    return metrics
+
 
 # 8. Main function
 def main(task, mode, cot_mode, model_name, image_path):
@@ -196,7 +201,7 @@ def main(task, mode, cot_mode, model_name, image_path):
     }
 
 
-    # Carica i dati del task
+    # Load the task data
     task_file = task_files.get(task)
     if not task_file:
         raise ValueError(f"Unsupported task: {task}")
@@ -217,12 +222,10 @@ def main(task, mode, cot_mode, model_name, image_path):
     image_name = os.path.splitext(os.path.basename(image_path))[0]
     uploaded_file = model.files.upload(file=image_path)
     file_uri = uploaded_file.uri
-    #take the image name from the path which is the last part of the path without the extension
-    image_name = os.path.splitext(os.path.basename(image_path))[0]
     print(f"Image name: {image_name}")
 
     
-    config = configure_model(model_name, system_msg, mode)
+    config = configure_model(model_name, system_msg)
 
     print("\n--- System context ---")
     print("\n"+system_msg + "\n")
@@ -231,33 +234,25 @@ def main(task, mode, cot_mode, model_name, image_path):
     print("\n--- User prompt ---")
     print("\n"+user_msg + "\n")
 
-    prompt = create_prompt(model_name, system_msg, user_msg, file_uri, mode)
-
+    prompt = create_prompt(model_name, system_msg, user_msg, file_uri)
 
     # Invoke the model and get the response
     try:
-        response, metrics = invoke_model(model_name, model, prompt, config=config)
+        response, base_metrics = invoke_model(model_name, model, prompt, config=config)
         print("\n--- Model Response ---")
         print(response)
     except Exception as e:
         print(f"Error during model invocation: {e}")
 
 
-    # Evaluate the response
-
-    # Estrai la ground truth per il task e l'immagine specifica
-    try:
-        ground_truth = data[task]["ground_truth"][image_name]
-    except KeyError as e:
-        raise KeyError(f"Key error: {e}. Please check the JSON structure for task '{task}' and image '{image_name}'.")
-
-    # Confronta la risposta del modello con la ground truth
-    parsed_response = parse_model_response(response, task)
+    # Evaluate the response comparing it with the ground truth
+    ground_truth = load_ground_truth(data, task, image_name)
+    print("\n--- Ground Truth ---")
+    print(ground_truth)
 
 
-    #Compute accuracy
-    accuracy = calculate_accuracy(task, parsed_response, ground_truth)
-    metrics["Accuracy"] = accuracy
+    # compute all metrics
+    metrics = compute_metrics(task, response, ground_truth, base_metrics)
 
     # print metrics 
     print("\n--- Metrics ---")

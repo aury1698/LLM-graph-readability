@@ -120,22 +120,36 @@ def parse_model_response(response, task):
             return {"length": length, "path": path}
         else:
             print(f"Warning: Unable to parse response for task '{task}'. Response: {response}")
-            
+            return None
+
     elif task == "task2_min_nodes_removal":
-        # Search "Nodes to remove: X, Cut Set: [A, B]"
+        # Search "Nodes to remove: [A, B], Cut Set: [C, D]"
         match = re.search(r"Nodes to remove:\s*(\d+),\s*Cut Set:\s*\[([A-Z,\s]+)\]", response)
         if match:
             nodes_to_remove = int(match.group(1))
             cut_set = match.group(2).replace(" ", "").split(",")
             return {"nodes_to_remove": nodes_to_remove, "cut_set": cut_set}
+        else:
+            print(f"Warning: Unable to parse response for task '{task}'. Response: {response}")
+            return None
+        
     elif task == "task3_min_edges_removal":
-        # Search "Edges to remove: X, Cut Set: [(A, B), (C, D)]"
-        match = re.search(r"Edges to remove:\s*(\d+),\s*Cut Set:\s*\[\(([A-Z,\s\(\)]+)\)\]", response)
+        # Search "Edges to remove: [(A, B), (C, D)], Cut Set: [(E, F), (G, H)]"
+        match = re.search(r"Edges to remove:\s*(\d+),\s*Cut Set:\s*\[(.*?)\]", response)
         if match:
             edges_to_remove = int(match.group(1))
-            cut_set = [tuple(edge.split(", ")) for edge in match.group(2).split("), (")]
+            cut_set_raw = match.group(2)
+            # Parsing the cut set
+            cut_set = []
+            for edge in re.findall(r"\(([^)]+)\)", cut_set_raw):
+                node1, node2 = edge.replace(" ", "").split(",")
+                cut_set.append((node1, node2))
+            
             return {"edges_to_remove": edges_to_remove, "cut_set": cut_set}
-    return None
+
+    else:
+        print(f"Error: Unsupported task '{task}' in parse_model_response.")
+        return None
 
 
 
@@ -147,21 +161,23 @@ def is_path_correct(predicted_path, ground_truth_paths):
 
 
 def calculate_accuracy(task, parsed_response, ground_truth):
+    #For now the accuracy only checks whether the number is correct, not if the path/cut set itself is correct
     if task == "task1_shortest_path_length":
-        #For now the accuracy only checks whether the length of the path is correct, not if the path itself is correct
         is_correct_length = parsed_response["length"] == ground_truth["length"]
         is_correct_path = (
             parsed_response["path"] == ground_truth["path"] or
             parsed_response["path"] == ground_truth["path"][::-1]  # To consider the reverse path
         )
         return 1.0 if is_correct_length else 0.0
+    
     elif task == "task2_min_nodes_removal":
-        is_correct_nodes = parsed_response["nodes_to_remove"] == ground_truth["nodes_to_remove"]
-        is_correct_cut_set = parsed_response["cut_set"] == ground_truth["cut_set"]
+        # Verify that the nodes are the same regardless of the order
+        is_correct_nodes = parsed_response["nodes_to_remove"] == ground_truth["length"] 
         return 1.0 if is_correct_nodes else 0.0
+    
     elif task == "task3_min_edges_removal":
-        is_correct_edges = parsed_response["edges_to_remove"] == ground_truth["edges_to_remove"]
-        is_correct_cut_set = parsed_response["cut_set"] == ground_truth["cut_set"]
+        # Verify that the edges are the same regardless of the order and inversion
+        is_correct_edges = parsed_response["edges_to_remove"] == ground_truth["length"]
         return 1.0 if is_correct_edges else 0.0
     return 0.0
 
@@ -254,7 +270,6 @@ def main(task, mode, cot_mode, model_name, image_path):
     # compute all metrics
     metrics = compute_metrics(task, response, ground_truth, base_metrics)
 
-    # print metrics 
     print("\n--- Metrics ---")
     for key, value in metrics.items():
         print(f"{key}: {value}")
@@ -264,9 +279,9 @@ def main(task, mode, cot_mode, model_name, image_path):
 if __name__ == "__main__":
     # Parameters
     task = "task1_shortest_path_length"  # Choose between task1_shortest_path_length, task2_min_nodes_removal, task3_min_edges_removal
-    mode = "zero_shot"  # Choose between "zero_shot" and "few_shot"
-    cot_mode ="cot" # Choose between "no_cot" and "cot"
+    mode = "few_shot"  # Choose between "zero_shot" and "few_shot"
+    cot_mode ="no_cot" # Choose between "no_cot" and "cot"
     model_name = "gemini-2.5-pro-exp-03-25"  # Change to "gpt-4o" or other models as needed
-    image_path = "images_graphs/yellow_test_graphs/SEIS.png" # Change to the path of the image you want to test
+    image_path = "images_graphs/yellow_version/yellow_test_graphs/SEIS.png" # Change to the path of the image you want to test
 
     main(task, mode, cot_mode, model_name, image_path)

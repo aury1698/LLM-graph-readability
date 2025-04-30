@@ -123,12 +123,20 @@ def parse_model_response(response, task):
             return None
 
     elif task == "task2_min_nodes_removal":
-        # Search "Nodes to remove: [A, B], Cut Set: [C, D]"
-        match = re.search(r"Nodes to remove:\s*(\d+),\s*Cut Set:\s*\[([A-Z,\s]+)\]", response)
+        # Search "Nodes to remove: [A, B], Cut Set: [C, D]" (it considers the case where the cut set is empty)
+        match = re.search(r"Nodes to remove:\s*(\d+),\s*Cut Set:\s*\[([\w,\s]*)\]", response)
         if match:
             nodes_to_remove = int(match.group(1))
-            cut_set = match.group(2).replace(" ", "").split(",")
-            return {"nodes_to_remove": nodes_to_remove, "cut_set": cut_set}
+
+            # Decomment the following lines if we want to consider the accuracy of the cut set as well in the future
+            # cut_set_raw = match.group(2).strip()
+            # # Handle the case where the cut set is empty
+            # if not cut_set_raw:  
+            #     cut_set = []
+            # else:
+            #     cut_set = cut_set_raw.replace(" ", "").split(",")
+
+            return {"nodes_to_remove": nodes_to_remove}
         else:
             print(f"Warning: Unable to parse response for task '{task}'. Response: {response}")
             return None
@@ -161,7 +169,7 @@ def is_path_correct(predicted_path, ground_truth_paths):
 
 
 def calculate_accuracy(task, parsed_response, ground_truth):
-    #For now the accuracy only checks whether the number is correct, not if the path/cut set itself is correct
+    ##For now the accuracy only checks whether the number is correct, not if the path/cut set itself is correct
     if task == "task1_shortest_path_length":
         is_correct_length = parsed_response["length"] == ground_truth["length"]
         is_correct_path = (
@@ -197,8 +205,10 @@ def compute_metrics(task, response, ground_truth, base_metrics=None):
 
     # Compare the model response with the ground truth
     parsed_response = parse_model_response(response, task)
+
+
     if not parsed_response:
-        print("Error: Unable to parse the model response.")
+        print(f"Error: Unable to parse the model response for task '{task}'.")
     else:
         accuracy = calculate_accuracy(task, parsed_response, ground_truth)
         metrics["Accuracy"] = accuracy
@@ -227,6 +237,7 @@ def main(task, mode, cot_mode, model_name, image_path):
     try:
         system_msg = data[task]["prompts"][mode][cot_mode]["system_message"]
         user_msg = data[task]["prompts"][mode][cot_mode]["user_message"]
+        examples = data[task]["prompts"][mode][cot_mode].get("examples", [])
     except KeyError as e:
         raise KeyError(f"Key error: {e}. Please check the JSON structure for task '{task}', mode '{mode}', and cot_mode '{cot_mode}'.")
         
@@ -243,9 +254,27 @@ def main(task, mode, cot_mode, model_name, image_path):
     
     config = configure_model(model_name, system_msg)
 
+    #TEST: Few Shot Mode
+    # Prepare the examples for "few_shot" mode
+    examples_text = ""
+    if mode == "few_shot" and examples:
+        examples_text += (
+            "Carefully review the following examples of graph visualizations. "
+            "They demonstrate how I expect you to reason through the task and format your answers. "
+            "The real test image will come afterward.\n\n"
+        )
+        for example in examples:
+            example_image_path = example["image_path"]
+            example_output = example["output"]
+            examples_text += f"Example:\nImage: {example_image_path}\nOutput: {example_output}\n\n"
+
+    # Combine examples with the user message
+    if mode == "few_shot":
+        user_msg = f"{examples_text}{user_msg}"
+
+
     print("\n--- System context ---")
     print("\n"+system_msg + "\n")
-
 
     print("\n--- User prompt ---")
     print("\n"+user_msg + "\n")
@@ -278,10 +307,10 @@ def main(task, mode, cot_mode, model_name, image_path):
 
 if __name__ == "__main__":
     # Parameters
-    task = "task1_shortest_path_length"  # Choose between task1_shortest_path_length, task2_min_nodes_removal, task3_min_edges_removal
+    task = "task3_min_edges_removal"  # Choose between task1_shortest_path_length, task2_min_nodes_removal, task3_min_edges_removal
     mode = "few_shot"  # Choose between "zero_shot" and "few_shot"
-    cot_mode ="no_cot" # Choose between "no_cot" and "cot"
+    cot_mode ="cot" # Choose between "no_cot" and "cot"
     model_name = "gemini-2.5-pro-exp-03-25"  # Change to "gpt-4o" or other models as needed
-    image_path = "images_graphs/yellow_version/yellow_test_graphs/SEIS.png" # Change to the path of the image you want to test
+    image_path = "images_graphs/yellow_version/yellow_test_graphs/Tu.png" # Change to the path of the image you want to test
 
     main(task, mode, cot_mode, model_name, image_path)

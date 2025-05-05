@@ -216,7 +216,7 @@ def compute_metrics(task, response, ground_truth, base_metrics=None):
     return metrics
 
 
-# 8. Main function
+
 def main(task, mode, cot_mode, model_name, image_path):
     
     # Map the task to the corresponding JSON file
@@ -308,7 +308,7 @@ def main(task, mode, cot_mode, model_name, image_path):
 if __name__ == "__main__":
     # Parameters
     task = "task3_min_edges_removal"  # Choose between task1_shortest_path_length, task2_min_nodes_removal, task3_min_edges_removal
-    mode = "few_shot"  # Choose between "zero_shot" and "few_shot"
+    mode = "zero_shot"  # Choose between "zero_shot" and "few_shot"
     cot_mode ="cot" # Choose between "no_cot" and "cot"
     model_name = "gemini-2.5-pro-exp-03-25"  # Change to "gpt-4o" or other models as needed
     image_path = "images_graphs/yellow_version/yellow_test_graphs/Tu.png" # Change to the path of the image you want to test

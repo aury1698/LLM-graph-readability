@@ -155,7 +155,9 @@ def parse_model_response(response, task):
                 cut_set.append((node1, node2))
             
             return {"prediction": edges_to_remove, "cut_set": cut_set}
-
+        else:
+            print(f"Warning: Unable to parse response for task '{task}'.")
+            return None
     else:
         print(f"Error: Unsupported task '{task}' in parse_model_response.")
         return None

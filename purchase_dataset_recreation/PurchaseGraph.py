@@ -40,7 +40,7 @@ class PurchaseGraph(nx.Graph):
         super().__init__()
         self.purchase_name = purchase_name
 
-    def draw(self, ax=None):
+    def draw(self, ax=None, color_map: dict[str, str] = {}, with_labels: bool = True):
         pos = nx.get_node_attributes(self, "pos")
 
         # filter out invisible nodes, additionally the invisible labels must be manually excluded.
@@ -54,13 +54,24 @@ class PurchaseGraph(nx.Graph):
             label: label if label in filtered_nodes else "" for label in self.nodes()
         }
 
+        DRAW_OPTIONS_COPY = DRAW_OPTIONS.copy()
+
+        # if the color_map is non-empty, we use it to color the nodes
+        if color_map:
+            color_list = [
+                color_map.get(node) if node in color_map else DRAW_OPTIONS["node_color"] for node in filtered_nodes
+            ]
+            DRAW_OPTIONS_COPY["node_color"] = color_list
+
+        DRAW_OPTIONS_COPY["with_labels"] = with_labels
+
         nx.draw(
             self,
             pos,
             ax,
             nodelist=filtered_nodes,
             labels=filtered_labels,
-            **DRAW_OPTIONS,
+            **DRAW_OPTIONS_COPY,
         )
 
     def to_json(self) -> dict:

@@ -8,6 +8,8 @@ from google import genai
 from google.genai import types
 import pandas as pd
 import os
+from mimetypes import guess_type
+from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 
 
 # 1. Initialize the model
@@ -22,7 +24,11 @@ def initialize_model(model_name):
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY is not set in the environment variables.")
-        return genai.Client(api_key=api_key)
+        return ChatGoogleGenerativeAI(
+            model=model_name,
+            temperature=0.1,
+            api_key=api_key
+        )
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 
@@ -38,27 +44,24 @@ def load_task_data(task_file):
 
 
 # 3. Create the prompt
-def create_prompt(model_name, system_msg, user_msg, file_uri):
+def create_prompt(model_name, system_msg, user_msg, image_url):
     """Create a prompt compatible with the specified model"""
     if model_name == "gpt-4o":
         return HumanMessage(
             content=[
                 {"type": "text", "text": system_msg},
                 {"type": "text", "text": user_msg},
-                {"type": "image_url", "image_url": {"url": file_uri}},
+                {"type": "image_url", "image_url": {"url": image_url}},
             ]
         )
     elif model_name.startswith("gemini"):
-        combined_message = f"{system_msg}\n\n{user_msg}"
-        return [
-            types.Content(
-                role="user",
-                parts=[
-                    types.Part.from_text(text=combined_message),
-                    types.Part.from_uri(file_uri=file_uri, mime_type="image/png"),
-                ],
-            ),
-        ]
+        return HumanMessage(
+            content=[
+                {"type": "text", "text": system_msg},
+                {"type": "text", "text": user_msg},
+                {"type": "image_url", "image_url": {"url": image_url}},
+            ]
+        )
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 
@@ -87,15 +90,14 @@ def invoke_model(model_name, model, prompt, config=None):
     
     elif model_name.startswith("gemini"):
         start_time = time.time()
-        response = model.models.generate_content(
-            model="gemini-2.5-pro-exp-03-25", contents=prompt, config=config
-        )
+        response = model.invoke([prompt]) #method of the class ChatGoogleGenerativeAI
         end_time = time.time()
         latency = end_time - start_time
 
-        input_tokens = response.usage_metadata.prompt_token_count
-        output_tokens = response.usage_metadata.candidates_token_count
-        total_tokens = input_tokens + output_tokens
+        usage_metadata = response.usage_metadata
+        input_tokens = usage_metadata["input_tokens"]
+        output_tokens = usage_metadata["output_tokens"]
+        total_tokens = usage_metadata["total_tokens"]
 
         metrics = {
             "Response Time": f"{latency:.2f} seconds",
@@ -104,7 +106,7 @@ def invoke_model(model_name, model, prompt, config=None):
             "Total Tokens": total_tokens,
         }
 
-        return response.text, metrics
+        return response.content, metrics
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 
@@ -220,7 +222,7 @@ def compute_metrics(task, response, ground_truth, base_metrics=None):
     return metrics
 
 #9. Save the metrics to a CSV file
-def save_results_to_csv(results, output_file="results.csv"):
+def save_results_to_csv(results, output_file="yellow_results.csv"):
     # Check if the output file already exists
     if os.path.exists(output_file):
         # Add new results to the existing file
@@ -235,6 +237,14 @@ def save_results_to_csv(results, output_file="results.csv"):
     results.to_csv(output_file, index=False)
     print(f"Results saved to {output_file}")
 
+#10. Convert local image to data URL (as required for langchain)
+def local_image_to_data_url(image_path):
+    mime_type, _ = guess_type(image_path)
+    if mime_type is None:
+        mime_type = 'image/png'  # Default MIME type
+    with open(image_path, "rb") as image_file:
+        base64_encoded_data = base64.b64encode(image_file.read()).decode('utf-8')
+    return f"data:{mime_type};base64,{base64_encoded_data}"
 
 
 def main(task, mode, cot_mode, model_name, image_path, attempt):
@@ -266,9 +276,8 @@ def main(task, mode, cot_mode, model_name, image_path, attempt):
     model = initialize_model(model_name)
 
     # Load the desided image
-    image_name = os.path.splitext(os.path.basename(image_path))[0]
-    uploaded_file = model.files.upload(file=image_path)
-    file_uri = uploaded_file.uri
+    image_url = local_image_to_data_url(image_path)
+    image_name = os.path.splitext(os.path.basename(image_path))[0]  
     print(f"Image name: {image_name}")
 
     
@@ -298,7 +307,7 @@ def main(task, mode, cot_mode, model_name, image_path, attempt):
     print("\n--- User prompt ---")
     print("\n"+user_msg + "\n")
 
-    prompt = create_prompt(model_name, system_msg, user_msg, file_uri)
+    prompt = create_prompt(model_name, system_msg, user_msg, image_url)
 
     # Invoke the model and get the response
     try:
@@ -307,6 +316,8 @@ def main(task, mode, cot_mode, model_name, image_path, attempt):
         print(response)
     except Exception as e:
         print(f"Error during model invocation: {e}")
+        response = None
+        base_metrics = None
 
 
     # Evaluate the response comparing it with the ground truth
@@ -364,11 +375,11 @@ def main(task, mode, cot_mode, model_name, image_path, attempt):
 
 if __name__ == "__main__":
     # Parameters
-    task = "task1_shortest_path_length"  # Choose between task1_shortest_path_length, task2_min_nodes_removal, task3_min_edges_removal
-    mode = "zero_shot"  # Choose between "zero_shot" and "few_shot"
+    task = "task3_min_edges_removal"  # Choose between task1_shortest_path_length, task2_min_nodes_removal, task3_min_edges_removal
+    mode = "few_shot"  # Choose between "zero_shot" and "few_shot"
     cot_mode ="no_cot" # Choose between "no_cot" and "cot"
     model_name = "gemini-2.5-pro-exp-03-25"  # Change to "gpt-4o" or other models as needed
-    image_path = "images_graphs/yellow_version/yellow_test_graphs/FD-FR.png" # Change to the path of the image you want to test
+    image_path = "images_graphs/yellow_version/yellow_test_graphs/PG.png" # Change to the path of the image you want to test
     attempt = 2  # Attempt number
     
     main(task, mode, cot_mode, model_name, image_path, attempt)

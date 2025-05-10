@@ -18,7 +18,7 @@ def initialize_model(model_name):
         if not api_key:
             raise ValueError("OPENAI_API_KEY is not set in the environment variables.")
         return ChatOpenAI(model="gpt-4o")
-    elif model_name == "gemini-2.5-pro-exp-03-25":
+    elif model_name.startswith("gemini"):
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY is not set in the environment variables.")
@@ -48,7 +48,7 @@ def create_prompt(model_name, system_msg, user_msg, file_uri):
                 {"type": "image_url", "image_url": {"url": file_uri}},
             ]
         )
-    elif model_name == "gemini-2.5-pro-exp-03-25":
+    elif model_name.startswith("gemini"):
         combined_message = f"{system_msg}\n\n{user_msg}"
         return [
             types.Content(
@@ -66,7 +66,7 @@ def create_prompt(model_name, system_msg, user_msg, file_uri):
 # 4.Configure the model
 def configure_model(model_name, system_msg):
     """Configure the model and return the configuration."""
-    if model_name == "gemini-2.5-pro-exp-03-25":
+    if model_name.startswith("gemini"):
         return types.GenerateContentConfig(
             temperature=0.1,
             response_mime_type="text/plain",
@@ -85,7 +85,7 @@ def invoke_model(model_name, model, prompt, config=None):
         response = model.invoke([prompt])
         return response.content, None
     
-    elif model_name == "gemini-2.5-pro-exp-03-25":
+    elif model_name.startswith("gemini"):
         start_time = time.time()
         response = model.models.generate_content(
             model="gemini-2.5-pro-exp-03-25", contents=prompt, config=config
@@ -129,17 +129,16 @@ def parse_model_response(response, task):
         if match:
             nodes_to_remove = int(match.group(1))
 
-            # Decomment the following lines if we want to consider the accuracy of the cut set as well in the future
-            # cut_set_raw = match.group(2).strip()
-            # # Handle the case where the cut set is empty
-            # if not cut_set_raw:  
-            #     cut_set = []
-            # else:
-            #     cut_set = cut_set_raw.replace(" ", "").split(",")
+            cut_set_raw = match.group(2).strip()
+            # Handle the case where the cut set is empty
+            if not cut_set_raw:  
+                cut_set = []
+            else:
+                cut_set = cut_set_raw.replace(" ", "").split(",")
 
-            return {"prediction": nodes_to_remove}
+            return {"prediction": nodes_to_remove, "cut_set": cut_set}
         else:
-            print(f"Warning: Unable to parse response for task '{task}'. Response: {response}")
+            print(f"Warning: Unable to parse response for task '{task}'.")
             return None
         
     elif task == "task3_min_edges_removal":
@@ -350,6 +349,7 @@ def main(task, mode, cot_mode, model_name, image_path, attempt):
         "Model Name": model_name,
         "Temperature": config.temperature if hasattr(config, "temperature") else None,
         "Prediction": parsed_response.get("prediction", None) if parsed_response else None,
+        "Output": parsed_response.get("path", None) if task == "task1_shortest_path_length" else parsed_response.get("cut_set", None),
         "True Value": ground_truth["length"],
         "Correct Prediction (True/False)": correct,
         "Time (sec)": base_metrics.get("Response Time", None) if base_metrics else None,
@@ -364,11 +364,11 @@ def main(task, mode, cot_mode, model_name, image_path, attempt):
 
 if __name__ == "__main__":
     # Parameters
-    task = "task2_min_nodes_removal"  # Choose between task1_shortest_path_length, task2_min_nodes_removal, task3_min_edges_removal
-    mode = "few_shot"  # Choose between "zero_shot" and "few_shot"
-    cot_mode ="cot" # Choose between "no_cot" and "cot"
+    task = "task1_shortest_path_length"  # Choose between task1_shortest_path_length, task2_min_nodes_removal, task3_min_edges_removal
+    mode = "zero_shot"  # Choose between "zero_shot" and "few_shot"
+    cot_mode ="no_cot" # Choose between "no_cot" and "cot"
     model_name = "gemini-2.5-pro-exp-03-25"  # Change to "gpt-4o" or other models as needed
-    image_path = "images_graphs/yellow_version/yellow_test_graphs/POGBa.png" # Change to the path of the image you want to test
-    attempt = 1  # Attempt number
-
+    image_path = "images_graphs/yellow_version/yellow_test_graphs/FD-FR.png" # Change to the path of the image you want to test
+    attempt = 2  # Attempt number
+    
     main(task, mode, cot_mode, model_name, image_path, attempt)

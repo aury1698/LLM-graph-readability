@@ -69,3 +69,15 @@ The script is attached, but I did not try it.
 The conversion tool is called `script.py` and included in this directory.
 
 We have yet to try and test the conversion tool.
+
+## New GraphEd to yEd GraphML conversion
+
+The script provided by Walter Didimo was a useful starting point, but it did not preserve the original node positions or edge bends from the GraphEd files: all nodes were collapsed at the same location and the original layout was lost.
+
+To address this, Aurora (with the help of Copilot/GPT) developed a new script (`convert_graphed_to_yed.py`) that parses the original `.g` files and generates a yEd-compatible GraphML file. This script preserves:
+- the exact node positions as specified in the GraphEd file,
+- the original edge bends (so that the orthogonal or polyline edge routing is maintained),
+- and the node labels and shapes.
+
+The script is still being refined, but it already produces an almost faithful visualizations of the original layouts in yEd Live.
+Please feel free to try the script and adjust anything that doesn't work as expected (for example, in the layout "o+.g" some bends are not 90° but are more acute). Contributions and improvements are very welcome! :) 

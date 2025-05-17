@@ -2,8 +2,12 @@
 
 This directory contains the old original graph files from Helen Purchase's paper.
 
-Sara was able to obtain those from Helen Purchase, which is a great surprise that they still exist.
+Sara was able to obtain those from Helen Purchase, which is a great surprise. After all, the paper was published in 1997.
 Additionally, we also received the practise graphs, which were not published in the paper.
+
+We received these files on May 16, 2025. At this point we had already recreated the graphs by visual inspection.
+The original graph files now serve as a reference and we can use them to
+create the practise graphs and the original graphs more faithfully.
 
 ## Graph files
 

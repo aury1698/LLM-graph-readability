@@ -127,16 +127,18 @@ def write_graphml_yed_classic(nodes, edges, filename):
     print(f"GraphML yEd (classic) file written to: {filename}")
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python convert_graph_to_yed.py <input_file>")
+    if len(sys.argv) < 2:
+        print("Usage: python convert_graph_to_yed.py FILE...\n - convert [multiple] .g graph files to yEd GraphML format")
         sys.exit(1)
 
-    input_file = sys.argv[1]
-    if not input_file.endswith(".g"):
-        print("Error: no .g graph file provided")
-        sys.exit(1)
+    input_files = sys.argv[1:]
+    for input_file in input_files:
+        if not input_file.endswith(".g"):
+            print("Error: no .g graph file provided")
+            sys.exit(1)
 
-    file_name = input_file.removesuffix(".g")
+    for input_file in input_files:
+        file_name = input_file.removesuffix(".g")
 
-    nodes, edges = parse_graphed_file(input_file)
-    write_graphml_yed_classic(nodes, edges, f"{file_name}.graphml")
+        nodes, edges = parse_graphed_file(input_file)
+        write_graphml_yed_classic(nodes, edges, f"{file_name}.graphml")

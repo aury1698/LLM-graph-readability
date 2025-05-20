@@ -1,5 +1,17 @@
 import re
+import sys
 from xml.etree.ElementTree import Element, SubElement, ElementTree
+
+CIRCLE_RADIUS = 15.0
+
+def adjust_edge_coordinates(x, y):
+    """
+    Adjusts the coordinates of the edge points to match the center of the node.
+    The adjustment is based on the radius of the circle (CIRCLE_RADIUS).
+    This is necessary because the yEd graph editor uses the top-left corner of the node
+    as the reference point for the edge coordinates.
+    """
+    return x + CIRCLE_RADIUS, y + CIRCLE_RADIUS
 
 def parse_graphed_file(file_path):
     """
@@ -74,7 +86,7 @@ def write_graphml_yed_classic(nodes, edges, filename):
         data_el = SubElement(node, 'data', key="d0")
         shape_node = SubElement(data_el, '{%s}ShapeNode' % NS['y'])
         # Node geometry: position and size
-        SubElement(shape_node, '{%s}Geometry' % NS['y'], x=str(data['x']), y=str(data['y']), width="30.0", height="30.0")
+        SubElement(shape_node, '{%s}Geometry' % NS['y'], x=str(data['x']), y=str(data['y']), width=str(CIRCLE_RADIUS * 2), height=str(CIRCLE_RADIUS * 2))
         # Node fill: white
         SubElement(shape_node, '{%s}Fill' % NS['y'], color="#FFFFFF", transparent="false")
         # Node border: black
@@ -101,6 +113,9 @@ def write_graphml_yed_classic(nodes, edges, filename):
         if bends:
             path = SubElement(polyline, '{%s}Path' % NS['y'])
             for x, y in bends:
+                # they need to be adjusted to the center of the node
+                # because yEd uses the top-left corner of the node as the reference point
+                x, y = adjust_edge_coordinates(x, y)
                 SubElement(path, '{%s}Point' % NS['y'], x=str(x), y=str(y))
         # Edge style: black line, no arrows
         SubElement(polyline, '{%s}LineStyle' % NS['y'], color="#000000", type="line", width="2.0")
@@ -112,6 +127,16 @@ def write_graphml_yed_classic(nodes, edges, filename):
     print(f"GraphML yEd (classic) file written to: {filename}")
 
 if __name__ == "__main__":
-    # Change the input/output filenames as needed
-    nodes, edges = parse_graphed_file("s-.g")
-    write_graphml_yed_classic(nodes, edges, "s_minus.graphml")
+    if len(sys.argv) != 2:
+        print("Usage: python convert_graph_to_yed.py <input_file>")
+        sys.exit(1)
+
+    input_file = sys.argv[1]
+    if not input_file.endswith(".g"):
+        print("Error: no .g graph file provided")
+        sys.exit(1)
+
+    file_name = input_file.removesuffix(".g")
+
+    nodes, edges = parse_graphed_file(input_file)
+    write_graphml_yed_classic(nodes, edges, f"{file_name}.graphml")

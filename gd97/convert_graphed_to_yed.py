@@ -1,6 +1,7 @@
 import re
 import sys
-from xml.etree.ElementTree import Comment, Element, SubElement, ElementTree
+from xml.etree import ElementTree as ET
+from xml.etree.ElementTree import Comment, Element, ElementTree, SubElement
 
 CIRCLE_RADIUS = 15.0
 
@@ -147,6 +148,7 @@ def write_graphml_yed_classic(nodes, edges, filename):
         SubElement(polyline, "y:EdgeLabel").text = ""
 
     tree = ElementTree(graphml)
+    ET.indent(tree, space="  ", level=0)
     tree.write(filename, encoding="utf-8", xml_declaration=True)
     print(f"GraphML yEd (classic) file written to: {filename}")
 

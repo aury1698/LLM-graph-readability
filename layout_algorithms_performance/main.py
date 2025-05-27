@@ -409,43 +409,44 @@ def main(task, mode, cot_mode, model_name, image_path, attempt):
     parsed_response = parse_model_response(response, task)
 
     # Check correctness
-    if task == "task1_shortest_path_length":
-        correct = parsed_response and parsed_response.get("prediction", None) == ground_truth["length"]
+    if parsed_response:
+        if task == "task1_shortest_path_length":
+            correct = parsed_response and parsed_response.get("prediction", None) == ground_truth["length"]
 
-    elif task == "task2_min_nodes_removal":
-        correct = parsed_response and parsed_response.get("prediction", None) == ground_truth["length"]
+        elif task == "task2_min_nodes_removal":
+            correct = parsed_response and parsed_response.get("prediction", None) == ground_truth["length"]
 
-    elif task == "task3_min_edges_removal":
-        correct = parsed_response and parsed_response.get("prediction", None) == ground_truth["length"]
+        elif task == "task3_min_edges_removal":
+            correct = parsed_response and parsed_response.get("prediction", None) == ground_truth["length"]
 
-    else:
-        correct = False  # Default to False for unsupported tasks
+        else:
+            correct = False  # Default to False for unsupported tasks
 
-    # Collect results
-    results = [{
-        "Task": task,
-        "Attempt": attempt,
-        "LLM Mode": "Few-Shot" if mode == "few_shot" else "Zero-Shot",
-        "COT Mode": "COT" if cot_mode == "cot" else "No COT",
-        "Layout": image_name,
-        "Model Name": model_name,
-        "Temperature": config.temperature if hasattr(config, "temperature") else None,
-        "Prediction": parsed_response.get("prediction", None) if parsed_response else None,
-        "Output": (
-            parsed_response.get("path", None) if (parsed_response and task == "task1_shortest_path_length")
-            else parsed_response.get("cut_set", None) if (parsed_response and task in ["task2_min_nodes_removal", "task3_min_edges_removal"])
-            else None
-        ),
-        "True Value": ground_truth["length"],
-        "Correct Prediction (True/False)": correct,
-        "Time (sec)": base_metrics.get("Response Time", None) if base_metrics else None,
-        "Input Tokens": base_metrics.get("Input Tokens", None) if base_metrics else None,
-        "Output Tokens": base_metrics.get("Output Tokens", None) if base_metrics else None,
-        "Total Tokens": base_metrics.get("Total Tokens", None) if base_metrics else None,
-    }]
+        # Collect results
+        results = [{
+            "Task": task,
+            "Attempt": attempt,
+            "LLM Mode": "Few-Shot" if mode == "few_shot" else "Zero-Shot",
+            "COT Mode": "COT" if cot_mode == "cot" else "No COT",
+            "Layout": image_name,
+            "Model Name": model_name,
+            "Temperature": config.temperature if hasattr(config, "temperature") else None,
+            "Prediction": parsed_response.get("prediction", None) if parsed_response else None,
+            "Output": (
+                parsed_response.get("path", None) if (parsed_response and task == "task1_shortest_path_length")
+                else parsed_response.get("cut_set", None) if (parsed_response and task in ["task2_min_nodes_removal", "task3_min_edges_removal"])
+                else None
+            ),
+            "True Value": ground_truth["length"],
+            "Correct Prediction (True/False)": correct,
+            "Time (sec)": base_metrics.get("Response Time", None) if base_metrics else None,
+            "Input Tokens": base_metrics.get("Input Tokens", None) if base_metrics else None,
+            "Output Tokens": base_metrics.get("Output Tokens", None) if base_metrics else None,
+            "Total Tokens": base_metrics.get("Total Tokens", None) if base_metrics else None,
+        }]
 
-    # Save results to CSV
-    save_results_to_csv(results)
+        # Save results to CSV
+        save_results_to_csv(results)
 
 
 if __name__ == "__main__":

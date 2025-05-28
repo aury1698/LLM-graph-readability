@@ -310,7 +310,7 @@ def main(task, mode, cot_mode, model_name, image_path, attempt):
     
     # Map the task to the corresponding JSON file
     task_files = {
-        "task1_shortest_path_length": "tasks/T1_shortest_path_lenght/task1_shortest_path_length.json",
+        "task1_shortest_path_length": "tasks/T1_shortest_path_length/task1_shortest_path_length.json",
         "task2_min_nodes_removal": "tasks/T2_nodes_remove/task2_min_nodes_removal.json",
         "task3_min_edges_removal": "tasks/T3_edges_remove/task3_min_edges_removal.json",
     }
@@ -323,7 +323,7 @@ def main(task, mode, cot_mode, model_name, image_path, attempt):
 
     # Load the ground truth file for the current task
     gt_files = {
-        "task1_shortest_path_length": "tasks/T1_shortest_path_lenght/task1_shortest_path_length_gt.json",
+        "task1_shortest_path_length": "tasks/T1_shortest_path_length/task1_shortest_path_length_gt.json",
         "task2_min_nodes_removal": "tasks/T2_nodes_remove/task2_min_nodes_removal_gt.json",
         "task3_min_edges_removal": "tasks/T3_edges_remove/task3_min_edges_removal_gt.json",
     }

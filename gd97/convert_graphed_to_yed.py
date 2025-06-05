@@ -3,7 +3,7 @@ import sys
 from xml.etree import ElementTree as ET
 from xml.etree.ElementTree import Comment, Element, ElementTree, SubElement
 
-CIRCLE_RADIUS = 15.0
+CIRCLE_RADIUS = 16.0
 
 
 def adjust_edge_coordinates(x, y):

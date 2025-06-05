@@ -1,3 +1,9 @@
+# 🚨🗣️🚨 This dataset is not the original dataset from the paper, but a recreation of the graphs using NetworkX.
+
+**During the process of this project we received the original dataset from Helen Purchase, which she undug from her archives on a DVD from more than 25 years ago.**
+
+**Hence, this recreation is not used anymore and is only kept for archival purposes.**
+
 # Purchase Dataset Recreation
 
 This subdirectory contains the Python code using NetworkX to recreate the graphs from

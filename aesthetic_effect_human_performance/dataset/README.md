@@ -53,6 +53,8 @@ This allows us to create one global randomization on the questions for each task
 
 ### Task 1
 
+How long is the shortest path between two given nodes?
+
 The answer range is from 2 to 5 inclusive.
 
 Length 2:
@@ -86,6 +88,7 @@ Length 4:
 | 5         | E, Q      | 4      | [E, B, H, I, Q]                                   |
 
 Length 5:
+
 | Variation | Node Pair | Answer | Ground Truth                           |
 | --------- | --------- | ------ | -------------------------------------- |
 | 1         | A, R      | 5      | [A, B, H, I, J, R], [A, B, H, I, Q, R] |
@@ -93,4 +96,66 @@ Length 5:
 | 3         | S, Q      | 5      | [S, F, B, H, I, Q], [S, F, G, H, I, Q] |
 | 4         | O, J      | 5      | [O, C, B, H, I, J], [O, C, G, H, I, J] |
 | 5         | E, R      | 5      | [E, B, H, I, J, R], [E, B, H, I, Q, R] |
+
+### Task 2
+
+What is the minimum number of nodes that must be removed in order to disconnect two given nodes such that there is no path between them?
+
+Number of nodes to remove to disconnect the two nodes is either 1 or 2.
+
+Removing 1 node:
+
+| Variation | Node Pair | Answer | Ground Truth |
+| --------- | --------- | ------ | ------------ |
+| 1         | A, I      | 1      | [H]          |
+| 2         | E, J      | 1      | [H], [I]     |
+| 3         | Q, N      | 1      | [H], [I]     |
+| 4         | S, R      | 1      | [H], [I]     |
+| 5         | R, H      | 1      | [I]          |
+
+Removing 2 nodes:
+
+| Variation | Node Pair | Answer | Ground Truth           |
+| --------- | --------- | ------ | ---------------------- |
+| 1         | S, O      | 2      | [N, C], [B, C], [B, G] |
+| 2         | A, H      | 2      | [B, G], [B, F]         |
+| 3         | N, G      | 2      | [B, C]                 |
+| 4         | P, J      | 2      | [I, Q]                 |
+| 5         | E, T      | 2      | [B, F]                 |
+
+### Task 3
+
+What is the minimum number of edges that must be removed in order to disconnect two given nodes such that there is no path between them?
+
+The set of node pairs (edges) to remove is either 1, 2 or 3.
+
+Removing 1 edge:
+
+| Variation | Node Pair | Answer | Ground Truth |
+| --------- | --------- | ------ | ------------ |
+| 1         | A, I      | 1      | [(H, I)]     |
+| 2         | E, J      | 1      | [(H, I)]     |
+| 3         | Q, N      | 1      | [(H, I)]     |
+| 4         | S, R      | 1      | [(H, I)]     |
+| 5         | O, H      | 1      | [(H, I)]     |
+
+Removing 2 edges:
+
+| Variation | Node Pair | Answer | Ground Truth                       |
+| --------- | --------- | ------ | ---------------------------------- |
+| 1         | S, O      | 2      | [(N, O), (S, O)]                   |
+| 2         | P, R      | 2      | [(J, R), (Q, R)], [(P, I), (P, Q)] |
+| 3         | A, H      | 2      | [(B, H), (G, H)]                   |
+| 4         | I, R      | 2      | [(J, R), (Q, R)]                   |
+| 5         | H, B      | 2      | [(H, B), (H, G)]                   |
+
+Removing 3 edges:
+
+| Variation | Node Pair | Answer | Ground Truth                                                                 |
+| --------- | --------- | ------ | ---------------------------------------------------------------------------- |
+| 1         | J, R      | 3      | [(J, R), (J, Q), (J, I)]                                                     |
+| 2         | E, N      | 3      | [(N, O), (N, C), (N, B)], [(O, C), (N, C), (N, B)], [(N, B), (C, B), (C, G)] |
+| 3         | A, T      | 3      | [(A, B), (A, E), (A, S)], [(T, F), (T, B), (T, G)]                           |
+| 4         | F, C      | 3      | [(N, B), (C, B), (C, G)]                                                     |
+| 5         | I, Q      | 3      | [(I, J), (I, P), (I, Q)], [(I, J), (P, Q), (I, Q)]                           |
 

@@ -4,14 +4,12 @@ Our experiment configuration space was calculated to be the following
 
 | number of experiments          | #n      | description                                                        |
 | ------------------------------ | ------- | ------------------------------------------------------------------ |
-|                                |         |                                                                    |
 | **Tasks x path lengths**       | **9**   | **T1: 2,3,4,5 T2: 1,2 T3: 1,2,3**                                  |
 | **different node pairs**       | **5**   | **For each Task x numerical answer we can select different nodes** |
 | **input graphs**               | **18**  | **That is 10 + 8 graphs**                                          |
 | prompting styles               | 4       | zero-/few-”shot” (examples), reasoning on/off                      |
 | reruns                         | 3       | To gain confidence in results                                      |
 | models                         | 4       | Gemini, ChatGPT, DeepSeek, LLAMA                                   |
-|                                |         |                                                                    |
 |                                |         |                                                                    |
 | **Number of graphs to create** | **810** |                                                                    |
 
@@ -54,4 +52,45 @@ This allows us to create one global randomization on the questions for each task
 3. What is the minimum number of edges that must be removed in order to disconnect two given nodes such that there is no path between them?
 
 ### Task 1
+
+The answer range is from 2 to 5 inclusive.
+
+Length 2:
+
+| Variation | Node Pair | Answer | Ground Truth         |
+| --------- | --------- | ------ | -------------------- |
+| 1         | E, H      | 2      | [E, B, H]            |
+| 2         | R, P      | 2      | [R, Q, P]            |
+| 3         | S, T      | 2      | [S, F, T]            |
+| 4         | H, C      | 2      | [H, G, C], [C, B, H] |
+| 5         | A, N      | 2      | [A, B, N]            |
+
+Length 3:
+
+| Variation | Node Pair | Answer | Ground Truth               |
+| --------- | --------- | ------ | -------------------------- |
+| 1         | A, I      | 3      | [A, B, H, I]               |
+| 2         | F, I      | 3      | [F, B, H, I], [F, G, H, I] |
+| 3         | R, H      | 3      | [R, Q, I, H], [R, J, I, H] |
+| 4         | E, O      | 3      | [E, B, N, O], [E, B, C, O] |
+| 5         | B, Q      | 3      | [B, H, I, Q]               |
+
+Length 4:
+
+| Variation | Node Pair | Answer | Ground Truth                                      |
+| --------- | --------- | ------ | ------------------------------------------------- |
+| 1         | A, J      | 4      | [A, B, H, I, J]                                   |
+| 2         | C, P      | 4      | [C, B, H, I, P], [C, G, H, I, P]                  |
+| 3         | I, O      | 4      | [I, H, B, N, O], [I, H, G, C, O], [I, H, B, C, O] |
+| 4         | A, P      | 4      | [A, B, H, I, P]                                   |
+| 5         | E, Q      | 4      | [E, B, H, I, Q]                                   |
+
+Length 5:
+| Variation | Node Pair | Answer | Ground Truth                           |
+| --------- | --------- | ------ | -------------------------------------- |
+| 1         | A, R      | 5      | [A, B, H, I, J, R], [A, B, H, I, Q, R] |
+| 2         | N, R      | 5      | [N, B, H, I, J, R], [N, B, H, I, Q, R] |
+| 3         | S, Q      | 5      | [S, F, B, H, I, Q], [S, F, G, H, I, Q] |
+| 4         | O, J      | 5      | [O, C, B, H, I, J], [O, C, G, H, I, J] |
+| 5         | E, R      | 5      | [E, B, H, I, J, R], [E, B, H, I, Q, R] |
 

@@ -263,7 +263,10 @@ def create_dataset_from_template(template_file):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(
-            "Usage: python create_dataset_from_template.py FILE...\n - create dataset files from [multiple] .graphml files"
+            """Usage: python create_dataset_from_template.py FILE...
+  - create dataset files from [multiple] .graphml files
+  
+The files are output in the directory where the script is run."""
         )
         sys.exit(1)
 

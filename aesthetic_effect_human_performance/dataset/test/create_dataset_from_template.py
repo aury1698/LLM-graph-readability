@@ -1,3 +1,7 @@
+import os
+import sys
+from xml.etree import ElementTree as ET
+
 T1_GT2 = {
     1: {"node_pair": ("E", "H"), "answer": 2, "ground_truth": [["E", "B", "H"]]},
     2: {"node_pair": ("R", "P"), "answer": 2, "ground_truth": [["R", "Q", "P"]]},
@@ -198,3 +202,80 @@ T3_GT3 = {
         ],
     },
 }
+
+
+def modify_graphml_file(graphml_file, node_pair, output_graph_name):
+    with open(graphml_file, "r", encoding="utf-8") as file:
+        tree = ET.parse(file)
+        root = tree.getroot()
+        ns = {"y": "http://www.yworks.com/xml/graphml"}
+
+        def find_shapenode_by_label(label):
+            for shapenode in root.findall(".//y:ShapeNode", ns):
+                nodelabel = shapenode.find("y:NodeLabel", ns)
+                if nodelabel is not None and nodelabel.text == label:
+                    return shapenode
+            return None
+
+        node1_label, node2_label = node_pair
+        shapenode1 = find_shapenode_by_label(node1_label)
+        shapenode2 = find_shapenode_by_label(node2_label)
+
+        if shapenode1 is None or shapenode2 is None:
+            raise Exception(
+                f"Error: Could not find shape nodes for labels '{node1_label}' and '{node2_label}' in the graphml file."
+            )
+
+        for shapenode in [shapenode1, shapenode2]:
+            fill = shapenode.find("y:Fill", ns)
+            if fill is not None:
+                fill.set("color", "#000000")
+            nodelabel = shapenode.find("y:NodeLabel", ns)
+            if nodelabel is not None:
+                nodelabel.set("textColor", "#FFFFFF")
+
+        tree.write(output_graph_name, encoding="utf-8", xml_declaration=True)
+
+
+def create_dataset_from_template(template_file):
+    file_name = os.path.basename(template_file)
+    graph_name = file_name.removesuffix(".graphml")
+
+    tasks = {
+        "task1": [T1_GT2, T1_GT3, T1_GT4, T1_GT5],
+        "task2": [T2_GT1, T2_GT2],
+        "task3": [T3_GT1, T3_GT2, T3_GT3],
+    }
+    for task_name, task_gts in tasks.items():
+        for task_gt in task_gts:
+            for task_variation, task_data in task_gt.items():
+                node_pair = task_data["node_pair"]
+                answer = task_data["answer"]
+                # ground_truth = task_data["ground_truth"]
+
+                graph_file_name = (
+                    f"{graph_name}_{task_name}_gt{answer}_PAIR{task_variation}.graphml"
+                )
+
+                modify_graphml_file(template_file, node_pair, graph_file_name)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(
+            "Usage: python create_dataset_from_template.py FILE...\n - create dataset files from [multiple] .graphml files"
+        )
+        sys.exit(1)
+
+    input_files = sys.argv[1:]
+    for input_file in input_files:
+        if not input_file.endswith(".graphml"):
+            print("Error: no .graphml file provided")
+            sys.exit(1)
+
+    for input_file in input_files:
+        try:
+            create_dataset_from_template(input_file)
+        except Exception as e:
+            print(f"Error processing file {input_file}: {e}")
+            sys.exit(1)

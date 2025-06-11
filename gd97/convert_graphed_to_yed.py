@@ -116,7 +116,7 @@ def write_graphml_yed_classic(nodes, edges, filename):
             horizontalTextPosition="center",
             fontSize="14",
             fontStyle="bold",
-        ).text = data["label"]
+        ).text = str(data["label"]).strip()
         SubElement(shape_node, "y:Shape", type="ellipse")
 
     for i, (src, tgt, bends) in enumerate(edges):

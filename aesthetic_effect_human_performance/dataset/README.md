@@ -20,6 +20,8 @@ As this `aesthetic_effect_human_performance` subdirectory only references the He
 "Which aesthetic has the greatest effect on human understanding?" 1997, we only need to create the 10 graphs
 mentioned in the paper. The other 8 graphs are handled in the `layout_algorithms_performance` subdirectory.
 
+As such we end up with 450 unique graph-task-answer-variation combinations for this paper.
+
 ## Graphs
 
 All 10 graphs, albeit in different layouts, all share the same adjacency.

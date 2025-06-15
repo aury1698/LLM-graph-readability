@@ -2,6 +2,9 @@ import os
 import sys
 from xml.etree import ElementTree as ET
 
+ET.register_namespace("y", "http://www.yworks.com/xml/graphml")
+ET.register_namespace("", "http://graphml.graphdrawing.org/xmlns")
+
 T1_GT2 = {
     1: {"node_pair": ("E", "H"), "answer": 2, "ground_truth": [["E", "B", "H"]]},
     2: {"node_pair": ("R", "P"), "answer": 2, "ground_truth": [["R", "Q", "P"]]},
@@ -208,6 +211,7 @@ def modify_graphml_file(graphml_file, node_pair, output_graph_name):
     with open(graphml_file, "r", encoding="utf-8") as file:
         tree = ET.parse(file)
         root = tree.getroot()
+        DEFAULT_NAMESPACE = "http://graphml.graphdrawing.org/xmlns"
         ns = {"y": "http://www.yworks.com/xml/graphml"}
 
         def find_shapenode_by_label(label):

@@ -456,7 +456,7 @@ if __name__ == "__main__":
     cot_mode = "cot" # "no_cot" or "cot"
     model_name = "gemini-2.5-flash-preview-05-20" # "gpt-4o" or "gemini-2.5-flash-preview-05-20" or any other supported model
     attempt = 1  # Attempt number
-    max_images_per_run = 280  # <--- Set how many images to process per run
+    max_images_per_run = 450  # <--- Set how many images to process per run
 
     for i in range(max_images_per_run):
         processed_images = get_processed_images(

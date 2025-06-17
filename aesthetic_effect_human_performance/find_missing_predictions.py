@@ -39,7 +39,7 @@ for _, row in grouped.iterrows():
     n_true = row.get("True", 0)
     n_false = row.get("False", 0)
     total = n_true + n_false
-    status = f"{Fore.GREEN}OK!{Style.RESET_ALL}" if total == 280 else f"{Fore.RED}NOT OK! ({total}/280){Style.RESET_ALL}"
+    status = f"{Fore.GREEN}OK!{Style.RESET_ALL}" if total == 450 else f"{Fore.RED}NOT OK! ({total}/450){Style.RESET_ALL}"
     table.append(config + [n_true, n_false, total, status])
 
 headers = group_cols + ["True", "False", "Total", "Status"]

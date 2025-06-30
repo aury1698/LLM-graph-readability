@@ -175,10 +175,9 @@ async function init(){
 
             for (let pair of PAIRS) {
                 if (!resultfile.find(d => d.Layout === test + "_" + gt + "_" + pair)) continue;
-                try{ 
-                    instance_results = resultfile.filter(d => d.Layout === test + "_" + gt + "_" + pair);
+                try {
+                    let instance_results = resultfile.filter(d => d.Layout === test + "_" + gt + "_" + pair);
                     let small_div = document.createElement("div");
-                    // small_div.style.display = "flex";
                     small_div.style.verticalAlign = "top";
                     small_div.style.marginRight = "1rem";
                     gtdiv.appendChild(small_div);
@@ -191,12 +190,36 @@ async function init(){
                     small_div.appendChild(img);
 
                     let smaller_div = document.createElement("div");
-                    smaller_div.innerHTML = `${gt}_${pair}`;
-                    instance_results.forEach((result, idx) => {
-                        smaller_div.innerHTML += `<br>${idx}: ${result["Correct Prediction (True/False)"]}`;
-                    });
+                    smaller_div.innerHTML = `<b>${gt}_${pair}</b><br>`;
+
+                    // Dividing results into Zero Shot and Few Shot
+                    let zero_shot_results = instance_results.filter(result => 
+                        result["LLM Mode"]?.toLowerCase().replace("-", "_") === "zero_shot"
+                    );
+                    let few_shot_results = instance_results.filter(result => 
+                        result["LLM Mode"]?.toLowerCase().replace("-", "_") === "few_shot"
+                    );
+
+                    // Zero Shot
+                    if (zero_shot_results.length > 0) {
+                        smaller_div.innerHTML += `<span style="color:#1a73e8;"><b>Zero Shot</b></span><br>`;
+                        zero_shot_results.forEach((result, idx) => {
+                            smaller_div.innerHTML += `${idx}: ${result["Correct Prediction (True/False)"]}<br>`;
+                        });
+                    }
+
+                    // Few Shot
+                    if (few_shot_results.length > 0) {
+                        smaller_div.innerHTML += `<span style="color:#e8711a;"><b>Few Shot</b></span><br>`;
+                        few_shot_results.forEach((result, idx) => {
+                            smaller_div.innerHTML += `${idx}: ${result["Correct Prediction (True/False)"]}<br>`;
+                        });
+                    }
+
                     smaller_div.style.fontSize = "0.65rem";
                     small_div.appendChild(smaller_div);
+
+
                 } catch (error) {
                     console.error(`Error processing ${test}_${gt}_${pair}:`, error);
                 }
@@ -210,10 +233,10 @@ async function init(){
         // div.appendChild(img);
 
         // find in resultfile the entry that has "layout" named like test
-        d3.csv(resultfile).then(data => {
-            let entry = data.filter(d => d.Layout === test + "_gt2_PAIR1"); // Match the full name including .png
-            console.log(entry)
-        });
+        // d3.csv(resultfile).then(data => {
+        //     let entry = data.filter(d => d.Layout === test + "_gt2_PAIR1"); // Match the full name including .png
+        //     console.log(entry)
+        // });
     }
 }
 

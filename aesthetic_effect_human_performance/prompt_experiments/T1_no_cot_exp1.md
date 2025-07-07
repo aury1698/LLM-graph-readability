@@ -4,10 +4,10 @@
 
 ## Understanding of "Shortest Path" for this Task
 
-Between the two black colored nodes there exist possibly multiple different paths. A path is a chain-like structure between two nodes, which are connected through edges with zero or more intermediate nodes. Nodes are only connected to each other, if a black line, i.e. edge, is drawn between them to connect them to each other. As there can be multiple paths between edges, we are looking for the shortest path between the black nodes. The path length is the number of edges making up the path. The shortest path is defined as the path with the least number of intermediate nodes, resulting in the smallest path length.
+Between the two black colored nodes there exist possibly multiple different paths. A path is a chain-like structure between two nodes, which are connected through edges with zero or more intermediate nodes. Nodes are only connected, if a black line, i.e. edge, is drawn between them to connect them to each other. As there can be multiple paths between nodes, we are looking for the shortest path between the black nodes. The path length is the number of edges making up the path. The shortest path is defined as the path with the least number of intermediate nodes, resulting in the smallest path length.
 
 **Output Format:**
 
-Answer the question in one seperate line in the format:
+Answer the question in one seperate line in the format, e.g.:
 
 Length: 2, Path: [A, B, C]

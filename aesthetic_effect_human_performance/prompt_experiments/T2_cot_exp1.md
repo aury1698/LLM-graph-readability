@@ -20,7 +20,6 @@ Between the two black colored nodes there exist possibly multiple different path
     * There may be multiple bottlenecks for different paths. The set of minimum nodes, which need to be removed can be of arbitrary size.
 5. **Check your answer:** Check if the two black nodes completely disconnected when taking away the nodes of your answer.
 
-
 **Output Format:**
 
 Answer the question in one seperate line in the format, e.g.:

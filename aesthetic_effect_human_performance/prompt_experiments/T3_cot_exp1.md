@@ -20,7 +20,6 @@ Between the two black colored nodes there exist possibly multiple different path
     * Compare if the removal of edges connected to either one of the black nodes results in a smaller set of edges to be removed.
 5. **Check your answer:** Check if the two black nodes completely disconnected when taking away the edges of your answer. Check that you found the minimal number.
 
-
 **Output Format:**
 
 Answer the question in one seperate line in the format, e.g.:

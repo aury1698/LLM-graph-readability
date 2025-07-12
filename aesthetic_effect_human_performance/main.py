@@ -454,7 +454,7 @@ if __name__ == "__main__":
     test_images_dir = "dataset/test"
     mode = "zero_shot"  # "zero_shot" or "few_shot"
     cot_mode = "cot" # "no_cot" or "cot"
-    model_name = "gemini-2.5-flash-preview-05-20" # "gpt-4o" or "gemini-2.5-flash-preview-05-20" or any other supported model
+    model_name = "gemini-2.5-flash" # "gpt-4o" or "gemini-2.5-flash-preview-05-20" or any other supported model
     attempt = 1  # Attempt number
     max_images_per_run = 450  # <--- Set how many images to process per run
 

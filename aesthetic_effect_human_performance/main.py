@@ -12,6 +12,7 @@ from mimetypes import guess_type
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate, FewShotPromptTemplate, ChatPromptTemplate
 from langchain.schema import HumanMessage, SystemMessage
+from pydantic import SecretStr
 
 
 # 1. Initialize the model
@@ -31,6 +32,11 @@ def initialize_model(model_name):
             temperature=0.1,
             api_key=api_key
         )
+    elif model_name == "mistral-small-3.1-24b":
+        api_key = os.getenv("AQUEDUCT_KEY")
+        return ChatOpenAI(model="mistral-small-3.1-24b",
+                          openai_proxy="https://aqueduct.ai.datalab.tuwien.ac.at/",
+                          api_key=SecretStr(api_key))
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 
@@ -78,7 +84,7 @@ def configure_model(model_name, system_msg):
             system_instruction=[types.Part.from_text(text=system_msg)],
         )
     elif model_name == "gpt-4o":
-        return None  #add config for gpt-4o if needed (need to check the documentation) 
+        return None  #add config for gpt-4o if needed (need to check the documentation)
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 
@@ -453,8 +459,8 @@ if __name__ == "__main__":
     # Parameters
     test_images_dir = "dataset/test"
     mode = "zero_shot"  # "zero_shot" or "few_shot"
-    cot_mode = "cot" # "no_cot" or "cot"
-    model_name = "gemini-2.5-flash" # "gpt-4o" or "gemini-2.5-flash-preview-05-20" or any other supported model
+    cot_mode = "no_cot" # "no_cot" or "cot"
+    model_name = "mistral-small-3.1-24b" # "gpt-4o" or "gemini-2.5-flash-preview-05-20" or any other supported model
     attempt = 1  # Attempt number
     max_images_per_run = 450  # <--- Set how many images to process per run
 

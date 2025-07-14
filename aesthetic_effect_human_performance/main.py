@@ -53,25 +53,14 @@ def load_task_data(task_file):
 
 # 3. Create the prompt
 def create_prompt(model_name, system_msg, user_msg, image_url):
-    """Create a prompt compatible with the specified model"""
-    if model_name == "gpt-4o":
-        return HumanMessage(
-            content=[
-                {"type": "text", "text": system_msg},
-                {"type": "text", "text": user_msg},
-                {"type": "image_url", "image_url": {"url": image_url}},
-            ]
-        )
-    elif model_name.startswith("gemini"):
-        return HumanMessage(
-            content=[
-                {"type": "text", "text": system_msg},
-                {"type": "text", "text": user_msg},
-                {"type": "image_url", "image_url": {"url": image_url}},
-            ]
-        )
-    else:
-        raise ValueError(f"Unsupported model: {model_name}")
+    return HumanMessage(
+        content=[
+            {"type": "text", "text": system_msg},
+            {"type": "text", "text": user_msg},
+            {"type": "image_url", "image_url": {"url": image_url}},
+        ]
+    )
+    
 
 
 # 4.Configure the model

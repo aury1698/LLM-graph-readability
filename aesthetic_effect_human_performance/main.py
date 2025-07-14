@@ -1,17 +1,16 @@
 import base64
 import json
 import os
-import time
 import random
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage
-from google import genai
-from google.genai import types
-import pandas as pd
+import re
+import time
 from mimetypes import guess_type
+
+import pandas as pd
+from google.genai import types
+from langchain.schema import HumanMessage
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate, FewShotPromptTemplate, ChatPromptTemplate
-from langchain.schema import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 
@@ -68,52 +67,38 @@ def create_prompt(model_name, system_msg, user_msg, image_url):
 # 4.Configure the model
 def configure_model(model_name, system_msg):
     """Configure the model and return the configuration."""
-    if model_name.startswith("gemini"):
-        return types.GenerateContentConfig(
-            temperature=0.1,
-            response_mime_type="text/plain",
-            system_instruction=[types.Part.from_text(text=system_msg)],
-        )
-    elif model_name == "gpt-4o":
-        return None  # add config for gpt-4o if needed (need to check the documentation)
-    else:
-        raise ValueError(f"Unsupported model: {model_name}")
+    return types.GenerateContentConfig(
+        temperature=0.1,
+        response_mime_type="text/plain",
+        system_instruction=[types.Part.from_text(text=system_msg)],
+    )
 
 
 # 5. Invoke the model
 def invoke_model(model_name, model, prompt, config=None):
     """Invoke the model with the given prompt."""
-    if model_name == "gpt-4o":
-        response = model.invoke([prompt])
-        return response.content, None
 
-    elif model_name.startswith("gemini"):
-        start_time = time.time()
-        response = model.invoke([prompt])  # method of the class ChatGoogleGenerativeAI
-        end_time = time.time()
-        latency = end_time - start_time
+    start_time = time.time()
+    response = model.invoke([prompt])  # method of the class ChatGoogleGenerativeAI
+    print(response)
+    end_time = time.time()
+    latency = end_time - start_time
+    usage_metadata = response.usage_metadata
+    input_tokens = usage_metadata["input_tokens"]
+    output_tokens = usage_metadata["output_tokens"]
+    total_tokens = usage_metadata["total_tokens"]
 
-        usage_metadata = response.usage_metadata
-        input_tokens = usage_metadata["input_tokens"]
-        output_tokens = usage_metadata["output_tokens"]
-        total_tokens = usage_metadata["total_tokens"]
+    metrics = {
+        "Response Time": f"{latency:.2f} seconds",
+        "Input Tokens": input_tokens,
+        "Output Tokens": output_tokens,
+        "Total Tokens": total_tokens,
+    }
 
-        metrics = {
-            "Response Time": f"{latency:.2f} seconds",
-            "Input Tokens": input_tokens,
-            "Output Tokens": output_tokens,
-            "Total Tokens": total_tokens,
-        }
-
-        return response.content, metrics
-    else:
-        raise ValueError(f"Unsupported model: {model_name}")
+    return response.content, metrics
 
 
 # 6. Parse the model response
-import re
-
-
 def parse_model_response(response, task):
     if response is None:
         print(f"Warning: response is None for task '{task}'.")

@@ -2,6 +2,17 @@
 
 **What is the minimum number of edges that must be removed from the graph, such that the two black nodes are completely disconnected?**
 
+## Reading the Graph Images
+
+1. **Nodes:** The nodes are drawn as circles with a letter inside as a label. The nodes are white circles with a black outline and a alphabetical letter. The only exceptions are the two filled black nodes, which indicate the nodes the question is asked about.
+2. **Edges:**
+    * Edges are drawn as black lines between the nodes, connecting to the circular outline of the nodes.
+    * An edge always connects exclusively two nodes with each other.
+    * A node can have an arbitrary number of edges connected with them.
+    * Edges can be bent and have corners. You need to follow the line to find the connecting nodes.
+    * Edges can visually cross with other edges. This does not indicate an intersection where you can follow any path. The edge must be followed in its apparent direction at the crossing to find the correct connecting node.
+3. **Graph:** Emerging from the nodes and edges is the whole graph structure. Use the deducted understanding of the image to answer questions on the graph. 
+
 ## Understanding of "Completely Disconnected" for this Task
 
 Between the two black colored nodes there exist possibly multiple different paths. A path is a chain-like structure between two nodes, which are connected through edges with zero or more intermediate nodes. Nodes are only connected, if a black line, i.e. edge, is drawn between them to connect them to each other. As there can be multiple paths between nodes, we are looking for a set of edges that need to be removed such that not a single path exists between the two black nodes anymore. The edges are defined through their endpoint nodes, for instance (A, B) is the edge between node A and B. The minimum number of edges that must to be removed is defined to be the smallest set of edges that achieve this complete disconnection.

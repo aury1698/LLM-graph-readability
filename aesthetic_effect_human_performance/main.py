@@ -32,11 +32,11 @@ def initialize_model(model_name):
             model=model_name, temperature=0.1, api_key=api_key
         )
     # add proxied requests to tuwien aqueduct
-    elif model_name == "mistral-small-3.1-24b":
+    elif model_name == "mistral-small-3.1-24b" or model_name == "qwen-32b":
         api_key = os.getenv("AQUEDUCT_KEY")
         return ChatOpenAI(
-            model="mistral-small-3.1-24b",
-            openai_proxy="https://aqueduct.ai.datalab.tuwien.ac.at/",
+            model=model_name,
+            base_url="https://aqueduct.ai.datalab.tuwien.ac.at",
             api_key=SecretStr(api_key),
         )
     else:
@@ -80,7 +80,6 @@ def invoke_model(model_name, model, prompt, config=None):
 
     start_time = time.time()
     response = model.invoke([prompt])  # method of the class ChatGoogleGenerativeAI
-    print(response)
     end_time = time.time()
     latency = end_time - start_time
     usage_metadata = response.usage_metadata
@@ -304,7 +303,9 @@ def pick_random_image_and_task(test_images_dir, processed_images):
     return image_path, chosen_image_name, task, len(unprocessed)
 
 
-def main(task, mode, cot_mode, model_name, image_path, attempt):
+def main(
+    task, mode, cot_mode, model_name, image_path, attempt, output_file="results.csv"
+):
     # Map the task to the corresponding JSON file
     task_files = {
         "task1_shortest_path_length": "tasks/T1_shortest_path_length/task1_shortest_path_length.json",
@@ -470,21 +471,22 @@ def main(task, mode, cot_mode, model_name, image_path, attempt):
         ]
 
         # Save results to CSV
-        save_results_to_csv(results)
+        save_results_to_csv(results, output_file=output_file)
 
 
 if __name__ == "__main__":
     # Parameters
     test_images_dir = "dataset/test"
     mode = "zero_shot"  # "zero_shot" or "few_shot"
-    cot_mode = "no_cot"  # "no_cot" or "cot"
+    cot_mode = "cot"  # "no_cot" or "cot"
     model_name = "mistral-small-3.1-24b"  # "gpt-4o" or "gemini-2.5-flash-preview-05-20" or any other supported model
     attempt = 1  # Attempt number
     max_images_per_run = 450  # <--- Set how many images to process per run
+    csv_output_file = "results.csv"
 
     for i in range(max_images_per_run):
         processed_images = get_processed_images(
-            csv_file="results.csv",
+            csv_file=csv_output_file,
             mode=mode,
             cot_mode=cot_mode,
             attempt=attempt,
@@ -499,7 +501,15 @@ if __name__ == "__main__":
         image_path, image_name, task, remaining = pick_random_image_and_task(
             test_images_dir, processed_images
         )
-        main(task, mode, cot_mode, model_name, image_path, attempt)
+        main(
+            task,
+            mode,
+            cot_mode,
+            model_name,
+            image_path,
+            attempt,
+            output_file=csv_output_file,
+        )
         images_done = len(processed_images) + 1
         print(
             f"\nProgress: {images_done}/{total_images} images processed for mode='{mode}', cot_mode='{cot_mode}', attempt={attempt}, model='{model_name}'."

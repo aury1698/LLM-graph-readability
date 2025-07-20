@@ -137,7 +137,7 @@ T3_GT1 = {
     2: {"node_pair": ("E", "J"), "answer": 1, "ground_truth": [[["H", "I"]]]},
     3: {"node_pair": ("Q", "N"), "answer": 1, "ground_truth": [[["H", "I"]]]},
     4: {"node_pair": ("S", "R"), "answer": 1, "ground_truth": [[["H", "I"]]]},
-    5: {"node_pair": ("O", "H"), "answer": 1, "ground_truth": [[["H", "I"]]]},
+    5: {"node_pair": ("Q", "H"), "answer": 1, "ground_truth": [[["H", "I"]]]},
 }
 
 T3_GT2 = {
@@ -211,7 +211,7 @@ def modify_graphml_file(graphml_file, node_pair, output_graph_name):
     with open(graphml_file, "r", encoding="utf-8") as file:
         tree = ET.parse(file)
         root = tree.getroot()
-        DEFAULT_NAMESPACE = "http://graphml.graphdrawing.org/xmlns"
+        # DEFAULT_NAMESPACE = "http://graphml.graphdrawing.org/xmlns"
         ns = {"y": "http://www.yworks.com/xml/graphml"}
 
         def find_shapenode_by_label(label):

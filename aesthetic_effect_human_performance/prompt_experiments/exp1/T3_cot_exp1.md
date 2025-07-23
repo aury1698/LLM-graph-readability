@@ -17,7 +17,7 @@ Between the two black colored nodes there exist possibly multiple different path
 4. **Evaluate the found paths:**
     * Is there a a bottleneck along all paths? That is all paths have to cross a certain edge? This can indicate that this edge must be removed.
     * Check if the removal of one edge suffices. Maybe more edges need to be removed to disconnect the black nodes.
-    * Compare if the removal of edges connected to either one of the black nodes results in a smaller set of edges to be removed.
+    * Compare if the removal of edges connected to either one of the black nodes, thereby completely disconnecting it, results in a smaller set of edges to be removed.
 5. **Check your answer:** Check if the two black nodes completely disconnected when taking away the edges of your answer. Check that you found the minimal number.
 
 **Output Format:**

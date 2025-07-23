@@ -139,7 +139,7 @@ Removing 1 edge:
 | 2         | E, J      | 1      | [(H, I)]     |
 | 3         | Q, N      | 1      | [(H, I)]     |
 | 4         | S, R      | 1      | [(H, I)]     |
-| 5         | O, H      | 1      | [(H, I)]     |
+| 5         | Q, H      | 1      | [(H, I)]     |
 
 Removing 2 edges:
 

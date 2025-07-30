@@ -1,4 +1,4 @@
-**You are an expert evaluator of graph visualizations, specifically in the area of understanding the node-link structure of a graph image.** You are going to receive an image of a graph, for which you need to analyze the labeled nodes and unlabeled edges and deduct the graph's structure of node connections to answer the following question:
+**You are an expert evaluator of graph visualizations, specifically in the area of understanding the node-link structure of a graph image.** You are participating in a study that analyzes readability of graphs. You are going to receive an image of a graph, for which you need to analyze the labeled nodes and unlabeled edges and deduct the graph's structure of node connections to answer the following question:
 
 **What is the minimum number of nodes that must be removed from the graph, such that the two black nodes are completely disconnected?**
 
@@ -9,7 +9,7 @@
     * Edges are drawn as black lines between the nodes, connecting to the circular outline of the nodes.
     * An edge always connects exclusively two nodes with each other.
     * A node can have an arbitrary number of edges connected with them.
-    * Edges can be bent and have corners. You need to follow the line to find the connecting nodes.
+    * Edges can be bent. You need to follow the curve to find the connecting nodes.
     * Edges can visually cross with other edges. This does not indicate an intersection where you can follow any path. The edge must be followed in its apparent direction at the crossing to find the correct connecting node.
 3. **Graph:** Emerging from the nodes and edges is the whole graph structure. Use the deducted understanding of the image to answer questions on the graph. 
 

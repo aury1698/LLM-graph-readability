@@ -228,7 +228,6 @@ def save_results_to_csv(results, output_file="results.csv"):
         results = pd.DataFrame(results).dropna(how="all", axis=1)
 
     results.to_csv(output_file, index=False)
-    print(f"Results saved to {output_file}")
 
 
 # 10. Convert local image to data URL (as required for langchain)
@@ -270,7 +269,6 @@ def get_processed_images(
             mask &= f
         df = df[mask]
     processed = set(df["Layout"].astype(str))
-    print(f"Processed images for this config: {processed}")
     return processed
 
 
@@ -371,11 +369,11 @@ def main(
     if mode == "few_shot":
         user_msg = f"{examples_text}{user_msg}"
 
-    print("\n--- System context ---")
-    print("\n" + system_msg + "\n")
+    #print("\n--- System context ---")
+    #print("\n" + system_msg + "\n")
 
-    print("\n--- User prompt ---")
-    print("\n" + user_msg + "\n")
+    #print("\n--- User prompt ---")
+    #print("\n" + user_msg + "\n")
 
     prompt = create_prompt(model_name, system_msg, user_msg, image_url)
 
@@ -397,9 +395,9 @@ def main(
     # compute all metrics
     metrics = compute_metrics(task, response, ground_truth, base_metrics)
 
-    print("\n--- Metrics ---")
-    for key, value in metrics.items():
-        print(f"{key}: {value}")
+    #print("\n--- Metrics ---")
+    #for key, value in metrics.items():
+    #    print(f"{key}: {value}")
 
     # Parse the response
     parsed_response = parse_model_response(response, task)

@@ -354,15 +354,17 @@ def main(
     examples_text = ""
     if mode == "few_shot" and examples:
         examples_text += (
+            "## Examples\n\n"
             "Carefully review the following examples of graph visualizations. "
-            "They demonstrate how I expect you to reason through the task and format your answers. "
-            "The real test image will come afterward.\n\n"
+            "You will receive image-answer pairs. "
+            "They demonstrate how you are expected to reason through the task and format your answers. "
+            "The real test image will come afterwards.\n\n"
         )
         for example in examples:
             example_image_path = example["image_path"]
             example_output = example["output"]
             examples_text += (
-                f"Example:\nImage: {example_image_path}\nOutput: {example_output}\n\n"
+                f"Example:\nImage: {example_image_path}\nAnswer: {example_output}\n\n"
             )
 
     # Combine examples with the user message

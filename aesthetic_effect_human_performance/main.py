@@ -54,13 +54,14 @@ def load_task_data(task_file):
 
 
 # 3. Create the prompt
-def create_prompt(model_name, system_msg, user_msg, image_url):
+def create_prompt(model_name, system_msg, user_msg, image_url, few_shots = []):
+    content = [{"type": "text", "text": system_msg}]
+    content.extend(few_shots)
+    content.append({"type": "text", "text": user_msg})
+    content.append({"type": "image_url", "image_url": {"url": image_url}})
+
     return HumanMessage(
-        content=[
-            {"type": "text", "text": system_msg},
-            {"type": "text", "text": user_msg},
-            {"type": "image_url", "image_url": {"url": image_url}},
-        ]
+        content=content
     )
 
 
@@ -351,25 +352,27 @@ def main(
     config = configure_model(model_name, system_msg)
 
     # Prepare the examples for "few_shot" mode
-    examples_text = ""
-    if mode == "few_shot" and examples:
-        examples_text += (
+    few_shot_prompts = []
+
+    if mode == "few_shot":
+        #{"type": "text", "text": user_msg},
+        #{"type": "image_url", "image_url": {"url": image_url}}
+        examples_text = (
             "## Examples\n\n"
             "Carefully review the following examples of graph visualizations. "
             "You will receive image-answer pairs. "
             "They demonstrate how you are expected to reason through the task and format your answers. "
             "The real test image will come afterwards.\n\n"
         )
-        for example in examples:
-            example_image_path = example["image_path"]
-            example_output = example["output"]
-            examples_text += (
-                f"Example:\nImage: {example_image_path}\nAnswer: {example_output}\n\n"
-            )
 
-    # Combine examples with the user message
-    if mode == "few_shot":
-        user_msg = f"{examples_text}{user_msg}"
+        few_shot_prompts.append({"type": "text", "text": examples_text})
+
+        for example in examples:
+            example_image_url = local_image_to_data_url(example["image_path"])
+
+            few_shot_prompts.append({"type": "text", "text": "Example:\nImage:"})
+            few_shot_prompts.append({"type": "image_url", "image_url": {"url": example_image_url}})
+            few_shot_prompts.append({"type": "text", "text": f"\nAnswer: {example["output"]}\n\n"})
 
     #print("\n--- System context ---")
     #print("\n" + system_msg + "\n")
@@ -377,7 +380,7 @@ def main(
     #print("\n--- User prompt ---")
     #print("\n" + user_msg + "\n")
 
-    prompt = create_prompt(model_name, system_msg, user_msg, image_url)
+    prompt = create_prompt(model_name, system_msg, user_msg, image_url, few_shot_prompts)
 
     # Invoke the model and get the response
     try:
@@ -477,12 +480,12 @@ def main(
 if __name__ == "__main__":
     # Parameters
     test_images_dir = "dataset/test"
-    mode = "zero_shot"  # "zero_shot" or "few_shot"
-    cot_mode = "cot"  # "no_cot" or "cot"
+    mode = "few_shot"  # "zero_shot" or "few_shot"
+    cot_mode = "no_cot"  # "no_cot" or "cot"
     model_name = "mistral-small-3.1-24b"  # "gpt-4o" or "gemini-2.5-flash-preview-05-20" or any other supported model
     attempt = 1  # Attempt number
     max_images_per_run = 450  # <--- Set how many images to process per run
-    csv_output_file = "results.csv"
+    csv_output_file = "bruh.csv"
 
     for i in range(max_images_per_run):
         processed_images = get_processed_images(

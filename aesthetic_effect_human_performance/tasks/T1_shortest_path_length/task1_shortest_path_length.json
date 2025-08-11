@@ -14,32 +14,32 @@
       },
       "few_shot": {
         "no_cot": {
-          "system_message": "You are a third-year Computer Science student, capable of working with visual representations of graphs. In the next messages, you will be given a visual representation of a graph. In the visual representation all nodes are white circles with a black border and a black letter label. The two target nodes are completely black circles with a white letter label. Be careful: nodes are ONLY connected if there is a visible CONTINUOUS black straight line between them, even if it has bends. The absence of a line between two nodes indicates NO connection between them and a line passing near a node WITHOUT touching its border does NOT count. Be careful of crossings between lines. - A PATH is a sequence of nodes where each consecutive pair is directly linked by a black line. - The LENGTH of a path is the number of edges (lines) traversed. Your task will be to determine the length of the SHORTEST path between the two black nodes (minimum number of edges traversed). To ensure accuracy: 1. Explicitly verify every edge in the path (e.g., 'Is node X directly connected to node Y?'). 2. Explore all possible paths systematically using breadth-first search. 3. Do not assume connections: rely only on visible black lines. 4. Check neighbors of neighbors (e.g., indirect paths might be shorter). Provide only the final answer in this format: Length: X, Path: [A, B, C, ..., Z].",
-          "user_message": "Please determine the length of the shortest path between the two completely black nodes in the graph. The length is defined as the number of edges (black lines) traversed to connect the two nodes. Use only the visual representation of the graph to identify the path. Each node is labeled with a black letter (white for the black nodes), and nodes are only connected if there is a visible black line between them. Provide: 1) The length of the shortest path (i.e., number of edges), and 2) The list of node labels that form that path in the correct order from start to end. Before answering, verify that: 1) Each consecutive node in the path is connected by a black line, 2) No shorter valid path exists. 3) Check all possible paths from the start node, considering every visible connection: it's crucial to explore all neighbors of each node in the path, especially those that might lead to the target node more quickly. Provide only the final answer in this format: Length: X, Path: [A, B, C, ..., Z].",
+          "system_message": "**You are an expert evaluator of graph visualizations, specifically in the area of understanding the node-link structure of a graph image.** You are participating in a study that analyzes readability of graphs. You are going to receive an image of a graph, for which you need to analyze the labeled nodes and unlabeled edges and deduct the graph's structure of node connections to answer the following question:\n\n**What is the shortest path length between the two black colored nodes in this graph?**\n\n## Reading the Graph Images\n\n1. **Nodes:** The nodes are drawn as circles with a letter inside as a label. The nodes are white circles with a black outline and a alphabetical letter. The only exceptions are the two filled black nodes, which indicate the nodes the question is asked about.\n2. **Edges:**\n    * Edges are drawn as black lines between the nodes, connecting to the circular outline of the nodes.\n    * An edge always connects exclusively two nodes with each other.\n    * A node can have an arbitrary number of edges connected with them.\n    * Edges can be bent. You need to follow the curve to find the connecting nodes.\n    * Edges can visually cross with other edges. This does not indicate an intersection where you can follow any path. The edge must be followed in its apparent direction at the crossing to find the correct connecting node.\n3. **Graph:** Emerging from the nodes and edges is the whole graph structure. Use the deducted understanding of the image to answer questions on the graph. \n\n## Understanding of \"Shortest Path\" for this Task\n\nBetween the two black colored nodes there exist possibly multiple different paths. A path is a chain-like structure between two nodes, which are connected through edges with zero or more intermediate nodes. Nodes are only connected, if a black line, i.e. edge, is drawn between them to connect them to each other. As there can be multiple paths between nodes, we are looking for the shortest path between the black nodes. The path length is the number of edges making up the path. The shortest path is defined as the path with the least number of intermediate nodes, resulting in the smallest path length.\n\n**Output Format:**\n\nAnswer the question in one seperate line in the format, e.g.:\n\nLength: 2, Path: [A, B, C]\n",
+          "user_message": "What is the shortest path between the two black nodes? Answer the question in one seperate line in the format, e.g.:\n\nLength: 2, Path: [A, B, C]\n",
           "examples": [
             {
-              "image_path": "../../images_graphs/yellow_practice_graphs/1_Practice.png",
-              "output": "Length: 2, Path: [F, E, M]"
+              "image_path": "dataset/practice/prac1_HF_t1_2_t2_2_t3_2.png",
+              "output": "Length: 2, Path: [H, G, F] or [H, B, F]"
             },
             {
-              "image_path": "../../images_graphs/yellow_practice_graphs/2_Practice.png",
-              "output": "Length: 3, Path: [I, H, G, F]"
+              "image_path": "dataset/practice/prac2_IT_t1_3_t2_1_t3_1.png",
+              "output": "Length: 3, Path: [I, H, G, T] or [I, H, B, T]"
             },
             {
-              "image_path": "../../images_graphs/yellow_practice_graphs/3_Practice.png",
-              "output": "Length: 3, Path: [M, J, I, C] or [M, E, B, C]"
+              "image_path": "dataset/practice/prac3_OT_t1_3_t2_2_t3_2.png",
+              "output": "Length: 3, Path: [O, C, G, T] or [O, N, N, T]"
             },
             {
-              "image_path": "../../images_graphs/yellow_practice_graphs/4_Practice.png",
-              "output": "Length: 1, Path: [B, H]"
+              "image_path": "dataset/practice/prac4_AJ_t1_4_t2_1_t3_1.png",
+              "output": "Length: 4, Path: [A, B, H, I, J]"
             },
             {
-              "image_path": "../../images_graphs/yellow_practice_graphs/5_Practice.png",
-              "output": "Length: 2, Path: [M, E, B]"
+              "image_path": "dataset/practice/prac5_NG_t1_2_t2_2_t3_3.png",
+              "output": "Length: 2, Path: [G, C, N]"
             },
             {
-              "image_path": "../../images_graphs/yellow_practice_graphs/6_Practice.png",
-              "output": "Length: 1, Path: [I, J]"
+              "image_path": "dataset/practice/prac6_SJ_t1_5_t2_1_t3_1.png",
+              "output": "Length: 5, Path: [S, A, B, H, I ,J] or [S, F, B, H, I ,J] or [S, F, G, H, I ,J]"
             }
           ]
         },

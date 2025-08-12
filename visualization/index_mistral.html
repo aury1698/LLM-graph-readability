@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizzatore Risultati Aggregati (Formato Originale)</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 2rem;
+            background: #fafbfc;
+            color: #222;
+        }
+        main {
+            max-width: 600px;
+            margin: auto;
+        }
+    </style>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+</body>
+<script>
+
+// Funzione per caricare e aggregare i risultati da più file CSV
+async function loadAndAggregateResults(basePath, modelName) {
+    const shotTypes = ["zeroshot", "fewshot"];
+    const cotTypes = ["cot", "no_cot"];
+    const attempts = [1, 2, 3];
+    let allFilePaths = [];
+
+    for (const shot of shotTypes) {
+        for (const cot of cotTypes) {
+            for (const attempt of attempts) {
+                const shotInitial = (shot === "zeroshot") ? "zs" : "fs";
+                const cotSuffix = (cot === "cot") ? "cot" : "noCot";
+                const fileName = `results_attempt${attempt}_${modelName}_${shotInitial}_${cotSuffix}.csv`;
+                const filePath = `${basePath}/results/${modelName}/${shot}/${cot}/${fileName}`;
+                allFilePaths.push(filePath);
+            }
+        }
+    }
+    
+    const promises = allFilePaths.map(path =>
+        d3.csv(path)
+            .then(rows => {
+                // Aggiungiamo il percorso del file a ogni riga di dati.
+                rows.forEach(row => {
+                    row.File_Path = path;
+                });
+                return rows;
+            })
+            .catch(error => {
+                // Se un file non esiste, ritorna un array vuoto.
+                return [];
+            })
+    );
+
+    const resultsFromAllFiles = await Promise.all(promises);
+    return resultsFromAllFiles.flat();
+}
+
+
+async function init(){
+    let mode = "aurora"
+    // let mode = "bastian"
+
+    let human_results_bastian = {
+        "errors": {"b-": 0.53, "b+": 0.24, "c-": 0.80, "c+": 0.29, "m-": 0.38, "m+": 0.36, "o-": 0.36, "o+": 0.36, "s-": 0.31, "s+": 0.29},
+        "reaction_time": {"b-": 81.40, "b+": 67.18, "c-": 139.78, "c+": 66.39, "m-": 68.17, "m+": 76.55, "o-": 76.71, "o+": 68.17, "s-": 67.74, "s+": 55.58}
+    };
+
+    let human_results_aurora = {
+        "errors": {"FD-FR": 0.164, "FD-K": 0.109, "PG": 0.291, "PGS": 0.236, "POGBa": 0.236, "POGBb": 0.255, "SEIS": 0.436, "Tu": 0.145},
+        "reaction_time": {"FD-FR": 66.79, "FD-K": 68.54, "PG": 73.23, "PGS": 78.41, "POGBa": 77.55, "POGBb": 74.76, "SEIS": 78.67, "Tu": 77.74}
+    };
+
+    let letters, path, human_results;
+    const modelName = "mistral24b"; 
+
+    if (mode == "bastian") {
+        letters = ["b-", "b+", "c-", "c+", "m-", "m+", "o-", "o+", "s-", "s+"];
+        path = "../aesthetic_effect_human_performance";
+        human_results = human_results_bastian;
+    } else {
+        letters = ["FD-FR", "FD-K", "PG", "PGS", "POGBa", "POGBb", "SEIS", "Tu"];
+        path = "../layout_algorithms_performance";
+        human_results = human_results_aurora;
+    }
+    
+    let resultfile = await loadAndAggregateResults(path, modelName);
+    
+    if (resultfile.length === 0) {
+        document.body.innerHTML = `<h1>Nessun file di risultati trovato.</h1> <p>Controlla la console per i dettagli sui percorsi dei file cercati e assicurati che la struttura delle cartelle sia corretta.</p>`;
+        console.error("Nessun dato da visualizzare.");
+        return;
+    }
+    
+    let task_names = ["task1", "task2", "task3"];
+    let gts = ["gt1", "gt2", "gt3", "gt4", "gt5"];
+    let PAIRS = ["PAIR1", "PAIR2", "PAIR3", "PAIR4", "PAIR5"]; 
+    let agglomerated_test_names = [];
+
+    for (let task of task_names) {
+        for (let letter of letters) {
+            agglomerated_test_names.push(`${letter}_${task}`);
+        }
+    }
+    
+    for (let test of agglomerated_test_names){
+        let test_agglomerated_results = resultfile.filter(d => d.Layout.includes(test));
+        if (test_agglomerated_results.length === 0) continue;
+
+        document.body.appendChild(document.createElement("hr"));
+
+        let testdatadiv = document.createElement("div");
+        testdatadiv.innerHTML = `<h3>${test}</h3>`;
+        testdatadiv.style.fontSize = "1.2rem";
+        testdatadiv.style.fontWeight = "bold";
+        document.body.appendChild(testdatadiv);
+
+        let testdatadivinfo = document.createElement("div");
+        let accuracy = test_agglomerated_results.map(d => d["Correct Prediction (True/False)"] == "True").filter(d => d).length / test_agglomerated_results.length * 100;
+        testdatadivinfo.innerHTML = `${test_agglomerated_results[0]["Task"]}<br>`;
+        testdatadivinfo.innerHTML += `Overall accuracy: ${accuracy.toFixed(2)}%.`;
+        testdatadivinfo.style.fontSize = "0.8rem";
+        testdatadivinfo.style.color = "#555";
+        document.body.appendChild(testdatadivinfo);
+
+        let testdatadivhuman = document.createElement("div");
+        testdatadivhuman.innerHTML = `Human performance: ${(100 - human_results["errors"][test.split("_")[0]]*100).toFixed(2)}% accuracy, ${human_results["reaction_time"][test.split("_")[0]].toFixed(2)} ms reaction time.`;
+        testdatadivhuman.style.fontSize = "0.8rem";
+        testdatadivhuman.style.color = "#555";
+        document.body.appendChild(testdatadivhuman);
+
+        let div = document.createElement("div");
+        div.style.display = "flex";
+        div.style.flexWrap = "wrap";
+        document.body.appendChild(div);
+
+        for (let gt of gts) {
+            let results_for_gt = test_agglomerated_results.filter(d => d.Layout.includes(test + "_" + gt));
+            if (results_for_gt.length === 0) continue;
+
+            let gtcontainer = document.createElement("div");
+            gtcontainer.style.border = "1px solid #ccc";
+            gtcontainer.style.padding = "1rem";
+            gtcontainer.style.marginRight = "1rem";
+            gtcontainer.style.marginTop = "1rem";            
+            div.appendChild(gtcontainer);
+
+            let aggregated_accuracy_by_gt = results_for_gt.map(d => d["Correct Prediction (True/False)"] == "True").filter(d => d).length / results_for_gt.length * 100;
+            let gtheader = document.createElement("div");
+            gtheader.style.fontSize = "0.7rem";
+            gtheader.innerHTML = "Accuracy for " + gt + ": " + aggregated_accuracy_by_gt.toFixed(2) + "%";
+            gtcontainer.appendChild(gtheader);
+
+            let gtdiv = document.createElement("div");
+            gtdiv.style.display = "flex";
+            gtcontainer.appendChild(gtdiv);
+
+            for (let pair of PAIRS) {
+                const layoutName = `${test}_${gt}_${pair}`;
+                let instance_results = test_agglomerated_results.filter(d => d.Layout === layoutName);
+                if (instance_results.length === 0) continue;
+
+                try {
+                    let small_div = document.createElement("div");
+                    small_div.style.verticalAlign = "top";
+                    small_div.style.marginRight = "1rem";
+                    gtdiv.appendChild(small_div);
+
+                    let img = document.createElement("img");
+                    img.src = `${path}/dataset/test/${layoutName}.png`;
+                    img.style.width = "100px";
+                    img.style.height = "auto";
+                    img.style.marginBottom = "1rem";
+                    small_div.appendChild(img);
+
+                    let smaller_div = document.createElement("div");
+                    smaller_div.innerHTML = `<b>${gt}_${pair}</b><br>`;
+
+                    // --- INIZIO MODIFICA PER IL DISPLAY ---
+                    // Logica di raggruppamento e visualizzazione ripristinata come l'originale.
+
+                    // Dividiamo i risultati in Zero Shot e Few Shot usando il File_Path
+                    let zero_shot_results = instance_results.filter(result => 
+                        result.File_Path.includes('/zeroshot/')
+                    );
+                    let few_shot_results = instance_results.filter(result => 
+                        result.File_Path.includes('/fewshot/')
+                    );
+
+                    // Zero Shot
+                    if (zero_shot_results.length > 0) {
+                        smaller_div.innerHTML += `<span style="color:#1a73e8;"><b>Zero Shot</b></span><br>`;
+                        // Usiamo forEach con l'indice (idx) per ottenere "0:", "1:", etc.
+                        zero_shot_results.forEach((result, idx) => {
+                            smaller_div.innerHTML += `${idx}: ${result["Correct Prediction (True/False)"]}<br>`;
+                        });
+                    }
+
+                    // Few Shot
+                    if (few_shot_results.length > 0) {
+                        smaller_div.innerHTML += `<span style="color:#e8711a;"><b>Few Shot</b></span><br>`;
+                        // Usiamo forEach con l'indice (idx) per ottenere "0:", "1:", etc.
+                        few_shot_results.forEach((result, idx) => {
+                            smaller_div.innerHTML += `${idx}: ${result["Correct Prediction (True/False)"]}<br>`;
+                        });
+                    }
+                    // --- FINE MODIFICA PER IL DISPLAY ---
+
+                    smaller_div.style.fontSize = "0.65rem";
+                    small_div.appendChild(smaller_div);
+
+                } catch (error) {
+                    console.error(`Errore durante l'elaborazione di ${layoutName}:`, error);
+                }
+            }
+        }
+    }
+}
+
+init();
+    
+</script>
+</html>

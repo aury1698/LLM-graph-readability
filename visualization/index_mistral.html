@@ -22,7 +22,7 @@
 </body>
 <script>
 
-// Funzione per caricare e aggregare i risultati da più file CSV
+// Function to load and aggregate results from multiple CSV files
 async function loadAndAggregateResults(basePath, modelName) {
     const shotTypes = ["zeroshot", "fewshot"];
     const cotTypes = ["cot", "no_cot"];
@@ -44,14 +44,12 @@ async function loadAndAggregateResults(basePath, modelName) {
     const promises = allFilePaths.map(path =>
         d3.csv(path)
             .then(rows => {
-                // Aggiungiamo il percorso del file a ogni riga di dati.
                 rows.forEach(row => {
                     row.File_Path = path;
                 });
                 return rows;
             })
             .catch(error => {
-                // Se un file non esiste, ritorna un array vuoto.
                 return [];
             })
     );
@@ -180,10 +178,6 @@ async function init(){
                     let smaller_div = document.createElement("div");
                     smaller_div.innerHTML = `<b>${gt}_${pair}</b><br>`;
 
-                    // --- INIZIO MODIFICA PER IL DISPLAY ---
-                    // Logica di raggruppamento e visualizzazione ripristinata come l'originale.
-
-                    // Dividiamo i risultati in Zero Shot e Few Shot usando il File_Path
                     let zero_shot_results = instance_results.filter(result => 
                         result.File_Path.includes('/zeroshot/')
                     );
@@ -194,7 +188,7 @@ async function init(){
                     // Zero Shot
                     if (zero_shot_results.length > 0) {
                         smaller_div.innerHTML += `<span style="color:#1a73e8;"><b>Zero Shot</b></span><br>`;
-                        // Usiamo forEach con l'indice (idx) per ottenere "0:", "1:", etc.
+                        
                         zero_shot_results.forEach((result, idx) => {
                             smaller_div.innerHTML += `${idx}: ${result["Correct Prediction (True/False)"]}<br>`;
                         });
@@ -203,12 +197,11 @@ async function init(){
                     // Few Shot
                     if (few_shot_results.length > 0) {
                         smaller_div.innerHTML += `<span style="color:#e8711a;"><b>Few Shot</b></span><br>`;
-                        // Usiamo forEach con l'indice (idx) per ottenere "0:", "1:", etc.
+                
                         few_shot_results.forEach((result, idx) => {
                             smaller_div.innerHTML += `${idx}: ${result["Correct Prediction (True/False)"]}<br>`;
                         });
                     }
-                    // --- FINE MODIFICA PER IL DISPLAY ---
 
                     smaller_div.style.fontSize = "0.65rem";
                     small_div.appendChild(smaller_div);

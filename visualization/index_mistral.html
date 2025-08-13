@@ -23,24 +23,43 @@
 <script>
 
 // Function to load and aggregate results from multiple CSV files
-async function loadAndAggregateResults(basePath, modelName) {
+async function loadAndAggregateResults(basePath, modelName, mode) {
     const shotTypes = ["zeroshot", "fewshot"];
     const cotTypes = ["cot", "no_cot"];
     const attempts = [1, 2, 3];
     let allFilePaths = [];
 
-    for (const shot of shotTypes) {
-        for (const cot of cotTypes) {
-            for (const attempt of attempts) {
-                const shotInitial = (shot === "zeroshot") ? "zs" : "fs";
-                const cotSuffix = (cot === "cot") ? "cot" : "noCot";
-                const fileName = `results_attempt${attempt}_${modelName}_${shotInitial}_${cotSuffix}.csv`;
-                const filePath = `${basePath}/results/${modelName}/${shot}/${cot}/${fileName}`;
-                allFilePaths.push(filePath);
+    if (mode === "bastian") {
+        // For "bastian" mode, handle prompt folders and file naming
+        const promptNumbers = [1, 2]; // Add more if needed
+        for (const promptNum of promptNumbers) {
+            for (const shot of shotTypes) {
+                for (const cot of cotTypes) {
+                    for (const attempt of attempts) {
+                        const cotFolder = cot;
+                        const cotSuffix = cot;
+                        const fileName = `prompt${promptNum}_results_${attempt}_${modelName}_${cotSuffix}.csv`;
+                        const filePath = `${basePath}/results/prompt${promptNum}/${modelName}/${shot}/${cotFolder}/${fileName}`;
+                        allFilePaths.push(filePath);
+                    }
+                }
+            }
+        }
+    } else {
+        // For "aurora" mode, handle prompt folders and file naming
+        for (const shot of shotTypes) {
+            for (const cot of cotTypes) {
+                for (const attempt of attempts) {
+                    const shotInitial = (shot === "zeroshot") ? "zs" : "fs";
+                    const cotSuffix = (cot === "cot") ? "cot" : "noCot";
+                    const fileName = `results_attempt${attempt}_${modelName}_${shotInitial}_${cotSuffix}.csv`;
+                    const filePath = `${basePath}/results/${modelName}/${shot}/${cot}/${fileName}`;
+                    allFilePaths.push(filePath);
+                }
             }
         }
     }
-    
+
     const promises = allFilePaths.map(path =>
         d3.csv(path)
             .then(rows => {
@@ -60,8 +79,8 @@ async function loadAndAggregateResults(basePath, modelName) {
 
 
 async function init(){
-    let mode = "aurora"
-    // let mode = "bastian"
+    //let mode = "aurora"
+    let mode = "bastian"
 
     let human_results_bastian = {
         "errors": {"b-": 0.53, "b+": 0.24, "c-": 0.80, "c+": 0.29, "m-": 0.38, "m+": 0.36, "o-": 0.36, "o+": 0.36, "s-": 0.31, "s+": 0.29},
@@ -86,11 +105,11 @@ async function init(){
         human_results = human_results_aurora;
     }
     
-    let resultfile = await loadAndAggregateResults(path, modelName);
+    let resultfile = await loadAndAggregateResults(path, modelName, mode);
     
     if (resultfile.length === 0) {
-        document.body.innerHTML = `<h1>Nessun file di risultati trovato.</h1> <p>Controlla la console per i dettagli sui percorsi dei file cercati e assicurati che la struttura delle cartelle sia corretta.</p>`;
-        console.error("Nessun dato da visualizzare.");
+        document.body.innerHTML = `<h1>No result files found.</h1> <p>Check the console for details about the searched file paths and make sure your folder structure is correct.</p>`;
+        console.error("No data to display.");
         return;
     }
     
@@ -207,7 +226,7 @@ async function init(){
                     small_div.appendChild(smaller_div);
 
                 } catch (error) {
-                    console.error(`Errore durante l'elaborazione di ${layoutName}:`, error);
+                    console.error(`Error during the processing of ${layoutName}:`, error);
                 }
             }
         }

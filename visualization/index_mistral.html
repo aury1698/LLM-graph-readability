@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualize Mistral Results</title>
+    <title>Visualize LLM Results</title>
+    <link rel="icon" type="image/x-icon" href="icon.ico">
     <style>
         body {
             font-family: system-ui, sans-serif;
@@ -15,46 +16,90 @@
             max-width: 600px;
             margin: auto;
         }
+        .controls {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .controls button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            margin: 0 10px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: #fff;
+            border-radius: 5px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .controls button.active {
+            background: #1a73e8;
+            color: white;
+            border-color: #1a73e8;
+        }
+        .controls button:not(.active) {
+            background: #e8711a;
+            color: white;
+            border-color: #e8711a;
+        }
     </style>
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
+    <h1>Visualize LLM Results</h1>
+    <p>Click on the buttons below to switch between Mistral and Gemini models. Results are aggregated from multiple CSV files and displayed in a structured format.</p>
+
+    <!-- UI Controls for model selection -->
+    <div class="controls">
+        <button id="btn-mistral">Mistral</button>
+        <button id="btn-gemini">Gemini</button>
+    </div>
+
+    <!-- Container where results will be rendered -->
+    <div id="results-container"></div>
+
 </body>
 <script>
 
-// Function to load and aggregate results from multiple CSV files
 async function loadAndAggregateResults(basePath, modelName, mode) {
-    const shotTypes = ["zeroshot", "fewshot"];
-    const cotTypes = ["cot", "no_cot"];
-    const attempts = [1, 2, 3];
     let allFilePaths = [];
 
-    if (mode === "bastian") {
-        // For "bastian" mode, handle prompt folders and file naming
-        const promptNumbers = [1, 2]; // Add more if needed
-        for (const promptNum of promptNumbers) {
-            for (const shot of shotTypes) {
-                for (const cot of cotTypes) {
-                    for (const attempt of attempts) {
-                        const cotFolder = cot;
-                        const cotSuffix = cot;
-                        const fileName = `prompt${promptNum}_results_${attempt}_${modelName}_${cotSuffix}.csv`;
-                        const filePath = `${basePath}/results/prompt${promptNum}/${modelName}/${shot}/${cotFolder}/${fileName}`;
-                        allFilePaths.push(filePath);
+    if (modelName === "gemini") {
+        // Gemini case: for now, it's just a single file.
+        // WHEN GEMINI'S RESULTS HAVE A FOLDER STRUCTURE,
+        // YOU WILL REPLICATE MISTRAL'S LOGIC HERE.
+        console.log("Loading single file for Gemini...");
+        allFilePaths.push(`${basePath}/results_with_new_prompt.csv`);
+    } 
+    else if (modelName === "mistral24b") {
+        // Mistral case: loads all files based on the complex folder structure.
+        const shotTypes = ["zeroshot", "fewshot"];
+        const cotTypes = ["cot", "no_cot"];
+        const attempts = [1, 2, 3];
+
+        if (mode === "bastian") {
+            const promptNumbers = [1, 2];
+            for (const promptNum of promptNumbers) {
+                for (const shot of shotTypes) {
+                    for (const cot of cotTypes) {
+                        for (const attempt of attempts) {
+                            const cotFolder = cot;
+                            const cotSuffix = cot;
+                            const fileName = `prompt${promptNum}_results_${attempt}_${modelName}_${cotSuffix}.csv`;
+                            const filePath = `${basePath}/results/prompt${promptNum}/${modelName}/${shot}/${cotFolder}/${fileName}`;
+                            allFilePaths.push(filePath);
+                        }
                     }
                 }
             }
-        }
-    } else {
-        // For "aurora" mode, handle prompt folders and file naming
-        for (const shot of shotTypes) {
-            for (const cot of cotTypes) {
-                for (const attempt of attempts) {
-                    const shotInitial = (shot === "zeroshot") ? "zs" : "fs";
-                    const cotSuffix = (cot === "cot") ? "cot" : "noCot";
-                    const fileName = `results_attempt${attempt}_${modelName}_${shotInitial}_${cotSuffix}.csv`;
-                    const filePath = `${basePath}/results/${modelName}/${shot}/${cot}/${fileName}`;
-                    allFilePaths.push(filePath);
+        } else { // mode "aurora"
+            for (const shot of shotTypes) {
+                for (const cot of cotTypes) {
+                    for (const attempt of attempts) {
+                        const shotInitial = (shot === "zeroshot") ? "zs" : "fs";
+                        const cotSuffix = (cot === "cot") ? "cot" : "noCot";
+                        const fileName = `results_attempt${attempt}_${modelName}_${shotInitial}_${cotSuffix}.csv`;
+                        const filePath = `${basePath}/results/${modelName}/${shot}/${cot}/${fileName}`;
+                        allFilePaths.push(filePath);
+                    }
                 }
             }
         }
@@ -69,6 +114,7 @@ async function loadAndAggregateResults(basePath, modelName, mode) {
                 return rows;
             })
             .catch(error => {
+                console.warn(`Could not load or parse file (this is okay if the file is optional): ${path}`);
                 return [];
             })
     );
@@ -78,9 +124,16 @@ async function loadAndAggregateResults(basePath, modelName, mode) {
 }
 
 
-async function init(){
-    //let mode = "aurora"
-    let mode = "bastian"
+// The init function now accepts a model name to render
+async function init(modelName) {
+    const resultsContainer = document.getElementById('results-container');
+    resultsContainer.innerHTML = '<h2>Loading results...</h2>';
+
+    document.getElementById('btn-mistral').classList.toggle('active', modelName === 'mistral24b');
+    document.getElementById('btn-gemini').classList.toggle('active', modelName === 'gemini');
+
+    let mode = "aurora";
+    //let mode = "bastian";
 
     let human_results_bastian = {
         "errors": {"b-": 0.53, "b+": 0.24, "c-": 0.80, "c+": 0.29, "m-": 0.38, "m+": 0.36, "o-": 0.36, "o+": 0.36, "s-": 0.31, "s+": 0.29},
@@ -93,8 +146,7 @@ async function init(){
     };
 
     let letters, path, human_results;
-    const modelName = "mistral24b"; 
-
+    
     if (mode == "bastian") {
         letters = ["b-", "b+", "c-", "c+", "m-", "m+", "o-", "o+", "s-", "s+"];
         path = "../aesthetic_effect_human_performance";
@@ -107,12 +159,23 @@ async function init(){
     
     let resultfile = await loadAndAggregateResults(path, modelName, mode);
     
+    resultsContainer.innerHTML = ''; // Clear "Loading..." message
+    
     if (resultfile.length === 0) {
-        document.body.innerHTML = `<h1>No result files found.</h1> <p>Check the console for details about the searched file paths and make sure your folder structure is correct.</p>`;
+        resultsContainer.innerHTML = `<h1>No result files found for ${modelName}.</h1> <p>Check the console for details about the searched file paths.</p>`;
         console.error("No data to display.");
         return;
     }
     
+    // --- NEW: Create and add the dynamic title ---
+    const titleElement = document.createElement('h2');
+    let displayName = modelName === 'mistral24b' ? 'Mistral' : 'Gemini';
+    titleElement.textContent = `${displayName} Results`;
+    titleElement.style.textAlign = 'center';
+    titleElement.style.marginBottom = '1.5rem';
+    resultsContainer.appendChild(titleElement);
+    // --- End of new code ---
+
     let task_names = ["task1", "task2", "task3"];
     let gts = ["gt1", "gt2", "gt3", "gt4", "gt5"];
     let PAIRS = ["PAIR1", "PAIR2", "PAIR3", "PAIR4", "PAIR5"]; 
@@ -128,13 +191,13 @@ async function init(){
         let test_agglomerated_results = resultfile.filter(d => d.Layout.includes(test));
         if (test_agglomerated_results.length === 0) continue;
 
-        document.body.appendChild(document.createElement("hr"));
+        resultsContainer.appendChild(document.createElement("hr"));
 
         let testdatadiv = document.createElement("div");
         testdatadiv.innerHTML = `<h3>${test}</h3>`;
         testdatadiv.style.fontSize = "1.2rem";
         testdatadiv.style.fontWeight = "bold";
-        document.body.appendChild(testdatadiv);
+        resultsContainer.appendChild(testdatadiv);
 
         let testdatadivinfo = document.createElement("div");
         let accuracy = test_agglomerated_results.map(d => d["Correct Prediction (True/False)"] == "True").filter(d => d).length / test_agglomerated_results.length * 100;
@@ -142,18 +205,18 @@ async function init(){
         testdatadivinfo.innerHTML += `Overall accuracy: ${accuracy.toFixed(2)}%.`;
         testdatadivinfo.style.fontSize = "0.8rem";
         testdatadivinfo.style.color = "#555";
-        document.body.appendChild(testdatadivinfo);
+        resultsContainer.appendChild(testdatadivinfo);
 
         let testdatadivhuman = document.createElement("div");
         testdatadivhuman.innerHTML = `Human performance: ${(100 - human_results["errors"][test.split("_")[0]]*100).toFixed(2)}% accuracy, ${human_results["reaction_time"][test.split("_")[0]].toFixed(2)} ms reaction time.`;
         testdatadivhuman.style.fontSize = "0.8rem";
         testdatadivhuman.style.color = "#555";
-        document.body.appendChild(testdatadivhuman);
+        resultsContainer.appendChild(testdatadivhuman);
 
         let div = document.createElement("div");
         div.style.display = "flex";
         div.style.flexWrap = "wrap";
-        document.body.appendChild(div);
+        resultsContainer.appendChild(div);
 
         for (let gt of gts) {
             let results_for_gt = test_agglomerated_results.filter(d => d.Layout.includes(test + "_" + gt));
@@ -197,17 +260,12 @@ async function init(){
                     let smaller_div = document.createElement("div");
                     smaller_div.innerHTML = `<b>${gt}_${pair}</b><br>`;
 
-                    let zero_shot_results = instance_results.filter(result => 
-                        result.File_Path.includes('/zeroshot/')
-                    );
-                    let few_shot_results = instance_results.filter(result => 
-                        result.File_Path.includes('/fewshot/')
-                    );
+                    let zero_shot_results = instance_results.filter(result => result["LLM Mode"] === 'Zero-Shot');
+                    let few_shot_results = instance_results.filter(result => result["LLM Mode"] === 'Few-Shot');
 
                     // Zero Shot
                     if (zero_shot_results.length > 0) {
                         smaller_div.innerHTML += `<span style="color:#1a73e8;"><b>Zero Shot</b></span><br>`;
-                        
                         zero_shot_results.forEach((result, idx) => {
                             smaller_div.innerHTML += `${idx}: ${result["Correct Prediction (True/False)"]}<br>`;
                         });
@@ -216,7 +274,6 @@ async function init(){
                     // Few Shot
                     if (few_shot_results.length > 0) {
                         smaller_div.innerHTML += `<span style="color:#e8711a;"><b>Few Shot</b></span><br>`;
-                
                         few_shot_results.forEach((result, idx) => {
                             smaller_div.innerHTML += `${idx}: ${result["Correct Prediction (True/False)"]}<br>`;
                         });
@@ -233,7 +290,12 @@ async function init(){
     }
 }
 
-init();
+// Add event listeners to the buttons
+document.getElementById('btn-mistral').addEventListener('click', () => init('mistral24b'));
+document.getElementById('btn-gemini').addEventListener('click', () => init('gemini'));
+
+// Load the default model's results when the page opens
+init('mistral24b');
     
 </script>
 </html>

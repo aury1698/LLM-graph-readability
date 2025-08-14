@@ -63,43 +63,26 @@ async function loadAndAggregateResults(basePath, modelName, mode) {
     let allFilePaths = [];
 
     if (modelName === "gemini") {
-        // Gemini case: for now, it's just a single file.
-        // WHEN GEMINI'S RESULTS HAVE A FOLDER STRUCTURE,
-        // YOU WILL REPLICATE MISTRAL'S LOGIC HERE.
+        // Gemini case: still loads the single file.
         console.log("Loading single file for Gemini...");
         allFilePaths.push(`${basePath}/results_with_new_prompt.csv`);
     } 
-    else if (modelName === "mistral24b") {
-        // Mistral case: loads all files based on the complex folder structure.
-        const shotTypes = ["zeroshot", "fewshot"];
+    // MODIFIED: This condition now uses the full, correct model name.
+    else if (modelName === "mistral-small-3.1-24b") {
+        // MISTRAL CASE: This logic correctly builds paths based on the full model name.
+        console.log(`Loading results for ${modelName} with the new folder structure...`);
+        
+        const shotTypes = ["zero_shot", "few_shot"];
         const cotTypes = ["cot", "no_cot"];
-        const attempts = [1, 2, 3];
+        const attempts = [1, 2, 3, 4];
 
-        if (mode === "bastian") {
-            const promptNumbers = [1, 2];
-            for (const promptNum of promptNumbers) {
-                for (const shot of shotTypes) {
-                    for (const cot of cotTypes) {
-                        for (const attempt of attempts) {
-                            const cotFolder = cot;
-                            const cotSuffix = cot;
-                            const fileName = `prompt${promptNum}_results_${attempt}_${modelName}_${cotSuffix}.csv`;
-                            const filePath = `${basePath}/results/prompt${promptNum}/${modelName}/${shot}/${cotFolder}/${fileName}`;
-                            allFilePaths.push(filePath);
-                        }
-                    }
-                }
-            }
-        } else { // mode "aurora"
-            for (const shot of shotTypes) {
-                for (const cot of cotTypes) {
-                    for (const attempt of attempts) {
-                        const shotInitial = (shot === "zeroshot") ? "zs" : "fs";
-                        const cotSuffix = (cot === "cot") ? "cot" : "noCot";
-                        const fileName = `results_attempt${attempt}_${modelName}_${shotInitial}_${cotSuffix}.csv`;
-                        const filePath = `${basePath}/results/${modelName}/${shot}/${cot}/${fileName}`;
-                        allFilePaths.push(filePath);
-                    }
+        for (const shot of shotTypes) {
+            for (const cot of cotTypes) {
+                for (const attempt of attempts) {
+                    const fileName = `results_attempt_${attempt}.csv`;
+                    // The 'modelName' variable here is now "mistral-small-3.1-24b", matching the folder structure.
+                    const filePath = `${basePath}/results/${modelName}/${shot}/${cot}/${fileName}`;
+                    allFilePaths.push(filePath);
                 }
             }
         }
@@ -108,13 +91,11 @@ async function loadAndAggregateResults(basePath, modelName, mode) {
     const promises = allFilePaths.map(path =>
         d3.csv(path)
             .then(rows => {
-                rows.forEach(row => {
-                    row.File_Path = path;
-                });
+                rows.forEach(row => { row.File_Path = path; });
                 return rows;
             })
             .catch(error => {
-                console.warn(`Could not load or parse file (this is okay if the file is optional): ${path}`);
+                console.warn(`Could not load file (optional): ${path}`);
                 return [];
             })
     );
@@ -124,12 +105,12 @@ async function loadAndAggregateResults(basePath, modelName, mode) {
 }
 
 
-// The init function now accepts a model name to render
 async function init(modelName) {
     const resultsContainer = document.getElementById('results-container');
     resultsContainer.innerHTML = '<h2>Loading results...</h2>';
 
-    document.getElementById('btn-mistral').classList.toggle('active', modelName === 'mistral24b');
+    // MODIFIED: This condition now uses the full, correct model name.
+    document.getElementById('btn-mistral').classList.toggle('active', modelName === 'mistral-small-3.1-24b');
     document.getElementById('btn-gemini').classList.toggle('active', modelName === 'gemini');
 
     let mode = "aurora";
@@ -167,14 +148,13 @@ async function init(modelName) {
         return;
     }
     
-    // --- NEW: Create and add the dynamic title ---
     const titleElement = document.createElement('h2');
-    let displayName = modelName === 'mistral24b' ? 'Mistral' : 'Gemini';
+    // MODIFIED: This logic is more robust to detect the model name.
+    let displayName = modelName.includes('mistral') ? 'Mistral' : 'Gemini';
     titleElement.textContent = `${displayName} Results`;
     titleElement.style.textAlign = 'center';
     titleElement.style.marginBottom = '1.5rem';
     resultsContainer.appendChild(titleElement);
-    // --- End of new code ---
 
     let task_names = ["task1", "task2", "task3"];
     let gts = ["gt1", "gt2", "gt3", "gt4", "gt5"];
@@ -290,12 +270,12 @@ async function init(modelName) {
     }
 }
 
-// Add event listeners to the buttons
-document.getElementById('btn-mistral').addEventListener('click', () => init('mistral24b'));
+// MODIFIED: The click listener now passes the full, correct model name.
+document.getElementById('btn-mistral').addEventListener('click', () => init('mistral-small-3.1-24b'));
 document.getElementById('btn-gemini').addEventListener('click', () => init('gemini'));
 
-// Load the default model's results when the page opens
-init('mistral24b');
+// MODIFIED: The default model loaded on page open is also the full, correct name.
+init('mistral-small-3.1-24b');
     
 </script>
 </html>

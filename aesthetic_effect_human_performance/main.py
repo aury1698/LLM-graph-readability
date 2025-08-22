@@ -302,8 +302,32 @@ def pick_random_image_and_task(test_images_dir, processed_images):
     return image_path, chosen_image_name, task, len(unprocessed)
 
 
+### NEW FUNCTION ###
+def generate_and_create_paths(model_name, mode, cot_mode, attempt):
+    """
+    Generate paths for results and logs based on parameters,
+    and create the destination directory if it doesn't exist.
+    """
+    # Create the base directory path
+    base_dir = os.path.join("results", model_name, mode, cot_mode)
+
+    # Create the directory (does nothing if it already exists)
+    os.makedirs(base_dir, exist_ok=True)
+
+    # Define the filenames
+    csv_filename = f"results_attempt_{attempt}.csv"
+    log_filename = f"log_attempt_{attempt}.txt"
+
+    # Return the full paths
+    csv_path = os.path.join(base_dir, csv_filename)
+    log_path = os.path.join(base_dir, log_filename)
+
+    return csv_path, log_path
+
+### MODIFIED ###
 def main(
-    task, mode, cot_mode, model_name, image_path, attempt, output_file="results.csv"
+    task, mode, cot_mode, model_name, image_path, attempt, output_file_path, log_file_path,
+    images_done=None, total_images=None
 ):
     # Map the task to the corresponding JSON file
     task_files = {
@@ -344,7 +368,7 @@ def main(
     # Initialize the model
     model = initialize_model(model_name)
 
-    # Load the desided image
+    # Load the desired image
     image_url = local_image_to_data_url(image_path)
     image_name = os.path.splitext(os.path.basename(image_path))[0]
     print(f"Image name: {image_name}")
@@ -355,8 +379,6 @@ def main(
     few_shot_prompts = []
 
     if mode == "few_shot":
-        #{"type": "text", "text": user_msg},
-        #{"type": "image_url", "image_url": {"url": image_url}}
         examples_text = (
             "## Examples\n\n"
             "Carefully review the following examples of graph visualizations. "
@@ -374,36 +396,44 @@ def main(
             few_shot_prompts.append({"type": "image_url", "image_url": {"url": example_image_url}})
             few_shot_prompts.append({"type": "text", "text": f"\nAnswer: {example["output"]}\n\n"})
 
-    #print("\n--- System context ---")
-    #print("\n" + system_msg + "\n")
-
-    #print("\n--- User prompt ---")
-    #print("\n" + user_msg + "\n")
-
     prompt = create_prompt(model_name, system_msg, user_msg, image_url, few_shot_prompts)
 
+    # Load the ground truth for the current image
+    ground_truth = load_ground_truth(ground_truth_data, image_name)
     # Invoke the model and get the response
     try:
         response, base_metrics = invoke_model(model_name, model, prompt, config=config)
         print("\n--- Model Response ---")
         print(response)
+        
+        ### MODIFIED ###
+        # Save the full response to the correct log file
+        with open(log_file_path, "a", encoding="utf-8") as log_file:
+            log_file.write("\n" + "="*60 + "\n")
+            log_file.write(f"Image name: {image_name}\n")
+            log_file.write(f"Task: {task}\n")
+            log_file.write(f"Model: {model_name}\n")
+            log_file.write(f"Mode: {mode}, COT: {cot_mode}, Attempt: {attempt}\n")
+            log_file.write("--- Model Response ---\n")
+            log_file.write(f"{response}\n")
+            log_file.write("--- Ground Truth ---\n")
+            log_file.write(f"{ground_truth}\n")
+            if images_done is not None and total_images is not None:
+                log_file.write(f"Progress: {images_done}/{total_images} images processed.\n")
+            log_file.write("="*60 + "\n")
+            
     except Exception as e:
         print(f"Error during model invocation: {e}")
         response = None
         base_metrics = None
 
-    # Evaluate the response comparing it with the ground truth
-    ground_truth = load_ground_truth(ground_truth_data, image_name)
+    # Evaluate the response by comparing it with the ground truth
     print("\n--- Ground Truth ---")
     print(ground_truth)
 
     # compute all metrics
     metrics = compute_metrics(task, response, ground_truth, base_metrics)
-
-    #print("\n--- Metrics ---")
-    #for key, value in metrics.items():
-    #    print(f"{key}: {value}")
-
+    
     # Parse the response
     parsed_response = parse_model_response(response, task)
 
@@ -472,9 +502,8 @@ def main(
                 else None,
             }
         ]
-
-        # Save results to CSV
-        save_results_to_csv(results, output_file=output_file)
+    
+        save_results_to_csv(results, output_file=output_file_path)
 
 
 if __name__ == "__main__":
@@ -482,12 +511,21 @@ if __name__ == "__main__":
     test_images_dir = "dataset/test"
     mode = "few_shot"  # "zero_shot" or "few_shot"
     cot_mode = "no_cot"  # "no_cot" or "cot"
-    model_name = "mistral-small-3.1-24b"  # "gpt-4o" or "gemini-2.5-flash-preview-05-20" or any other supported model
-    attempt = 1  # Attempt number
-    max_images_per_run = 450  # <--- Set how many images to process per run
-    csv_output_file = "bruh.csv"
+    model_name = "mistral-small-3.1-24b"
+    attempt = 1
+    max_images_per_run = 450
+
+    ### MODIFIED ###
+    # Dynamically generate paths for the results and log files
+    csv_output_file, log_file_path = generate_and_create_paths(
+        model_name, mode, cot_mode, attempt
+    )
+    
+    print(f"CSV results will be saved to: {csv_output_file}")
+    print(f"Logs will be saved to: {log_file_path}")
 
     for i in range(max_images_per_run):
+        # Use the dynamic CSV path to get the already processed images
         processed_images = get_processed_images(
             csv_file=csv_output_file,
             mode=mode,
@@ -504,6 +542,9 @@ if __name__ == "__main__":
         image_path, image_name, task, remaining = pick_random_image_and_task(
             test_images_dir, processed_images
         )
+        images_done = len(processed_images) + 1
+        
+        # Pass the dynamic paths to the main function
         main(
             task,
             mode,
@@ -511,9 +552,11 @@ if __name__ == "__main__":
             model_name,
             image_path,
             attempt,
-            output_file=csv_output_file,
+            output_file_path=csv_output_file,
+            log_file_path=log_file_path,
+            images_done=images_done,
+            total_images=total_images,
         )
-        images_done = len(processed_images) + 1
         print(
             f"\nProgress: {images_done}/{total_images} images processed for mode='{mode}', cot_mode='{cot_mode}', attempt={attempt}, model='{model_name}'."
         )

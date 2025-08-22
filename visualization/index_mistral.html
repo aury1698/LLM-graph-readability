@@ -12,45 +12,75 @@
             background: #fafbfc;
             color: #222;
         }
-        main {
-            max-width: 600px;
-            margin: auto;
+        .controls-container {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #eee;
         }
         .controls {
-            margin-bottom: 2rem;
             text-align: center;
+        }
+        .controls h3 {
+            margin-top: 0;
+            color: #555;
         }
         .controls button {
             padding: 10px 20px;
             font-size: 1rem;
-            margin: 0 10px;
+            margin: 0 5px;
             cursor: pointer;
             border: 1px solid #ccc;
             background: #fff;
             border-radius: 5px;
             transition: background-color 0.2s, color 0.2s;
         }
-        .controls button.active {
-            background: #1a73e8;
+        /* Model Buttons Colors */
+        .model-controls button.active {
+            background: #1a73e8; /* Blue */
             color: white;
             border-color: #1a73e8;
         }
-        .controls button:not(.active) {
-            background: #e8711a;
+        .model-controls button:not(.active) {
+            background: #80868b; /* Gray */
+            color: white;
+            border-color: #80868b;
+        }
+        /* Mode Buttons Colors (Dataset) */
+        .mode-controls button.active {
+            background: #e8711a; /* Orange */
             color: white;
             border-color: #e8711a;
+        }
+        .mode-controls button:not(.active) {
+            background: #80868b; /* Gray */
+            color: white;
+            border-color: #80868b;
         }
     </style>
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
     <h1>Visualize LLM Results</h1>
-    <p>Click on the buttons below to switch between Mistral and Gemini models. Results are aggregated from multiple CSV files and displayed in a structured format.</p>
+    <p>Select a dataset and a model below. Results are aggregated from all available CSV files for the chosen configuration.</p>
 
-    <!-- UI Controls for model selection -->
-    <div class="controls">
-        <button id="btn-mistral">Mistral</button>
-        <button id="btn-gemini">Gemini</button>
+    <!-- NEW: A container for all controls -->
+    <div class="controls-container">
+        <!-- NEW: UI Controls for dataset/mode selection -->
+        <div class="controls mode-controls">
+            <h3>Select Dataset</h3>
+            <button id="btn-aurora">Aurora</button>
+            <button id="btn-bastian">Bastian</button>
+        </div>
+
+        <!-- UI Controls for model selection -->
+        <div class="controls model-controls">
+            <h3>Select Model</h3>
+            <button id="btn-mistral">Mistral</button>
+            <button id="btn-gemini">Gemini</button>
+        </div>
     </div>
 
     <!-- Container where results will be rendered -->
@@ -59,17 +89,24 @@
 </body>
 <script>
 
+// ===================================================================================
+// SCRIPT REFACTORED FOR INDEPENDENT CONTROLS
+// ===================================================================================
+
+// NEW: State Management
+// These variables will hold the current selection.
+let currentModel = 'mistral-small-3.1-24b';
+let currentMode = 'aurora';
+
+// The data loading function remains the same, as it was already flexible.
 async function loadAndAggregateResults(basePath, modelName, mode) {
     let allFilePaths = [];
 
     if (modelName === "gemini") {
-        // Gemini case: still loads the single file.
         console.log("Loading single file for Gemini...");
         allFilePaths.push(`${basePath}/results_with_new_prompt.csv`);
     } 
-    // MODIFIED: This condition now uses the full, correct model name.
     else if (modelName === "mistral-small-3.1-24b") {
-        // MISTRAL CASE: This logic correctly builds paths based on the full model name.
         console.log(`Loading results for ${modelName} with the new folder structure...`);
         
         const shotTypes = ["zero_shot", "few_shot"];
@@ -80,8 +117,9 @@ async function loadAndAggregateResults(basePath, modelName, mode) {
             for (const cot of cotTypes) {
                 for (const attempt of attempts) {
                     const fileName = `results_attempt_${attempt}.csv`;
-                    // The 'modelName' variable here is now "mistral-small-3.1-24b", matching the folder structure.
-                    const filePath = `${basePath}/results/${modelName}/${shot}/${cot}/${fileName}`;
+                    // The path construction now correctly uses the 'mode' variable for its logic
+                    const basePathForModel = (mode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
+                    const filePath = `${basePathForModel}/results/${modelName}/${shot}/${cot}/${fileName}`;
                     allFilePaths.push(filePath);
                 }
             }
@@ -104,23 +142,22 @@ async function loadAndAggregateResults(basePath, modelName, mode) {
     return resultsFromAllFiles.flat();
 }
 
-
-async function init(modelName) {
+// MODIFIED: 'init' is now 'renderResults' and reads from the global state variables.
+async function renderResults() {
     const resultsContainer = document.getElementById('results-container');
     resultsContainer.innerHTML = '<h2>Loading results...</h2>';
 
-    // MODIFIED: This condition now uses the full, correct model name.
-    document.getElementById('btn-mistral').classList.toggle('active', modelName === 'mistral-small-3.1-24b');
-    document.getElementById('btn-gemini').classList.toggle('active', modelName === 'gemini');
+    // Update the active state for ALL buttons based on the current state
+    document.getElementById('btn-mistral').classList.toggle('active', currentModel === 'mistral-small-3.1-24b');
+    document.getElementById('btn-gemini').classList.toggle('active', currentModel === 'gemini');
+    document.getElementById('btn-aurora').classList.toggle('active', currentMode === 'aurora');
+    document.getElementById('btn-bastian').classList.toggle('active', currentMode === 'bastian');
 
-    let mode = "aurora";
-    //let mode = "bastian";
-
+    // --- Data setup logic now uses 'currentMode' ---
     let human_results_bastian = {
         "errors": {"b-": 0.53, "b+": 0.24, "c-": 0.80, "c+": 0.29, "m-": 0.38, "m+": 0.36, "o-": 0.36, "o+": 0.36, "s-": 0.31, "s+": 0.29},
         "reaction_time": {"b-": 81.40, "b+": 67.18, "c-": 139.78, "c+": 66.39, "m-": 68.17, "m+": 76.55, "o-": 76.71, "o+": 68.17, "s-": 67.74, "s+": 55.58}
     };
-
     let human_results_aurora = {
         "errors": {"FD-FR": 0.164, "FD-K": 0.109, "PG": 0.291, "PGS": 0.236, "POGBa": 0.236, "POGBb": 0.255, "SEIS": 0.436, "Tu": 0.145},
         "reaction_time": {"FD-FR": 66.79, "FD-K": 68.54, "PG": 73.23, "PGS": 78.41, "POGBa": 77.55, "POGBb": 74.76, "SEIS": 78.67, "Tu": 77.74}
@@ -128,34 +165,36 @@ async function init(modelName) {
 
     let letters, path, human_results;
     
-    if (mode == "bastian") {
+    if (currentMode == "bastian") {
         letters = ["b-", "b+", "c-", "c+", "m-", "m+", "o-", "o+", "s-", "s+"];
         path = "../aesthetic_effect_human_performance";
         human_results = human_results_bastian;
-    } else {
+    } else { // Aurora mode
         letters = ["FD-FR", "FD-K", "PG", "PGS", "POGBa", "POGBb", "SEIS", "Tu"];
         path = "../layout_algorithms_performance";
         human_results = human_results_aurora;
     }
     
-    let resultfile = await loadAndAggregateResults(path, modelName, mode);
+    // The function call now uses the state variables
+    let resultfile = await loadAndAggregateResults(path, currentModel, currentMode);
     
-    resultsContainer.innerHTML = ''; // Clear "Loading..." message
+    resultsContainer.innerHTML = ''; // Clear "Loading..."
     
     if (resultfile.length === 0) {
-        resultsContainer.innerHTML = `<h1>No result files found for ${modelName}.</h1> <p>Check the console for details about the searched file paths.</p>`;
+        resultsContainer.innerHTML = `<h1>No result files found for ${currentModel} in ${currentMode} mode.</h1> <p>Check the console and folder structure.</p>`;
         console.error("No data to display.");
         return;
     }
     
     const titleElement = document.createElement('h2');
-    // MODIFIED: This logic is more robust to detect the model name.
-    let displayName = modelName.includes('mistral') ? 'Mistral' : 'Gemini';
-    titleElement.textContent = `${displayName} Results`;
+    let modelDisplayName = currentModel.includes('mistral') ? 'Mistral' : 'Gemini';
+    let modeDisplayName = currentMode.charAt(0).toUpperCase() + currentMode.slice(1); // Capitalize mode name
+    titleElement.textContent = `${modeDisplayName} Dataset Results: ${modelDisplayName}`;
     titleElement.style.textAlign = 'center';
     titleElement.style.marginBottom = '1.5rem';
     resultsContainer.appendChild(titleElement);
 
+    // Sme logic as before
     let task_names = ["task1", "task2", "task3"];
     let gts = ["gt1", "gt2", "gt3", "gt4", "gt5"];
     let PAIRS = ["PAIR1", "PAIR2", "PAIR3", "PAIR4", "PAIR5"]; 
@@ -172,7 +211,6 @@ async function init(modelName) {
         if (test_agglomerated_results.length === 0) continue;
 
         resultsContainer.appendChild(document.createElement("hr"));
-
         let testdatadiv = document.createElement("div");
         testdatadiv.innerHTML = `<h3>${test}</h3>`;
         testdatadiv.style.fontSize = "1.2rem";
@@ -223,45 +261,35 @@ async function init(modelName) {
                 const layoutName = `${test}_${gt}_${pair}`;
                 let instance_results = test_agglomerated_results.filter(d => d.Layout === layoutName);
                 if (instance_results.length === 0) continue;
-
                 try {
                     let small_div = document.createElement("div");
                     small_div.style.verticalAlign = "top";
                     small_div.style.marginRight = "1rem";
                     gtdiv.appendChild(small_div);
-
                     let img = document.createElement("img");
                     img.src = `${path}/dataset/test/${layoutName}.png`;
                     img.style.width = "100px";
                     img.style.height = "auto";
                     img.style.marginBottom = "1rem";
                     small_div.appendChild(img);
-
                     let smaller_div = document.createElement("div");
                     smaller_div.innerHTML = `<b>${gt}_${pair}</b><br>`;
-
                     let zero_shot_results = instance_results.filter(result => result["LLM Mode"] === 'Zero-Shot');
                     let few_shot_results = instance_results.filter(result => result["LLM Mode"] === 'Few-Shot');
-
-                    // Zero Shot
                     if (zero_shot_results.length > 0) {
                         smaller_div.innerHTML += `<span style="color:#1a73e8;"><b>Zero Shot</b></span><br>`;
                         zero_shot_results.forEach((result, idx) => {
                             smaller_div.innerHTML += `${idx}: ${result["Correct Prediction (True/False)"]}<br>`;
                         });
                     }
-
-                    // Few Shot
                     if (few_shot_results.length > 0) {
                         smaller_div.innerHTML += `<span style="color:#e8711a;"><b>Few Shot</b></span><br>`;
                         few_shot_results.forEach((result, idx) => {
                             smaller_div.innerHTML += `${idx}: ${result["Correct Prediction (True/False)"]}<br>`;
                         });
                     }
-
                     smaller_div.style.fontSize = "0.65rem";
                     small_div.appendChild(smaller_div);
-
                 } catch (error) {
                     console.error(`Error during the processing of ${layoutName}:`, error);
                 }
@@ -270,12 +298,27 @@ async function init(modelName) {
     }
 }
 
-// MODIFIED: The click listener now passes the full, correct model name.
-document.getElementById('btn-mistral').addEventListener('click', () => init('mistral-small-3.1-24b'));
-document.getElementById('btn-gemini').addEventListener('click', () => init('gemini'));
+// NEW: Event Listeners
+// They update the state and then call the main rendering function.
+document.getElementById('btn-mistral').addEventListener('click', () => {
+    currentModel = 'mistral-small-3.1-24b';
+    renderResults();
+});
+document.getElementById('btn-gemini').addEventListener('click', () => {
+    currentModel = 'gemini';
+    renderResults();
+});
+document.getElementById('btn-aurora').addEventListener('click', () => {
+    currentMode = 'aurora';
+    renderResults();
+});
+document.getElementById('btn-bastian').addEventListener('click', () => {
+    currentMode = 'bastian';
+    renderResults();
+});
 
-// MODIFIED: The default model loaded on page open is also the full, correct name.
-init('mistral-small-3.1-24b');
+// Initial load with default values
+renderResults();
     
 </script>
 </html>

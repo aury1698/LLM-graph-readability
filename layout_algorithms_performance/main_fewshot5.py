@@ -512,7 +512,7 @@ if __name__ == "__main__":
     mode = "zero_shot"  # "zero_shot" or "few_shot"
     cot_mode = "no_cot"  # "no_cot" or "cot"
     model_name = "mistral-small-3.1-24b"
-    attempt = 6
+    attempt = 8
     max_images_per_run = 280
 
     ### MODIFIED ###

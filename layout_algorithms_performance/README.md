@@ -154,3 +154,38 @@ SEIS_task1_gt4_PAIR1.png   → Task 1, GT = 4
 ```
 ---
 
+## How many attempts are needed to achieve statistical significance?
+### Data
+
+-   **Real Average Time per Task:** 26.25 sec
+    
+-   **Number of Tasks:** 280
+    
+-   **Number of Configurations:** 4
+    
+-   **Available Calculation Time:** 7 days
+    
+
+### Final Calculation
+
+1. **Time for a single complete repetition:**
+    
+    - 280 tasks \* 4 configurations \* **26.25** (CHECK IT EACH TIME WITH THE SCRIPT) seconds/task = 29,400 seconds
+        
+    - This should be equivalent to about **8.17 hours** to complete all my experiments once.
+        
+2.  **Total computing time available in seconds:**
+    
+    - 7 days \ 24 hours/day \ 3600 seconds/hour = 604,800 seconds
+        
+3.  **Total number of possible repetitions:**
+    
+    - 604,800 total seconds / 29,400 seconds per repetition = 20.57
+        
+
+### The Concrete Answer.
+
+Since I can only perform full repetitions, the final number is **20** or a little higher.
+
+So, to the question “How many attempts should I do?” --> **approximately 20 repetitions.**
+

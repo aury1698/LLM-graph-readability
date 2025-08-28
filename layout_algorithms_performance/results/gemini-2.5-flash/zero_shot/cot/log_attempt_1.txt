@@ -2370,3 +2370,160 @@ Nodes to remove: 3, Cut Set: [I, P, M]
 {'length': 2, 'cut_set': ['E', 'H']}
 Progress: 118/280 images processed.
 ============================================================
+
+============================================================
+Image name: PG_task2_gt2_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 1
+--- Model Response ---
+
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'M']}
+Progress: 119/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task2_gt3_PAIR2
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 1
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (E and H), we first need to identify all paths between E and H. A crucial point of interpretation is whether the direct edge between E and H counts as a path that needs to be cut. In the context of vertex cuts, if two nodes are directly connected and cannot be removed, it's impossible to disconnect them by removing other nodes. Therefore, we will assume the question implies finding a vertex cut for all paths of length 2 or more, i.e., paths that involve at least one intermediate node.
+
+Let's list the neighbors of E and H (excluding each other):
+*   Neighbors of E: G, M
+*   Neighbors of H: F, B, I
+
+Any path from E to H (that does not use the direct edge E-H) must start with E-G or E-M. Similarly, any such path must end with F-H, B-H, or I-H.
+
+**1. Check for a cut set of size 1:**
+*   If we remove G: Paths starting E-G-...-H are cut. However, paths starting E-M-...-H (e.g., E-M-J-I-H) still exist.
+*   If we remove M: Paths starting E-M-...-H are cut. However, paths starting E-G-...-H (e.g., E-G-F-H) still exist.
+*   If we remove F: Paths ending ...-F-H are cut. However, paths ending ...-B-H or ...-I-H still exist.
+*   If we remove B: Paths ending ...-B-H are cut. However, paths ending ...-F-H or ...-I-H still exist.
+*   If we remove I: Paths ending ...-I-H are cut. However, paths ending ...-F-H or ...-B-H still exist.
+*   If we remove any other single node (e.g., J, P, C, O, N, X, K, L, Y), there will always be at least one path remaining between E and H. For example, removing J still leaves E-G-F-H.
+
+Since removing any single node does not disconnect E and H, the minimum number of nodes to remove must be at least 2.
+
+**2. Check for a cut set of size 2:**
+We need to find a set of two nodes whose removal disconnects E and H.
+
+Consider the two main "branches" from E: one through G and one through M.
+*   **Paths through G:** All paths from E that go through G eventually reach H via F (e.g., E-G-F-H, E-G-X-F-H, E-G-K-F-H).
+*   **Paths through M:** All paths from E that go through M eventually reach H via J, I, P, O, C, B (e.g., E-M-J-I-H, E-M-J-P-I-H, E-M-J-P-O-C-B-H).
+
+Let's try removing two nodes:
+
+*   **Cut Set: {G, M}**
+    *   If G is removed, all paths starting E-G-...-H are cut.
+    *   If M is removed, all paths starting E-M-...-H are cut.
+    *   Since E has no other neighbors (besides H directly), removing G and M completely disconnects E from all other nodes in the graph, thus disconnecting E from H via any intermediate path. This set works.
+
+Let's verify with another possible cut set of size 2:
+
+*   **Cut Set: {F, J}**
+    *   If F is removed, all paths E-G-F-...-H are cut.
+    *   If J is removed, all paths E-M-J-...-H are cut.
+    *   This also disconnects E and H, as all paths from E must go through either G (and then F) or M (and then J). This set works.
+
+Since we have found a cut set of size 2, and we established that 1 node is not enough, the minimum number of nodes to remove is 2. We can provide one of the valid cut sets.
+
+Nodes to remove: 2, Cut Set: [G, M]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'B', 'I'], ['F', 'B', 'M'], ['B', 'G', 'M']]}
+Progress: 119/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task1_gt2_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 1
+--- Model Response ---
+Length: 1, Path: [E, H]
+--- Ground Truth ---
+{'length': 2, 'path': ['E', 'B', 'H']}
+Progress: 120/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task1_gt4_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 1
+--- Model Response ---
+Length: 2, Path: [K, M, J]
+--- Ground Truth ---
+{'length': 4, 'path': ['J', 'M', 'E', 'F', 'K']}
+Progress: 121/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task3_gt2_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 1
+--- Model Response ---
+To determine the minimum number of edges that must be removed to completely disconnect the two black nodes (J and F), I will follow the steps outlined, which involves identifying paths and finding a minimum edge cut. According to Menger's Theorem, the minimum number of edges to remove is equal to the maximum number of edge-disjoint paths between the two nodes.
+
+1.  **Identify the two black nodes:** J and F.
+
+2.  **List the neighbors of J:**
+    *   J is connected to M
+    *   J is connected to D
+    *   J is connected to P
+    *   J is connected to I
+
+3.  **List the neighbors of F:**
+    *   F is connected to E
+    *   F is connected to B
+    *   F is connected to K
+    *   F is connected to G
+
+4.  **Find edge-disjoint paths between J and F:** I will attempt to find as many paths as possible that do not share any common edges.
+
+    *   **Path 1:** J - M - L - E - F
+        *   Edges: (J,M), (M,L), (L,E), (E,F)
+
+    *   **Path 2:** J - D - P - O - N - B - F
+        *   Edges: (J,D), (D,P), (P,O), (O,N), (N,B), (B,F)
+
+    *   **Path 3:** J - I - C - H - G - F
+        *   Edges: (J,I), (I,C), (C,H), (H,G), (G,F)
+
+    *   **Path 4:** J - P - I - H - X - K - F
+        *   Edges: (J,P), (P,I), (I,H), (H,X), (X,K), (K,F)
+
+5.  **Verify if these paths are edge-disjoint:**
+    Let's list all edges used by these four paths and check for duplicates:
+    *   From Path 1: (J,M), (M,L), (L,E), (E,F)
+    *   From Path 2: (J,D), (D,P), (P,O), (O,N), (N,B), (B,F)
+    *   From Path 3: (J,I), (I,C), (C,H), (H,G), (G,F)
+    *   From Path 4: (J,P), (P,I), (I,H), (H,X), (X,K), (K,F)
+
+    Upon inspection, all edges listed across these four paths are unique. For example:
+    *   The first edges from J are (J,M), (J,D), (J,I), (J,P) - all distinct.
+    *   The edges (M,L), (D,P), (I,C), (P,I) are all distinct.
+    *   The edges (L,E), (P,O), (C,H), (I,H) are all distinct.
+    *   The edges (E,F), (O,N), (H,G), (H,X) are all distinct.
+    *   The edges (N,B), (G,F), (X,K) are all distinct.
+    *   The edges (B,F), (K,F) are distinct.
+
+    Since I have found 4 edge-disjoint paths between J and F, the maximum number of edge-disjoint paths is at least 4. By Menger's Theorem, the minimum number of edges to remove to disconnect J and F is at least 4.
+
+6.  **Identify a cut set of 4 edges:**
+    A straightforward way to disconnect J from F is to remove all edges directly connected to J.
+    The edges connected to J are: (J,M), (J,D), (J,P), (J,I).
+    Removing these 4 edges will isolate J from the rest of the graph, thus disconnecting it from F.
+
+    Similarly, removing all edges connected to F: (F,E), (F,B), (F,K), (F,G) would also disconnect F from J with 4 edges.
+
+Since we found 4 edge-disjoint paths, and we can find a cut set of 4 edges, the minimum number of edges to remove is 4.
+
+Edges to remove: 4, Cut Set: [(J, M), (J, D), (J, P), (J, I)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 122/280 images processed.
+============================================================

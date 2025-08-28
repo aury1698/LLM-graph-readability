@@ -23,7 +23,7 @@ def initialize_model(model_name):
             raise ValueError("OPENAI_API_KEY is not set in the environment variables.")
         return ChatOpenAI(model="gpt-4o")
     elif model_name.startswith("gemini"):
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = os.getenv("GEMINI_API_KEY_SECONDARY")
         if not api_key:
             raise ValueError(
                 "GEMINI_API_KEY_SECONDARY is not set in the environment variables."
@@ -512,7 +512,7 @@ if __name__ == "__main__":
     mode = "zero_shot"  # "zero_shot" or "few_shot"
     cot_mode = "cot"  # "no_cot" or "cot"
     model_name = "gemini-2.5-flash"  # Change to "mistral-small-3.1-24b" or other models as needed
-    attempt = 1
+    attempt = 2
     max_images_per_run = 280
 
     ### MODIFIED ###

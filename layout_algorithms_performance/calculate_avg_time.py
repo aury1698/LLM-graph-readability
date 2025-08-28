@@ -1,107 +1,105 @@
-# calculate_average_time_recursive.py
-
-# Step 1: Import necessary libraries
-# We need 'pandas' to read and manipulate CSV files.
-# We need 'glob' to find all files matching a pattern recursively.
-# We need 'os' to work with file paths correctly.
 import pandas as pd
 import glob
 import os
+import math
 
 # --- CONFIGURATION ---
-# Step 2: Define the BASE path where your project folders are located.
-# This is the ONLY path you need to change.
-# It should point to the directory that CONTAINS 'layout_algorithms_performance'
-# and 'aesthetic_effect_human_performance'.
-# Let's assume you run this script from a 'scripts' folder, so '../' goes one level up.
-BASE_SEARCH_PATH = '../layout_algorithms_performance/results' 
+
+BASE_SEARCH_PATH = '../layout_algorithms_performance/results/mistral-small-3.1-24b'
+TASKS_PER_CONFIGURATION = 280   # Tasks per configuration
+NUM_CONFIGURATIONS = 4          # Configurations tested (e.g., cot/no_cot * zero/few_shot)
+TARGET_COMPUTE_DAYS = 7         # Total compute budget in days
 # ---------------------
 
-def calculate_average_time_recursively():
+# --- COLORS (ANSI escape codes) ---
+class Colors:
+    HEADER = "\033[95m"
+    BLUE = "\033[94m"
+    CYAN = "\033[96m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+
+
+def analyze_experiment_progress():
     """
-    Recursively finds all CSV files in a base directory, extracts 
-    time values from them, and calculates the overall average.
+    Recursively analyzes CSV files to calculate compute time usage,
+    average time per task, and estimate feasible reruns within a target budget.
     """
     
-    # Step 3: Create a list to store all the numerical time values found.
-    # This list will aggregate values from every single CSV file found.
     all_time_values = []
-    
-    # Step 4: Define the search pattern for finding the files.
-    # os.path.join(BASE_SEARCH_PATH, '**', '*.csv') builds a pattern.
-    # - '**' is a special wildcard that tells glob to search in the current directory
-    #   AND all subdirectories, no matter how deep.
-    # - '*.csv' matches any file that ends with .csv.
     search_pattern = os.path.join(BASE_SEARCH_PATH, '**', '*.csv')
     
-    print(f"Searching for all .csv files recursively inside: {os.path.abspath(BASE_SEARCH_PATH)}\n")
+    print(f"{Colors.HEADER}{Colors.BOLD}>>> Starting experiment progress analysis...{Colors.RESET}\n")
+    print(f"Searching recursively in: {Colors.CYAN}{os.path.abspath(BASE_SEARCH_PATH)}{Colors.RESET}\n")
     
-    # Step 5: Execute the search.
-    # The 'recursive=True' argument enables the '**' wildcard functionality.
-    # This will return a list of all matching file paths.
     csv_file_paths = glob.glob(search_pattern, recursive=True)
-    
-    # Filter out any potential results from a virtual environment folder if it exists
     csv_file_paths = [path for path in csv_file_paths if 'venv' not in path and '.venv' not in path]
 
-    # Check if any CSV files were found.
     if not csv_file_paths:
-        print(f"Error: No .csv files were found in the search path.")
-        return # Exit the function if there's nothing to process.
+        print(f"{Colors.RED}Error: No CSV files found in the specified path.{Colors.RESET}")
+        return
 
-    print(f"Found {len(csv_file_paths)} CSV file(s). Starting processing...")
+    print(f"Discovered {Colors.GREEN}{len(csv_file_paths)}{Colors.RESET} CSV file(s). Processing...\n")
 
-    # Step 6: Loop through each file path that was found.
     for file_path in csv_file_paths:
         try:
-            # For clarity, print the file being processed.
-            print(f"  -> Processing: {file_path}")
-            
-            # Read the current CSV file into a pandas DataFrame.
             df = pd.read_csv(file_path)
-            
-            # Check if the 'Time (sec)' column exists in this DataFrame.
             if 'Time (sec)' in df.columns:
-                
-                # Step 7: Extract, clean, and convert the 'Time (sec)' column.
-                # This is the same logic as before, but applied to each file found.
-                
-                # Use .str.extract() with a regular expression to robustly find the number.
-                # '(\d+\.?\d*)' looks for one or more digits, optionally followed by a dot and more digits.
-                # This is more robust than just replacing ' seconds'.
                 numeric_strings = df['Time (sec)'].astype(str).str.extract(r'(\d+\.?\d*)')[0]
-                
-                # Convert the extracted strings to numeric values. 'coerce' handles any failures.
                 numeric_times = pd.to_numeric(numeric_strings, errors='coerce')
-                
-                # Remove any NaN (Not a Number) values that might result from failed conversions.
                 valid_times = numeric_times.dropna()
-                
-                # Add the valid numbers from this file to our master list.
                 all_time_values.extend(valid_times.tolist())
-                
             else:
-                # If the column is missing, print a warning but continue with the other files.
-                print(f"     Warning: Column 'Time (sec)' not found in this file.")
+                print(f"{Colors.YELLOW}Warning: Column 'Time (sec)' not found in {file_path}{Colors.RESET}")
 
         except Exception as e:
-            # If any other error happens (e.g., file is empty or corrupt), report it and move on.
-            print(f"     Error processing file {os.path.basename(file_path)}: {e}")
+            print(f"{Colors.RED}Error processing {os.path.basename(file_path)}: {e}{Colors.RESET}")
 
-    # Step 8: Calculate the final average from all collected data.
     if all_time_values:
-        # Calculate the sum divided by the count.
-        average_time = sum(all_time_values) / len(all_time_values)
-        
-        # Step 9: Print the final, consolidated result.
-        print("\n--- Calculation Complete ---")
-        print(f"Total valid time entries found across {len(csv_file_paths)} file(s): {len(all_time_values)}")
-        print(f"The average time is: {average_time:.2f} seconds")
-    else:
-        # This message appears if no files contained valid time data.
-        print("\n--- Calculation Complete ---")
-        print("No valid 'Time (sec)' data was found in any of the processed files.")
+        # --- CALCULATIONS ---
+        average_time_sec = sum(all_time_values) / len(all_time_values)
+        total_time_spent_sec = sum(all_time_values)
+        target_total_time_sec = TARGET_COMPUTE_DAYS * 24 * 60 * 60
+        remaining_time_sec = target_total_time_sec - total_time_spent_sec
 
-# Standard entry point to run the function when the script is executed.
+        total_tasks_per_rerun = TASKS_PER_CONFIGURATION * NUM_CONFIGURATIONS
+        estimated_time_per_rerun_sec = average_time_sec * total_tasks_per_rerun
+        total_achievable_attempts = target_total_time_sec / estimated_time_per_rerun_sec
+
+        # --- OUTPUT ---
+        print(f"\n{Colors.BOLD}{Colors.HEADER}--- Compute Time Analysis Complete ---{Colors.RESET}\n")
+        
+        print(f"{Colors.BOLD}[ Current Status ]{Colors.RESET}")
+        print(f" • Files analyzed: {Colors.GREEN}{len(csv_file_paths)}{Colors.RESET}")
+        print(f" • Total tasks executed: {Colors.GREEN}{len(all_time_values)}{Colors.RESET}")
+        print(f" • Compute time used: {Colors.CYAN}{total_time_spent_sec:,.2f} sec{Colors.RESET} "
+              f"({total_time_spent_sec/3600:.2f} hours)")
+
+        print(f"\n{Colors.BOLD}[ Target and Remaining Budget ]{Colors.RESET}")
+        print(f" • Target budget: {Colors.BLUE}{target_total_time_sec:,.0f} sec{Colors.RESET} "
+              f"({TARGET_COMPUTE_DAYS} days)")
+        if remaining_time_sec > 0:
+            print(f" • Remaining: {Colors.GREEN}{remaining_time_sec:,.2f} sec{Colors.RESET} "
+                  f"({remaining_time_sec/3600:.2f} hours)")
+        else:
+            print(f" • Budget exceeded by: {Colors.RED}{-remaining_time_sec:,.2f} sec{Colors.RESET}")
+
+        print(f"\n{Colors.BOLD}[ Rerun Estimation ]{Colors.RESET}")
+        print(f" • Average time per task: {Colors.CYAN}{average_time_sec:.2f} sec{Colors.RESET}")
+        print(f" • Estimated time per full rerun ({total_tasks_per_rerun} tasks): "
+              f"{Colors.CYAN}{estimated_time_per_rerun_sec:,.2f} sec{Colors.RESET} "
+              f"({estimated_time_per_rerun_sec/3600:.2f} hours)")
+        print("-" * 60)
+        print(f"{Colors.BOLD}>>> Achievable full reruns within {TARGET_COMPUTE_DAYS} days: "
+              f"{Colors.GREEN}{math.floor(total_achievable_attempts)}{Colors.RESET}")
+        print("-" * 60)
+
+    else:
+        print(f"\n{Colors.YELLOW}--- Analysis finished: No valid 'Time (sec)' data found ---{Colors.RESET}")
+
+
 if __name__ == "__main__":
-    calculate_average_time_recursively()
+    analyze_experiment_progress()

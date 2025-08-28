@@ -66,16 +66,12 @@
     <h1>Visualize LLM Results</h1>
     <p>Select a dataset and a model below. Results are aggregated from all available CSV files for the chosen configuration.</p>
 
-    <!-- NEW: A container for all controls -->
     <div class="controls-container">
-        <!-- NEW: UI Controls for dataset/mode selection -->
         <div class="controls mode-controls">
             <h3>Select Dataset</h3>
             <button id="btn-aurora">Aurora</button>
             <button id="btn-bastian">Bastian</button>
         </div>
-
-        <!-- UI Controls for model selection -->
         <div class="controls model-controls">
             <h3>Select Model</h3>
             <button id="btn-mistral">Mistral</button>
@@ -83,41 +79,40 @@
         </div>
     </div>
 
-    <!-- Container where results will be rendered -->
     <div id="results-container"></div>
 
 </body>
 <script>
-
 // ===================================================================================
 // SCRIPT REFACTORED FOR INDEPENDENT CONTROLS
 // ===================================================================================
 
-// NEW: State Management
-// These variables will hold the current selection.
 let currentModel = 'mistral-small-3.1-24b';
 let currentMode = 'aurora';
 
-// The data loading function remains the same, as it was already flexible.
+// MODIFIED: loadAndAggregateResults function is now more flexible.
 async function loadAndAggregateResults(basePath, modelName, mode) {
     let allFilePaths = [];
 
-    if (modelName === "gemini") {
-        console.log("Loading single file for Gemini...");
-        allFilePaths.push(`${basePath}/results_with_new_prompt.csv`);
-    } 
-    else if (modelName === "mistral-small-3.1-24b") {
+    // CHANGED: Unified logic for both Mistral and Gemini.
+    // This block now handles any model that uses the subfolder structure.
+    if (modelName === "gemini" || modelName === "mistral-small-3.1-24b") {
         console.log(`Loading results for ${modelName} with the new folder structure...`);
         
         const shotTypes = ["zero_shot", "few_shot"];
         const cotTypes = ["cot", "no_cot"];
-        const attempts = [1, 2, 3, 4];
+        
+        // NEW: Dynamic attempts.
+        // Instead of a fixed array, we will try to load files up to a maximum number.
+        // If a file doesn't exist, the .catch() block will handle it gracefully.
+        // You can increase this number if you ever have more than 50 attempts.
+        const MAX_ATTEMPTS_TO_CHECK = 50;
 
         for (const shot of shotTypes) {
             for (const cot of cotTypes) {
-                for (const attempt of attempts) {
+                // CHANGED: Loop from 1 to MAX_ATTEMPTS_TO_CHECK instead of using a fixed array.
+                for (let attempt = 1; attempt <= MAX_ATTEMPTS_TO_CHECK; attempt++) {
                     const fileName = `results_attempt_${attempt}.csv`;
-                    // The path construction now correctly uses the 'mode' variable for its logic
                     const basePathForModel = (mode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
                     const filePath = `${basePathForModel}/results/${modelName}/${shot}/${cot}/${fileName}`;
                     allFilePaths.push(filePath);
@@ -133,7 +128,9 @@ async function loadAndAggregateResults(basePath, modelName, mode) {
                 return rows;
             })
             .catch(error => {
-                console.warn(`Could not load file (optional): ${path}`);
+                // This .catch() is now essential. It ignores requests for files that don't exist.
+                // You will see warnings in the console for non-existent attempts, which is normal.
+                // console.warn(`Could not load file (optional): ${path}`);
                 return [];
             })
     );
@@ -142,18 +139,16 @@ async function loadAndAggregateResults(basePath, modelName, mode) {
     return resultsFromAllFiles.flat();
 }
 
-// MODIFIED: 'init' is now 'renderResults' and reads from the global state variables.
+// The renderResults function remains mostly the same, as the logic inside is already robust.
 async function renderResults() {
     const resultsContainer = document.getElementById('results-container');
     resultsContainer.innerHTML = '<h2>Loading results...</h2>';
 
-    // Update the active state for ALL buttons based on the current state
     document.getElementById('btn-mistral').classList.toggle('active', currentModel === 'mistral-small-3.1-24b');
     document.getElementById('btn-gemini').classList.toggle('active', currentModel === 'gemini');
     document.getElementById('btn-aurora').classList.toggle('active', currentMode === 'aurora');
     document.getElementById('btn-bastian').classList.toggle('active', currentMode === 'bastian');
 
-    // --- Data setup logic now uses 'currentMode' ---
     let human_results_bastian = {
         "errors": {"b-": 0.53, "b+": 0.24, "c-": 0.80, "c+": 0.29, "m-": 0.38, "m+": 0.36, "o-": 0.36, "o+": 0.36, "s-": 0.31, "s+": 0.29},
         "reaction_time": {"b-": 81.40, "b+": 67.18, "c-": 139.78, "c+": 66.39, "m-": 68.17, "m+": 76.55, "o-": 76.71, "o+": 68.17, "s-": 67.74, "s+": 55.58}
@@ -175,10 +170,9 @@ async function renderResults() {
         human_results = human_results_aurora;
     }
     
-    // The function call now uses the state variables
     let resultfile = await loadAndAggregateResults(path, currentModel, currentMode);
     
-    resultsContainer.innerHTML = ''; // Clear "Loading..."
+    resultsContainer.innerHTML = ''; 
     
     if (resultfile.length === 0) {
         resultsContainer.innerHTML = `<h1>No result files found for ${currentModel} in ${currentMode} mode.</h1> <p>Check the console and folder structure.</p>`;
@@ -188,13 +182,12 @@ async function renderResults() {
     
     const titleElement = document.createElement('h2');
     let modelDisplayName = currentModel.includes('mistral') ? 'Mistral' : 'Gemini';
-    let modeDisplayName = currentMode.charAt(0).toUpperCase() + currentMode.slice(1); // Capitalize mode name
+    let modeDisplayName = currentMode.charAt(0).toUpperCase() + currentMode.slice(1); 
     titleElement.textContent = `${modeDisplayName} Dataset Results: ${modelDisplayName}`;
     titleElement.style.textAlign = 'center';
     titleElement.style.marginBottom = '1.5rem';
     resultsContainer.appendChild(titleElement);
 
-    // Sme logic as before
     let task_names = ["task1", "task2", "task3"];
     let gts = ["gt1", "gt2", "gt3", "gt4", "gt5"];
     let PAIRS = ["PAIR1", "PAIR2", "PAIR3", "PAIR4", "PAIR5"]; 
@@ -300,8 +293,6 @@ async function renderResults() {
     }
 }
 
-// NEW: Event Listeners
-// They update the state and then call the main rendering function.
 document.getElementById('btn-mistral').addEventListener('click', () => {
     currentModel = 'mistral-small-3.1-24b';
     renderResults();
@@ -319,7 +310,6 @@ document.getElementById('btn-bastian').addEventListener('click', () => {
     renderResults();
 });
 
-// Initial load with default values
 renderResults();
     
 </script>

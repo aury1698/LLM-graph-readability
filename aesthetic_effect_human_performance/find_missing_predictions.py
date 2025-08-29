@@ -3,6 +3,16 @@ import pandas as pd
 from colorama import Fore, Style
 from tabulate import tabulate
 
+MODEL_COLORS = [Fore.CYAN, Fore.MAGENTA, Fore.YELLOW, Fore.GREEN, Fore.BLUE, Fore.LIGHTRED_EX]
+
+def colorize_model_name(model_name, color_map):
+    """
+    Assigns a consistent color to each model name.
+    """
+    if model_name not in color_map:
+        color_map[model_name] = MODEL_COLORS[len(color_map) % len(MODEL_COLORS)]
+    return f"{color_map[model_name]}{model_name}{Style.RESET_ALL}"
+
 def load_all_results_from_subdirs(base_path):
     """
     Scans a directory tree, finds all .csv files, and concatenates them into a single DataFrame.
@@ -26,7 +36,7 @@ def load_all_results_from_subdirs(base_path):
         return None
 
     print(f"Found {len(all_csv_files)} CSV files to analyze. Loading...")
-
+    
     df_list = []
     for file_path in all_csv_files:
         try:
@@ -50,7 +60,7 @@ def main():
     """
     Main function to run the analysis on the experiment results.
     """
-    base_results_dir = "results"
+    base_results_dir = "results/mistral-small-3.1-24b"
     
     # Load all data from the new directory structure
     master_df = load_all_results_from_subdirs(base_results_dir)
@@ -75,7 +85,7 @@ def main():
         print(f"✅ {Fore.GREEN}No rows with missing 'Prediction' values found.{Style.RESET_ALL}")
 
     
-    print("\n--- 2. Checking if each configuration has 450 results ---")
+    print("\n--- 2. Checking if each configuration has 280 results ---")
     
     # Filter out rows that are invalid for this check
     df_valid = master_df[master_df["Prediction"].notnull() & (master_df["Prediction"].astype(str).str.strip() != "")]
@@ -91,9 +101,14 @@ def main():
     group_cols = ["Model Name", "LLM Mode", "COT Mode", "Attempt"]
     grouped = df_valid.groupby(group_cols)["Correct Prediction (True/False)"].value_counts().unstack(fill_value=0).reset_index()
 
+    model_color_map = {}
+    
     table_data = []
     for _, row in grouped.iterrows():
         config = [row.get(col, 'N/A') for col in group_cols]
+
+        config[0] = colorize_model_name(config[0], model_color_map)
+
         # Ensure columns 'True' and 'False' exist, otherwise default to 0
         n_true = row.get("True", 0)
         n_false = row.get("False", 0)

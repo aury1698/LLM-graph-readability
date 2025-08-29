@@ -3154,3 +3154,2398 @@ Length: 2, Path: [M, E, B]
 {'length': 2, 'path': ['B', 'E', 'M']}
 Progress: 164/280 images processed.
 ============================================================
+
+============================================================
+Image name: PG_task3_gt3_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 4, Cut Set: [(H, I), (H, C), (H, G), (H, X)].
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['B', 'H'], ['H', 'I'], ['G', 'H']]}
+Progress: 165/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task1_gt4_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [K, F, E, M, J]
+--- Ground Truth ---
+{'length': 4, 'path': ['J', 'M', 'E', 'F', 'K']}
+Progress: 166/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task3_gt2_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of edges that must be removed to disconnect the two black nodes (G and I), we need to find a minimum edge cut set between G and I.
+
+First, let's identify the direct neighbors of G and I:
+*   Neighbors of G: {H, F, X, K}
+*   Neighbors of I: {H, J, P, C}
+
+We can immediately identify two trivial cut sets:
+1.  Removing all edges connected to G: {(G,H), (G,F), (G,X), (G,K)}. This is a cut of size 4.
+2.  Removing all edges connected to I: {(I,H), (I,J), (I,P), (I,C)}. This is also a cut of size 4.
+
+This tells us that the minimum number of edges to remove is at most 4. Now, we need to check if a cut of size 1, 2, or 3 is possible.
+
+Let's list some of the distinct paths from G to I to understand the connectivity:
+
+1.  **G - H - I** (Direct path through H)
+2.  **G - K - J - I** (Path through K and J)
+3.  **G - F - M - J - I** (Path through F, M, and J)
+4.  **G - F - E - B - C - I** (Path through F, E, B, and C)
+5.  **G - F - E - B - N - C - I** (Path through F, E, B, N, and C)
+6.  **G - K - J - P - I** (Path through K, J, and P)
+7.  **G - F - M - J - P - I** (Path through F, M, J, and P)
+8.  **G - F - X - K - J - I** (Path through F, X, K, and J)
+9.  **G - X - K - J - I** (Path through X, K, and J)
+
+**Attempt to find a cut of size 1, 2, or 3:**
+
+*   **Cut of size 1:** No single edge removal can disconnect G from I, as there are multiple independent paths (e.g., G-H-I and G-K-J-I).
+*   **Cut of size 2:**
+    *   If we remove (G,H) and (K,J): Paths like G-F-M-J-I and G-F-E-B-C-I still exist.
+    *   If we remove (H,I) and (J,I): Paths like G-F-E-B-C-I and G-K-J-P-I still exist.
+*   **Cut of size 3:**
+    *   Consider removing three edges incident to G, e.g., {(G,H), (G,F), (G,X)}. G is still connected to K. From K, there's a path G-K-J-I. So, this is not enough.
+    *   Consider removing three edges incident to I, e.g., {(I,H), (I,J), (I,P)}. I is still connected to C. From C, there's a path G-F-E-B-C-I. So, this is not enough.
+    *   Let's try a mixed set of 3 edges that seem critical: {(G,H), (K,J), (M,J)}.
+        *   (G,H) cuts the direct path G-H-I.
+        *   (K,J) cuts all paths from G through K to J (e.g., G-K-J-I, G-X-K-J-I, G-F-X-K-J-I).
+        *   (M,J) cuts all paths from G through F-M to J (e.g., G-F-M-J-I, G-F-E-M-J-I).
+        *   If (K,J) and (M,J) are removed, then node J is effectively disconnected from G (as all paths from G to J pass through K or M). This means all paths from G to I that go through J (including those that then go to P, like G-K-J-P-I) are cut.
+        *   However, paths to I through C still remain, for example: G-F-E-B-C-I and G-F-E-B-N-C-I. Therefore, this set of 3 edges is not sufficient.
+    *   Let's try another set of 3 edges: {(H,I), (J,I), (C,I)}.
+        *   I is now only connected to P.
+        *   However, there are still paths from G to P, for example, G-K-J-P. So, G-K-J-P-I is still a path. This set of 3 edges is not sufficient.
+
+Since we have systematically explored possibilities for a cut of size 3 and found that none of them completely disconnect G from I, and we have identified a cut of size 4, the minimum number of edges to remove must be 4.
+
+One such cut set of 4 edges is:
+1.  (G,H) - cuts the direct path G-H-I.
+2.  (K,J) - cuts all paths from G through K to J.
+3.  (M,J) - cuts all paths from G through M to J. (With (K,J) and (M,J) removed, J is unreachable from G).
+4.  (C,I) - cuts all paths from G through C to I (e.g., G-F-E-B-C-I).
+
+Let's verify this cut set: {(G,H), (K,J), (M,J), (C,I)}.
+*   (G,H) disconnects G from H.
+*   (K,J) and (M,J) disconnect G from J (and subsequently from P, as all paths to P from G go through J).
+*   (C,I) disconnects G from C.
+Since I is only connected to H, J, P, C, and all these connections are either directly cut or made unreachable from G, G and I are completely disconnected.
+
+Edges to remove: 4, Cut Set: [(G,H), (K,J), (M,J), (C,I)].
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 167/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt3_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [F, E, M, J]
+--- Ground Truth ---
+{'length': 3, 'path': ['F', 'E', 'M', 'J']}
+Progress: 168/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task2_gt2_PAIR3
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [M, P]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'H']}
+Progress: 169/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt3_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [E, B, H, I]
+--- Ground Truth ---
+{'length': 3, 'path': [['E', 'M', 'J', 'I'], ['E', 'B', 'C', 'I']]}
+Progress: 170/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task3_gt3_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(H, B), (H, G), (H, I)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'E'], ['H', 'B'], ['H', 'I']]}
+Progress: 171/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task2_gt2_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (L and J), we need to find a minimum vertex cut set between L and J. This is equivalent to finding the maximum number of node-disjoint paths between L and J, according to Menger's Theorem.
+
+Let's identify the neighbors of the black nodes:
+*   Neighbors of L: E, M
+*   Neighbors of J: M, F, I, P, D, O (Upon careful inspection, O is also connected to J)
+
+Now, let's try to find node-disjoint paths between L and J. Node-disjoint paths are paths that do not share any intermediate nodes (nodes other than L and J).
+
+1.  **Path 1: L - M - J**
+    *   Intermediate node: M
+
+2.  **Path 2: L - E - F - J**
+    *   Intermediate nodes: E, F
+    *   This path is node-disjoint from Path 1 because the set of intermediate nodes {E, F} is disjoint from {M}.
+
+Now, we need to determine if there is a third path that is node-disjoint from both Path 1 and Path 2.
+*   A third path cannot use M (because of Path 1).
+*   A third path cannot use E or F (because of Path 2).
+
+Let's consider the starting points from L:
+*   Any path from L must start with either L-M or L-E.
+*   If a path starts L-M, it uses M, so it is not node-disjoint from Path 1.
+*   If a path starts L-E, it uses E, so it is not node-disjoint from Path 2.
+
+Since all paths from L must use either M or E as their first intermediate node, and M is used by Path 1 while E is used by Path 2, it is impossible to find a third path that is node-disjoint from both Path 1 and Path 2.
+
+Therefore, the maximum number of node-disjoint paths between L and J is 2.
+According to Menger's Theorem, the minimum number of nodes that must be removed to disconnect L and J is equal to the maximum number of node-disjoint paths, which is 2.
+
+The cut set that achieves this disconnection is {M, E}.
+*   If M is removed, the path L-M-J is cut.
+*   If E is removed, all paths starting with L-E are cut.
+*   Since all paths from L to J must go through either M or E, removing both M and E will completely disconnect L from J.
+
+Nodes to remove: 2, Cut Set: [M, E]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'M']}
+Progress: 172/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task1_gt3_PAIR5
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [M, E, B, N]
+--- Ground Truth ---
+{'length': 3, 'path': ['M', 'E', 'B', 'N']}
+Progress: 173/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task1_gt4_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [N, O, P, F, X]
+--- Ground Truth ---
+{'length': 4, 'path': [['N', 'B', 'H', 'G', 'X'], ['N', 'B', 'E', 'F', 'X']]}
+Progress: 174/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task2_gt3_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (H and O), we can apply Menger's Theorem. Menger's Theorem states that the minimum number of nodes whose removal disconnects two non-adjacent nodes (a minimum vertex cut) is equal to the maximum number of node-disjoint paths between those two nodes.
+
+Let's identify node-disjoint paths between H and O. Node-disjoint means that the paths share no intermediate nodes (only the start and end nodes, H and O, can be common).
+
+1.  **Path 1: H - B - N - O**
+    *   Intermediate nodes: {B, N}
+
+2.  **Path 2: H - I - C - O**
+    *   Intermediate nodes: {I, C}
+    *   This path is node-disjoint from Path 1, as {B, N} and {I, C} are disjoint sets.
+
+3.  **Path 3: H - G - E - M - J - P - O**
+    *   Intermediate nodes: {G, E, M, J, P}
+    *   Let's check if this path is node-disjoint from Path 1 and Path 2:
+        *   Is {G, E, M, J, P} disjoint from {B, N}? Yes.
+        *   Is {G, E, M, J, P} disjoint from {I, C}? Yes.
+    *   Therefore, this is a third node-disjoint path.
+
+Since we have found three node-disjoint paths between H and O, according to Menger's Theorem, the minimum number of nodes that must be removed to disconnect H from O is at least 3.
+
+Now, let's find a set of 3 nodes whose removal disconnects H from O. A simple way to find such a set is to remove all direct neighbors of H.
+The direct neighbors of H are G, I, and B.
+
+If we remove nodes {G, I, B}:
+*   H will have no outgoing edges, as all its direct connections (to G, I, B) are removed.
+*   Therefore, H will be completely disconnected from the rest of the graph, including O.
+
+This set {G, I, B} has 3 nodes. Since we know the minimum number of nodes is at least 3, and we found a cut set of size 3, the minimum number of nodes to remove is exactly 3.
+
+Nodes to remove: 3, Cut Set: [B, G, I]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'I']}
+Progress: 175/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task1_gt4_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 5, Path: [L, E, H, B, N, Y]
+--- Ground Truth ---
+{'length': 4, 'path': ['L', 'E', 'B', 'N', 'Y']}
+Progress: 176/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt3_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(J, M), (J, I), (J, P)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['E', 'B'], ['M', 'J'], ['G', 'H']], [['E', 'B'], ['M', 'J'], ['F', 'E']]]}
+Progress: 177/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt2_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 2, Path: [J, M, L]
+--- Ground Truth ---
+{'length': 2, 'path': ['J', 'M', 'L']}
+Progress: 178/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt4_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [L, E, B, N, Y]
+--- Ground Truth ---
+{'length': 4, 'path': ['L', 'E', 'B', 'N', 'Y']}
+Progress: 179/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt4_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 5, Path: [D, J, M, L, E, F]
+--- Ground Truth ---
+{'length': 4, 'path': ['F', 'E', 'M', 'J', 'D']}
+Progress: 180/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt2_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(F, E), (G, H)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['D', 'P'], ['D', 'J']]}
+Progress: 181/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task3_gt3_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(N, B), (N, C), (N, Y)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'E'], ['H', 'B'], ['H', 'I']]}
+Progress: 182/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt3_PAIR3
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 4, Cut Set: [(B, H), (E, H), (G, H), (I, H)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['H', 'B'], ['H', 'I'], ['E', 'F']]}
+Progress: 183/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task1_gt4_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 2, Path: [K, M, J]
+--- Ground Truth ---
+{'length': 4, 'path': ['J', 'M', 'E', 'F', 'K']}
+Progress: 184/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task3_gt3_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(H,G), (H,I), (H,C)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['B', 'H'], ['H', 'I'], ['G', 'H']]}
+Progress: 185/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt2_PAIR3
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(F, E), (H, B), (H, I)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 186/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task3_gt2_PAIR3
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(G, E), (G, H)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 187/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task2_gt3_PAIR2
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (E and H), we first need to identify all distinct paths between E and H, excluding the black nodes themselves from being removed.
+
+The two black nodes, E and H, are directly connected by an edge. If this direct edge is considered a path that cannot be removed by taking away intermediate nodes, then E and H can never be completely disconnected as they cannot be removed. However, in graph theory problems of this nature, when two nodes are directly connected, the question typically implies finding a vertex cut that disconnects them *through all other paths*, effectively ignoring the direct edge for the purpose of the cut set. This is equivalent to finding a vertex cut in the graph G' = G - {edge(E,H)}. We will proceed with this standard interpretation.
+
+Let's list all paths between E and H, considering only intermediate nodes (i.e., paths that do not use the direct E-H edge):
+
+1.  **E - G - F - H**
+2.  **E - M - J - I - H**
+3.  **E - M - J - P - I - H**
+4.  **E - M - J - P - O - C - B - H**
+5.  **E - M - J - P - O - N - B - H**
+
+Now, we need to find the smallest set of non-black nodes whose removal would break all these paths.
+
+Let's test for a cut set of size 1:
+*   If we remove G: Paths 2, 3, 4, 5 still exist.
+*   If we remove M: Path 1 (E-G-F-H) still exists.
+*   If we remove F: Paths 2, 3, 4, 5 still exist.
+*   If we remove B: Paths 1, 2, 3 still exist.
+*   If we remove I: Paths 1, 4, 5 still exist.
+*   If we remove J: Path 1 still exists.
+*   If we remove P: Paths 1, 2 still exist.
+*   If we remove O: Paths 1, 2, 3 still exist.
+*   If we remove C: Paths 1, 2, 3, 5 still exist.
+*   If we remove N: Paths 1, 2, 3, 4 still exist.
+No single node can disconnect E and H. Therefore, the minimum number of nodes to remove is greater than 1.
+
+Let's test for a cut set of size 2:
+Consider the nodes directly connected to E (excluding H): G and M.
+*   If we remove **G**: Path 1 (E-G-F-H) is cut.
+*   If we remove **M**: Paths 2, 3, 4, 5 (all starting with E-M...) are cut.
+Thus, the set **{G, M}** successfully disconnects E from H. This is a cut set of size 2.
+
+Another possible cut set of size 2 is {J, F}:
+*   If we remove **J**: Paths 2, 3, 4, 5 are cut.
+*   If we remove **F**: Path 1 is cut.
+This also disconnects E from H.
+
+Since we found a cut set of size 2, and we've established that no single node can disconnect E and H, the minimum number of nodes that must be removed is 2.
+
+Nodes to remove: 2, Cut Set: [G, M]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'B', 'I'], ['F', 'B', 'M'], ['B', 'G', 'M']]}
+Progress: 188/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task3_gt2_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(G, E), (G, H), (F, E)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 189/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task1_gt2_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 2, Path: [E, M, J]
+--- Ground Truth ---
+{'length': 2, 'path': ['E', 'M', 'J']}
+Progress: 190/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt3_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(M, E), (M, L), (M, J)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['M', 'E'], ['M', 'J'], ['M', 'L']], [['M', 'J'], ['F', 'E'], ['B', 'E']]]}
+Progress: 191/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt4_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 2, Path: [M, O, Y]
+--- Ground Truth ---
+{'length': 4, 'path': [['M', 'E', 'B', 'N', 'Y'], ['M', 'J', 'P', 'O', 'Y']]}
+Progress: 192/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task1_gt3_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [G, H, B, N]
+--- Ground Truth ---
+{'length': 3, 'path': ['G', 'H', 'B', 'N']}
+Progress: 193/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task2_gt2_PAIR1
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (L and H), we need to find the minimum vertex cut between L and H. According to Menger's Theorem, the minimum number of vertices whose removal disconnects two non-adjacent vertices is equal to the maximum number of vertex-disjoint paths between them.
+
+Let's identify paths between L and H. Two paths are vertex-disjoint if they do not share any intermediate vertices (nodes other than L and H).
+
+1.  **Path 1: L - M - J - I - H**
+    *   Nodes involved: L, M, J, I, H
+
+2.  **Path 2: L - E - B - H**
+    *   Nodes involved: L, E, B, H
+
+These two paths (L-M-J-I-H and L-E-B-H) are vertex-disjoint because the intermediate nodes {M, J, I} in Path 1 are distinct from the intermediate nodes {E, B} in Path 2.
+
+Since we have found two vertex-disjoint paths between L and H, the minimum number of nodes that must be removed to disconnect L from H is at least 2.
+
+Now, let's identify a set of 2 nodes whose removal disconnects L from H.
+The node L is directly connected only to nodes M and E.
+If we remove both M and E, node L will have no outgoing edges, and thus will be completely disconnected from the rest of the graph, including H.
+
+Therefore, the set of nodes {M, E} is a vertex cut of size 2.
+
+Since the minimum cut size is at least 2, and we found a cut set of size 2, the minimum number of nodes to remove is 2.
+
+Nodes to remove: 2, Cut Set: [M, E]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'M']}
+Progress: 194/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt4_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [F, E, M, J, D]
+--- Ground Truth ---
+{'length': 4, 'path': ['F', 'E', 'M', 'J', 'D']}
+Progress: 195/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task1_gt3_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [E, M, J, I]
+--- Ground Truth ---
+{'length': 3, 'path': [['E', 'M', 'J', 'I'], ['E', 'B', 'C', 'I'], ['E', 'B', 'H', 'I']]}
+Progress: 196/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task2_gt2_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [E, F, J]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['J', 'E']}
+Progress: 197/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt3_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [I, C, B, E]
+--- Ground Truth ---
+{'length': 3, 'path': ['E', 'M', 'J', 'I']}
+Progress: 198/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task1_gt4_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [F, E, M, J, D]
+--- Ground Truth ---
+{'length': 4, 'path': ['F', 'E', 'M', 'J', 'D']}
+Progress: 199/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task1_gt4_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 5, Path: [L, M, J, P, O, Y]
+--- Ground Truth ---
+{'length': 4, 'path': ['L', 'E', 'B', 'N', 'Y']}
+Progress: 200/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task2_gt3_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [H, J]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 201/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task2_gt2_PAIR3
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [C, P]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'H']}
+Progress: 202/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt3_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(N, B), (N, C), (N, O)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'E'], ['H', 'B'], ['H', 'I']]}
+Progress: 203/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task1_gt4_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [K, F, E, B, N]
+--- Ground Truth ---
+{'length': 4, 'path': ['K', 'G', 'H', 'B', 'N']}
+Progress: 204/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt2_PAIR5
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [M, L, E, F]
+--- Ground Truth ---
+{'length': 2, 'path': ['F', 'E', 'M']}
+Progress: 205/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task1_gt2_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [H, C, B, E]
+--- Ground Truth ---
+{'length': 2, 'path': ['E', 'B', 'H']}
+Progress: 206/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task3_gt3_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(M, L), (M, E), (M, J)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['M', 'E'], ['M', 'J'], ['M', 'L']], [['M', 'J'], ['F', 'E'], ['B', 'E']]]}
+Progress: 207/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task3_gt3_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(B,H), (G,H), (I,H)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['H', 'B'], ['H', 'I'], ['E', 'F']]}
+Progress: 208/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task3_gt2_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of edges that must be removed to completely disconnect the two black nodes (J and F), I will follow these steps:
+
+1.  **Identify the two black nodes:** These are J and F.
+2.  **Identify all possible paths between J and F:**
+    *   Paths starting from J can go through its neighbors: M, D, P, I.
+    *   Paths ending at F can come from its neighbors: E, B, K, X, G.
+3.  **Find a set of edge-disjoint paths:** According to Menger's Theorem, the maximum number of edge-disjoint paths between two nodes is equal to the minimum number of edges needed to disconnect them.
+    Let's try to find edge-disjoint paths:
+
+    *   **Path 1 (P1): J - M - L - E - F**
+        Edges: {(J, M), (M, L), (L, E), (E, F)}
+
+    *   **Path 2 (P2): J - I - H - X - F**
+        Edges: {(J, I), (I, H), (H, X), (X, F)}
+
+    *   **Path 3 (P3): J - P - O - N - B - F**
+        Edges: {(J, P), (P, O), (O, N), (N, B), (B, F)}
+
+    Let's check if these three paths are edge-disjoint:
+    *   Edges in P1: (J,M), (M,L), (L,E), (E,F)
+    *   Edges in P2: (J,I), (I,H), (H,X), (X,F)
+    *   Edges in P3: (J,P), (P,O), (O,N), (N,B), (B,F)
+
+    Comparing the edge sets, there are no common edges between P1, P2, and P3. Therefore, these three paths are indeed edge-disjoint.
+    Since we found 3 edge-disjoint paths, the minimum number of edges to remove must be at least 3.
+
+4.  **Find an edge cut set of size 3:** Now I need to find a set of 3 edges whose removal disconnects J and F. If such a set exists, then 3 is the minimum.
+    Consider the following set of edges:
+    *   **(M, L)**: This edge cuts Path 1 (J - M - L - E - F).
+    *   **(I, H)**: This edge cuts Path 2 (J - I - H - X - F) and any other path going through I-H (e.g., J-I-H-G-F, J-I-H-X-K-F, J-I-H-G-K-F).
+    *   **(B, F)**: This edge cuts Path 3 (J - P - O - N - B - F) and any other path going through B-F (e.g., J-D-P-O-N-B-F, J-M-O-N-B-F, J-I-C-N-B-F, J-I-C-O-N-B-F, J-I-C-O-Y-N-B-F).
+
+    Let's verify if these three edges disconnect all paths from J to F:
+    *   **Paths starting J-M:**
+        *   J-M-L-E-F: Cut by (M,L).
+        *   J-M-O-...-F (via N-B or C-N-B or C-I-H): All paths through N-B are cut by (B,F). All paths through C-I-H are cut by (I,H).
+    *   **Paths starting J-D:**
+        *   J-D-P-O-...-F (via N-B or C-N-B or C-I-H): All paths through N-B are cut by (B,F). All paths through C-I-H are cut by (I,H).
+    *   **Paths starting J-P:**
+        *   J-P-O-...-F (via N-B or C-N-B or C-I-H): All paths through N-B are cut by (B,F). All paths through C-I-H are cut by (I,H).
+    *   **Paths starting J-I:**
+        *   J-I-C-...-F (via N-B or O-N-B or O-Y-N-B): All paths through N-B are cut by (B,F).
+        *   J-I-H-...-F (via X or G or X-K or G-K): All paths through I-H are cut by (I,H).
+
+    All identified paths from J to F are cut by at least one of the edges in the set {(M, L), (I, H), (B, F)}.
+
+Since we found 3 edge-disjoint paths, the minimum number of edges to remove is at least 3. We also found a cut set of 3 edges that successfully disconnects J and F. Therefore, the minimum number of edges to remove is 3.
+
+Edges to remove: 3, Cut Set: [(M, L), (I, H), (B, F)].
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 209/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task3_gt2_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(L, M), (L, E)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['L', 'E'], ['L', 'M']]}
+Progress: 210/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task1_gt2_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 2, Path: [E, B, H]
+--- Ground Truth ---
+{'length': 2, 'path': ['E', 'B', 'H']}
+Progress: 211/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task1_gt4_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [X, K, I, C]
+--- Ground Truth ---
+{'length': 4, 'path': [['C', 'B', 'H', 'G', 'X'], ['C', 'B', 'E', 'F', 'X'], ['C', 'I', 'H', 'G', 'X']]}
+Progress: 212/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task2_gt2_PAIR1
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (B and M), we need to find a minimum vertex cut set between B and M. This is equivalent to finding the maximum number of vertex-disjoint paths between B and M (Menger's Theorem).
+
+Let's list the neighbors of B and M:
+*   Neighbors of B: {C, N, O, E, I}
+*   Neighbors of M: {L, E, J}
+
+We will identify vertex-disjoint paths between B and M. Two paths are vertex-disjoint if they do not share any intermediate nodes (nodes other than B and M).
+
+**Path 1:** B - E - M
+    *   This path uses the intermediate node E.
+
+Now, let's try to find a second path that does not use E.
+*   From B, we can go to O, N, C, or I.
+*   To M, we can go via J (since E is used, and L is only connected to E and M, so any path through L would also use E).
+
+Let's try a path starting B - O:
+**Path 2:** B - O - P - J - M
+    *   This path uses the intermediate nodes O, P, J.
+    *   Path 2 (O, P, J) is vertex-disjoint from Path 1 (E).
+
+Can we find a third path that is vertex-disjoint from both Path 1 (E) and Path 2 (O, P, J)?
+*   Remaining neighbors of B (not used in Path 1 or 2): {C, N, I}
+*   Remaining neighbors of M (not used in Path 1 or 2): {L} (but L is only connected to E and M. Since E is already used in Path 1, any path through L would share E with Path 1, making it not vertex-disjoint).
+
+Let's verify this:
+If we try to find a path from B (via C, N, I) to M (via L), it would have to be B - ... - L - M. But L is only connected to E and M. So, any path to L must pass through E. Since E is already used in Path 1, no third vertex-disjoint path can use L.
+
+Therefore, the maximum number of vertex-disjoint paths between B and M is 2.
+By Menger's Theorem, the minimum number of nodes to remove to disconnect B and M is 2.
+
+Now, let's identify a cut set of size 2.
+Consider the nodes E and J.
+1.  If node E is removed:
+    *   The path B - E - M is cut.
+    *   The path B - E - L - M is cut (as L is only connected to E and M).
+    *   Any path that uses E as an intermediate node (e.g., B - O - P - E - M) is also cut.
+2.  If node J is removed:
+    *   The path B - O - P - J - M is cut.
+    *   Any other path that uses J as an intermediate node to reach M (e.g., B - C - I - P - J - M) is also cut.
+
+Let's list all types of paths to confirm that removing {E, J} disconnects B and M:
+*   Paths through E to M: B - E - M, B - E - L - M, and paths like B - O - P - E - M, B - I - P - E - M, etc. (All these are cut by removing E).
+*   Paths through J to M: B - O - P - J - M, B - N - O - P - J - M, B - C - O - P - J - M, B - C - I - P - J - M, B - C - H - I - P - J - M, B - I - P - J - M, B - I - H - C - O - P - J - M. (All these are cut by removing J).
+
+Since all paths from B to M must pass through either E or J (or both), removing both E and J will completely disconnect B from M.
+
+Another valid cut set of size 2 is {E, P}.
+*   If E is removed, all paths through E are cut.
+*   If P is removed, all paths that go through P (which then lead to M via E or J) are cut. This includes paths like B - O - P - J - M, B - I - P - J - M, B - O - P - E - M, etc.
+*   The only path not explicitly going through P is B - E - M (and B - E - L - M), which is cut by E.
+So, {E, P} is also a valid minimum cut set.
+
+The minimum number of nodes to remove is 2. We can choose either {E, J} or {E, P} as the cut set.
+
+Nodes to remove: 2, Cut Set: [E, J]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['J', 'E']}
+Progress: 213/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt2_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [E, B, H, I, J]
+--- Ground Truth ---
+{'length': 2, 'path': ['E', 'M', 'J']}
+Progress: 214/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task3_gt3_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(J, M), (J, I), (J, P)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['E', 'B'], ['M', 'J'], ['G', 'H']], [['E', 'B'], ['M', 'J'], ['F', 'E']]]}
+Progress: 215/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task2_gt2_PAIR1
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [H, E]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'H']}
+Progress: 216/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task2_gt2_PAIR2
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (L and J), we need to find a minimum vertex cut set between L and J. The black nodes themselves (L and J) cannot be removed.
+
+First, let's identify all paths between L and J.
+
+**Neighbors of L:** M, E
+**Neighbors of J:** M, P, D
+
+Let's list some distinct paths:
+
+1.  **L - M - J**
+2.  **L - E - B - C - I - P - J**
+
+Let's check if these two paths are node-disjoint (excluding L and J):
+*   Intermediate nodes of Path 1: {M}
+*   Intermediate nodes of Path 2: {E, B, C, I, P}
+These sets of intermediate nodes are disjoint. Therefore, we have found two node-disjoint paths between L and J.
+
+According to Menger's Theorem (vertex version), the minimum number of vertices whose removal disconnects two non-adjacent vertices (L and J) is equal to the maximum number of vertex-disjoint paths between them. Since we found 2 node-disjoint paths, the minimum number of nodes to remove must be at least 2.
+
+Now, let's try to find a cut set of size 2. A cut set must contain at least one node from every path between L and J.
+
+Consider the following candidate cut sets of size 2:
+
+**Candidate 1: {M, E}**
+If nodes M and E are removed:
+*   Node L is connected to M and E. With both M and E removed, L has no remaining connections.
+*   Therefore, L is completely disconnected from J.
+This is a valid cut set of size 2.
+
+**Candidate 2: {M, P}**
+If nodes M and P are removed:
+*   Path 1 (L - M - J) is cut by removing M.
+*   All paths from L that go through E (e.g., L - E - B - C - I - P - J) must eventually pass through P to reach J (since D is only connected to J and P). With P removed, these paths are cut.
+*   Let's verify:
+    *   L is connected to E.
+    *   J is connected to D (P is removed).
+    *   D is only connected to J (P is removed).
+    *   E's remaining neighbors are F and B (L and M are removed).
+    *   There is no path from E to D.
+*   Therefore, L is completely disconnected from J.
+This is also a valid cut set of size 2.
+
+Since we have found a cut set of size 2, and we know the minimum must be at least 2, the minimum number of nodes to remove is 2. We can choose either {M, E} or {M, P} as an example cut set.
+
+Nodes to remove: 2, Cut Set: [M, E]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'M']}
+Progress: 217/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task2_gt3_PAIR1
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (E and J), we need to find the minimum vertex cut between E and J. This can be approached by identifying all paths between E and J and then finding a set of nodes whose removal cuts all these paths. A more systematic way is to find the maximum number of node-disjoint paths between E and J, as Menger's Theorem states that this number is equal to the minimum number of nodes in a vertex cut.
+
+Let's identify node-disjoint paths between E and J (excluding E and J themselves from the intermediate nodes):
+
+1.  **Path 1:** E - M - J
+    *   Intermediate node: {M}
+
+2.  **Path 2:** E - B - C - O - P - J
+    *   Intermediate nodes: {B, C, O, P}
+
+3.  **Path 3:** E - F - G - H - I - J
+    *   Intermediate nodes: {F, G, H, I}
+
+Let's verify if these three paths are indeed node-disjoint (meaning they do not share any intermediate nodes):
+*   Intermediate nodes for Path 1: {M}
+*   Intermediate nodes for Path 2: {B, C, O, P}
+*   Intermediate nodes for Path 3: {F, G, H, I}
+
+The sets of intermediate nodes {M}, {B, C, O, P}, and {F, G, H, I} are mutually disjoint. Therefore, we have found 3 node-disjoint paths between E and J.
+
+According to Menger's Theorem, the minimum number of nodes that must be removed to disconnect E and J is equal to the maximum number of node-disjoint paths between them. Since we found 3 node-disjoint paths, the minimum number of nodes to remove must be at least 3.
+
+Now, let's find a set of 3 nodes whose removal disconnects E and J. We can choose one intermediate node from each of the node-disjoint paths identified above.
+*   From Path 1: M
+*   From Path 2: P (or B, C, O)
+*   From Path 3: I (or F, G, H)
+
+Let's choose the set {M, P, I}.
+If we remove these three nodes:
+1.  The path E - M - J is cut because M is removed.
+2.  The path E - B - C - O - P - J is cut because P is removed.
+3.  The path E - F - G - H - I - J is cut because I is removed.
+
+Let's also consider any other potential paths:
+*   Any path going through M is cut.
+*   Any path going through P (e.g., E-B-C-O-P-J, E-B-N-C-O-P-J) is cut. Note that J is connected to D, but D is only connected to P, so removing P also isolates D from J.
+*   Any path going through I (e.g., E-F-X-G-H-I-J, E-F-G-H-I-J, E-B-H-I-J, E-B-C-I-J, E-B-N-C-I-J) is cut.
+
+Since all identified paths between E and J are cut by the removal of {M, P, I}, and we know the minimum number of nodes required is at least 3, this set {M, P, I} is a minimum vertex cut.
+
+Nodes to remove: 3, Cut Set: [M, P, I]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 218/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task3_gt2_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 4, Cut Set: [(G, H), (G, F), (G, K), (G, B)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 219/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task3_gt2_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(E, L), (M, L)].
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['E', 'L'], ['L', 'M']]}
+Progress: 220/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task2_gt2_PAIR3
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'H']}
+Progress: 221/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task3_gt2_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(L, M), (L, E)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['E', 'L'], ['L', 'M']]}
+Progress: 221/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task1_gt4_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [X, G, B, N]
+--- Ground Truth ---
+{'length': 4, 'path': [['N', 'B', 'H', 'G', 'X'], ['N', 'B', 'E', 'F', 'X']]}
+Progress: 222/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task1_gt2_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 2, Path: [B, E, M]
+--- Ground Truth ---
+{'length': 2, 'path': ['B', 'E', 'M']}
+Progress: 223/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task1_gt2_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 2, Path: [E, M, J]
+--- Ground Truth ---
+{'length': 2, 'path': ['E', 'M', 'J']}
+Progress: 224/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task2_gt3_PAIR3
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (E and I), we need to find the minimum vertex cut between E and I. According to Menger's Theorem, the minimum number of vertices in a vertex cut is equal to the maximum number of vertex-disjoint paths between the two nodes.
+
+Let's identify vertex-disjoint paths between E and I. Vertex-disjoint paths are paths that do not share any intermediate nodes (nodes other than E and I).
+
+1.  **Path 1: E - M - J - I**
+    *   Intermediate nodes: {M, J}
+
+2.  **Path 2: E - B - C - I**
+    *   Intermediate nodes: {B, C}
+    *   This path is vertex-disjoint from Path 1, as {B, C} and {M, J} are distinct sets of nodes.
+
+3.  **Path 3: E - F - G - H - I**
+    *   Intermediate nodes: {F, G, H}
+    *   Let's check if this path is vertex-disjoint from Path 1 and Path 2:
+        *   {F, G, H} are distinct from {M, J} (Path 1).
+        *   {F, G, H} are distinct from {B, C} (Path 2).
+    *   Therefore, this is a third vertex-disjoint path.
+
+We have found three vertex-disjoint paths between E and I. According to Menger's Theorem, this means that the minimum number of nodes that must be removed to disconnect E and I is at least 3.
+
+Now, we need to find a set of 3 nodes whose removal disconnects E and I. A common strategy is to pick one node from each of the identified vertex-disjoint paths. Let's choose the first intermediate node from each path:
+*   From Path 1: M
+*   From Path 2: B
+*   From Path 3: F
+
+Let's test the removal of the set **{M, B, F}**:
+*   If M is removed, Path 1 (E-M-J-I) is broken.
+*   If B is removed, Path 2 (E-B-C-I) is broken.
+*   If F is removed, Path 3 (E-F-G-H-I) is broken.
+
+Now, let's check if any other paths remain.
+The direct neighbors of E are L, M, F, B.
+If M, F, and B are removed, E is only connected to L.
+L is connected to E and M. Since M is removed, L is only connected to E.
+Therefore, E becomes completely isolated from the rest of the graph, and thus from I.
+
+Since we found 3 vertex-disjoint paths, the minimum cut size is at least 3. We have also found a cut set of size 3 ({M, B, F}) that successfully disconnects E and I.
+
+Thus, the minimum number of nodes to remove is 3.
+
+Nodes to remove: 3, Cut Set: [M, B, F]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 225/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task2_gt2_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [H, F]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'H']}
+Progress: 226/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task3_gt2_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(G, H), (G, K), (G, X)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 227/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt3_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [I, J, M, L]
+--- Ground Truth ---
+{'length': 3, 'path': ['L', 'M', 'J', 'I']}
+Progress: 228/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task1_gt4_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [Y, N, B, E, L]
+--- Ground Truth ---
+{'length': 4, 'path': ['L', 'E', 'B', 'N', 'Y']}
+Progress: 229/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task2_gt3_PAIR3
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [C, J, K]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'I']}
+Progress: 230/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task3_gt3_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(H, C), (H, I), (H, G)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'E'], ['H', 'B'], ['H', 'I']]}
+Progress: 231/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task2_gt3_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (H and N), we need to find a minimum vertex cut set between H and N. The black nodes themselves cannot be removed.
+
+Let's list the direct neighbors of H and N:
+*   Neighbors of H: {I, C, G}
+*   Neighbors of N: {Y, O, B, C}
+
+Notice that C is a common neighbor, forming a direct path H-C-N.
+
+We will systematically evaluate possible cut sets by considering paths from H to N.
+
+**1. Check for a cut set of size 1:**
+*   **If C is removed:** The path H-C-N is cut. However, many other paths remain, for example:
+    *   H - I - O - N
+    *   H - G - F - B - N
+    *   H - G - F - E - L - M - O - N
+    So, {C} is not a cut set.
+*   **If O is removed:** Paths through O are cut (e.g., H-I-O-N, H-G-F-E-L-M-O-N). However, H-C-N and paths through B remain.
+    So, {O} is not a cut set.
+*   **If B is removed:** Paths through B are cut (e.g., H-G-F-B-N). However, H-C-N and paths through O remain.
+    So, {B} is not a cut set.
+*   Removing any other single node (I, G, J, P, M, D, X, K, F, E, L, Y) will also leave multiple paths connected. For example, removing I leaves H-C-N and H-G-... paths. Removing Y does not disconnect H and N as Y is only connected to N and no path from H goes through Y to N.
+
+Since no single node can disconnect H and N, the minimum number of nodes to remove is greater than 1.
+
+**2. Check for a cut set of size 2:**
+Let's consider pairs of nodes from the immediate neighbors of H and N (excluding Y, as it's a dead end from H's perspective).
+*   **{C, O}:**
+    *   H-C-N is cut.
+    *   All paths from H through I that lead to O (H-I-O-N, H-I-J-P-O-N, H-I-J-M-O-N, H-I-J-D-P-O-N) are cut.
+    *   The path H-G-F-E-L-M-O-N is cut.
+    *   However, paths like H-G-X-F-B-N are still connected.
+    So, {C, O} is not a cut set.
+*   **{C, B}:**
+    *   H-C-N is cut.
+    *   All paths from H through G that lead to B (H-G-X-F-B-N, H-G-K-F-B-N, H-G-F-B-N, H-G-F-E-B-N) are cut.
+    *   However, paths like H-I-O-N and H-G-F-E-L-M-O-N are still connected.
+    So, {C, B} is not a cut set.
+*   **{O, B}:**
+    *   All paths from H through I that lead to O are cut.
+    *   All paths from H through G that lead to B are cut.
+    *   The path H-G-F-E-L-M-O-N is cut.
+    *   However, the direct path H-C-N is still connected.
+    So, {O, B} is not a cut set.
+
+Since no pair of nodes can disconnect H and N, the minimum number of nodes to remove is greater than 2.
+
+**3. Check for a cut set of size 3:**
+Let's consider the set {C, O, B}.
+*   **Remove C:** This cuts the direct path H-C-N.
+*   **Remove O:** This cuts all paths from H that go through I and then O to reach N (e.g., H-I-O-N, H-I-J-P-O-N, H-I-J-M-O-N, H-I-J-D-P-O-N). It also cuts the path H-G-F-E-L-M-O-N.
+*   **Remove B:** This cuts all paths from H that go through G and then B to reach N (e.g., H-G-X-F-B-N, H-G-K-F-B-N, H-G-F-B-N, H-G-F-E-B-N).
+
+Let's verify if any path remains after removing C, O, and B:
+*   **Paths starting H -> I:**
+    *   I is connected to H, J, C, O. With C and O removed, I can only connect to J.
+    *   J is connected to I, D, P, M.
+    *   P is connected to D, J, O. With O removed, P cannot reach N.
+    *   M is connected to J, O, L. With O removed, M can only connect to J, L.
+    *   L is connected to E, M.
+    *   E is connected to B, L, F. With B removed, E can only connect to L, F.
+    *   F is connected to B, E, K, X, G. With B removed, F can only connect to E, K, X, G.
+    *   Following this, we can trace paths like H-I-J-M-L-E-F-G-H, which form cycles but do not reach N.
+*   **Paths starting H -> G:**
+    *   G is connected to H, X, K, F.
+    *   X is connected to G, K, F.
+    *   K is connected to X, G, F.
+    *   F is connected to B, E, K, X, G. With B removed, F can only connect to E, K, X, G.
+    *   E is connected to B, L, F. With B removed, E can only connect to L, F.
+    *   L is connected to E, M.
+    *   M is connected to J, O, L. With O removed, M can only connect to J, L.
+    *   Following this, we can trace paths like H-G-F-E-L-M-J-I-H, which form cycles but do not reach N.
+
+All paths from H to N are cut by removing nodes C, O, and B.
+Since we have established that a cut set of size 1 or 2 is not sufficient, the minimum number of nodes to remove is 3.
+
+Nodes to remove: 3, Cut Set: [C, O, B]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'B', 'I'], ['E', 'B', 'I']]}
+Progress: 232/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task3_gt3_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of edges that must be removed to completely disconnect the two black nodes (E and H), we need to find a minimum edge cut set between E and H.
+
+First, let's identify all direct and indirect paths between E and H.
+
+**Nodes connected to E:**
+*   H (direct connection)
+*   G
+*   F
+*   L
+*   M
+
+**Nodes connected to H:**
+*   E (direct connection)
+*   G
+*   B
+*   I
+
+Let's list the distinct "entry/exit" points for paths between E and H:
+
+1.  **Direct Path:** (E, H)
+2.  **Paths through G:** E can reach G via (E, G) or (E, F, G) (or E, K, G, etc.). H can reach G via (H, G). So, paths like E-G-H, E-F-G-H exist.
+3.  **Paths through the "right side" of the graph:** E can reach the right side via (E, L) or (E, M). H can be reached from the right side via (H, B) or (H, I).
+
+Let's consider potential cut sets:
+
+**Option 1: Remove all edges connected to H.**
+The edges connected to H are: (H, E), (H, G), (H, B), (H, I).
+If these 4 edges are removed, node H becomes isolated from the rest of the graph, including E. Therefore, E and H are completely disconnected.
+This is a valid cut set of 4 edges.
+
+**Option 2: Remove all edges connected to E.**
+The edges connected to E are: (E, H), (E, G), (E, F), (E, L), (E, M).
+If these 5 edges are removed, node E becomes isolated from the rest of the graph, including H. Therefore, E and H are completely disconnected.
+This is a valid cut set of 5 edges.
+
+Comparing Option 1 and Option 2, the minimum number of edges is at most 4.
+
+**Can we disconnect E and H with 3 edges?**
+Let's try to find a cut set of 3 edges. We need to ensure that *all* paths between E and H are broken.
+
+Consider the "bottleneck" edges:
+*   The direct edge (E, H).
+*   The edges connecting to G: (E, G) and (H, G).
+*   The edges connecting to the "right side" from E: (E, L) and (E, M).
+*   The edges connecting to the "right side" to H: (H, B) and (H, I).
+
+Let's try various combinations of 3 edges:
+
+*   **Attempt 1: Cut the direct path and paths through G.**
+    Let's remove {(E, H), (E, G), (H, G)}. (3 edges)
+    After removing these:
+    *   The direct path (E, H) is gone.
+    *   Paths like E-G-H are gone.
+    *   However, paths through the "right side" still exist, for example:
+        *   E - L - M - J - I - H (uses (E,L), (I,H))
+        *   E - M - J - P - O - C - B - H (uses (E,M), (B,H))
+    Since these paths still exist, E and H are not disconnected.
+
+*   **Attempt 2: Cut the direct path and paths to H from the right side.**
+    Let's remove {(E, H), (H, B), (H, I)}. (3 edges)
+    After removing these:
+    *   The direct path (E, H) is gone.
+    *   Paths to H via B or I from the right side are gone.
+    *   However, paths through G still exist, for example:
+        *   E - G - H (uses (E,G), (G,H))
+        *   E - F - G - H (uses (E,F), (F,G), (G,H))
+    Since these paths still exist, E and H are not disconnected.
+
+*   **Attempt 3: Cut paths from E to the right side and paths to H from G.**
+    Let's remove {(E, L), (E, M), (H, G)}. (3 edges)
+    After removing these:
+    *   E cannot reach the right side via L or M.
+    *   H cannot be reached via G.
+    *   However, the direct path (E, H) still exists.
+    *   Paths from E to G (e.g., E-G or E-F-G) still exist, but G cannot reach H.
+    Since (E, H) still exists, E and H are not disconnected.
+
+*   **Attempt 4: Consider any 3 edges incident to H.**
+    The edges incident to H are (H,E), (H,G), (H,B), (H,I). If we remove any 3 of these 4 edges, one edge incident to H will remain.
+    For example, if we remove (H,E), (H,G), (H,B), then (H,I) remains. E can still reach H via paths ending in (I,H), e.g., E - L - M - J - I - H.
+    If we remove (H,E), (H,G), (H,I), then (H,B) remains. E can still reach H via paths ending in (B,H), e.g., E - L - M - J - P - O - C - B - H.
+    If we remove (H,E), (H,B), (H,I), then (H,G) remains. E can still reach H via paths ending in (G,H), e.g., E - G - H.
+    If we remove (H,G), (H,B), (H,I), then (H,E) remains. E can still reach H via the direct path (E,H).
+    In all cases, removing 3 edges incident to H is not sufficient.
+
+Since we have shown that 3 edges are not sufficient, and we found a valid cut set of 4 edges, the minimum number of edges to remove is 4.
+
+Edges to remove: 4, Cut Set: [(H, E), (H, G), (H, B), (H, I)].
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['H', 'B'], ['H', 'I'], ['E', 'F']], [['E', 'B'], ['E', 'F'], ['M', 'J']]]}
+Progress: 233/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task1_gt3_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [G, E, H, B, N]
+--- Ground Truth ---
+{'length': 3, 'path': ['G', 'H', 'B', 'N']}
+Progress: 234/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task1_gt2_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 1, Path: [H, E]
+--- Ground Truth ---
+{'length': 2, 'path': ['E', 'B', 'H']}
+Progress: 235/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt2_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(G, H), (F, E)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 236/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task3_gt3_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['M', 'E'], ['M', 'J'], ['M', 'L']], [['M', 'J'], ['F', 'E'], ['B', 'E']]]}
+Progress: 237/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt3_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [N, C, H, G]
+--- Ground Truth ---
+{'length': 3, 'path': ['G', 'H', 'B', 'N']}
+Progress: 237/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt4_PAIR5
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [K, F, E, B, N]
+--- Ground Truth ---
+{'length': 4, 'path': ['K', 'G', 'H', 'B', 'N']}
+Progress: 238/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task3_gt3_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of edges that must be removed to completely disconnect the two black nodes (E and J), we need to find the minimum edge cut between E and J.
+
+**1. Identify the two black nodes:**
+*   Node E
+*   Node J
+
+**2. Identify all direct neighbors of E and J:**
+*   **Neighbors of E:** L, M, F, B
+*   **Neighbors of J:** M, D, P, I
+
+**3. Consider potential cut sets:**
+
+*   **Option A: Remove all edges connected to J.**
+    The edges connected to J are: (J, M), (J, D), (J, P), (J, I).
+    If these 4 edges are removed, node J becomes isolated and is completely disconnected from E.
+    This is a valid cut of size 4.
+
+*   **Option B: Remove all edges connected to E.**
+    The edges connected to E are: (E, L), (E, M), (E, F), (E, B).
+    If these 4 edges are removed, node E becomes isolated and is completely disconnected from J.
+    This is also a valid cut of size 4.
+
+Since we found a cut of size 4, the minimum number of edges to remove is at most 4. Now, we need to determine if a smaller cut (e.g., 3 edges) exists.
+
+**4. Attempt to find a cut of size 3 (and prove it's not possible):**
+Let's assume there exists a cut of 3 edges. This means that after removing any 3 edges, E and J are still connected. We can try to prove this by contradiction or by systematically checking scenarios.
+
+Consider the four edges directly connected to J: (J,M), (J,D), (J,P), (J,I). Any path from E to J must use at least one of these edges.
+
+*   **Scenario 1: Remove any 3 edges directly connected to J.**
+    Let's remove (J,M), (J,D), and (J,P).
+    The edge (J,I) remains.
+    Can E still reach I? Yes, for example, via the path E - F - G - H - I.
+    Since E can reach I, and (J,I) is still present, the path E - F - G - H - I - J is still intact.
+    Therefore, removing any 3 edges directly connected to J is not sufficient to disconnect E and J.
+
+*   **Scenario 2: Remove any 3 edges directly connected to E.**
+    Let's remove (E,L), (E,M), and (E,F).
+    The edge (E,B) remains.
+    Can B still reach J? Yes, for example, via the path B - H - I - J.
+    Since B can reach J, and (E,B) is still present, the path E - B - H - I - J is still intact.
+    Therefore, removing any 3 edges directly connected to E is not sufficient to disconnect E and J.
+
+*   **Scenario 3: Consider a mixed cut of 3 edges (e.g., 2 edges from J's neighbors and 1 other edge, or 1 from J's neighbors, 1 from E's neighbors, and 1 other edge, etc.).**
+    Let's try to find a path that remains after removing any arbitrary set of 3 edges. This is equivalent to finding 4 edge-disjoint paths between E and J (by Menger's Theorem). If we can find 4 edge-disjoint paths, then the minimum cut is 4.
+
+    Let's identify 4 edge-disjoint paths:
+    1.  **Path 1:** E - M - J
+        Edges: {(E,M), (M,J)}
+    2.  **Path 2:** E - F - G - H - I - J
+        Edges: {(E,F), (F,G), (G,H), (H,I), (I,J)}
+        (These edges are distinct from Path 1's edges.)
+    3.  **Path 3:** E - B - N - O - P - J
+        Edges: {(E,B), (B,N), (N,O), (O,P), (P,J)}
+        (These edges are distinct from Path 1's and Path 2's edges.)
+    4.  **Path 4:** E - L - M - F - X - K - G - H - B (No, this path uses edges from P2 and P3, and M is used in P1)
+        Let's try to construct a fourth path using the remaining "entry" and "exit" points.
+        The edges connected to J are (J,M), (J,D), (J,P), (J,I).
+        Path 1 uses (J,M). Path 2 uses (J,I). Path 3 uses (J,P).
+        So, for a fourth edge-disjoint path, it must use (J,D).
+        The edges connected to E are (E,L), (E,M), (E,F), (E,B).
+        Path 1 uses (E,M). Path 2 uses (E,F). Path 3 uses (E,B).
+        So, for a fourth edge-disjoint path, it must use (E,L).
+
+        Now we need to find an edge-disjoint path from L to D.
+        Let's trace:
+        E - L - M - F - X - K - G - H - B (B is used in P3)
+        This is difficult to find by inspection.
+
+However, the argument from **Scenario 1** and **Scenario 2** is quite strong. If we remove any 3 edges, there will always be at least one direct connection to J (or E) remaining, and we can show that the other black node can still reach that remaining neighbor.
+
+Let's re-confirm the argument for any 3 edges.
+Consider the set of edges that connect to J: S_J = {(J,M), (J,D), (J,P), (J,I)}.
+Consider the set of edges that connect to E: S_E = {(E,L), (E,M), (E,F), (E,B)}.
+
+If we remove any 3 edges, say e1, e2, e3.
+*   If all 3 edges are from S_J, then one edge from S_J remains (e.g., (J,I)). We can show E can reach I (e.g., E-F-G-H-I). So E-J path exists.
+*   If all 3 edges are from S_E, then one edge from S_E remains (e.g., (E,B)). We can show B can reach J (e.g., B-H-I-J). So E-J path exists.
+*   If 2 edges are from S_J (e.g., (J,M), (J,I)) and 1 other edge (e.g., (X,K)). Then (J,D) and (J,P) remain. E can reach P (e.g., E-B-N-O-P). So E-J path exists via P.
+*   If 2 edges are from S_E (e.g., (E,L), (E,M)) and 1 other edge (e.g., (X,K)). Then (E,F) and (E,B) remain. F can reach J (e.g., F-G-H-I-J). So E-J path exists via F.
+*   If 1 edge is from S_J (e.g., (J,M)), 1 edge from S_E (e.g., (E,B)), and 1 other edge (e.g., (X,K)). Then (J,D), (J,P), (J,I) remain. And (E,L), (E,M), (E,F) remain. E can reach I (e.g., E-F-G-H-I). So E-J path exists via I.
+*   If 3 edges are not from S_J or S_E (e.g., (X,K), (N,O), (G,H)).
+    *   Path E-M-J is still intact.
+    *   Path E-B-H-I-J is still intact.
+    *   Path E-L-M-J is still intact.
+    *   Path E-F-M-J is still intact.
+    *   Path E-B-N-C-I-J is still intact (assuming (N,C) and (C,I) are not removed).
+
+It appears that no matter which 3 edges are chosen, there is always a path remaining between E and J. This confirms that the minimum cut size is greater than 3.
+
+Since we have a valid cut of size 4, and we've established that a cut of size 3 is not sufficient, the minimum number of edges to remove is 4.
+
+The cut set can be the edges directly connected to J.
+
+Edges to remove: 4, Cut Set: [(J, M), (J, D), (J, P), (J, I)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['E', 'B'], ['M', 'J'], ['G', 'H']], [['E', 'B'], ['M', 'J'], ['F', 'E']]]}
+Progress: 239/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task3_gt2_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(D, J), (D, P)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['D', 'P'], ['D', 'J']]}
+Progress: 240/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task2_gt3_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (H and N), we need to find a minimum vertex cut. According to Menger's Theorem, the minimum number of vertices whose removal disconnects two non-adjacent vertices is equal to the maximum number of vertex-disjoint paths between them.
+
+Let's identify vertex-disjoint paths between H and N (paths that do not share any intermediate nodes).
+
+1.  **Path 1: H - B - N**
+    *   Intermediate node: B
+
+2.  **Path 2: H - I - C - N**
+    *   Intermediate nodes: I, C
+    *   This path is vertex-disjoint from Path 1, as it does not use B.
+
+3.  **Path 3: H - G - F - E - L - M - J - D - P - O - N**
+    *   Intermediate nodes: G, F, E, L, M, J, D, P, O
+    *   Let's verify this path: H is connected to G. G to F. F to E. E to L. L to M. M to J. J to D. D to P. P to O. O to N. All these connections exist.
+    *   This path is vertex-disjoint from Path 1 (does not use B) and Path 2 (does not use I, C).
+
+We have found 3 vertex-disjoint paths between H and N. Therefore, according to Menger's Theorem, the minimum number of nodes that must be removed to disconnect H and N is at least 3.
+
+Now, let's find a set of 3 nodes whose removal disconnects H and N. We can try to select one node from each of the identified vertex-disjoint paths (excluding H and N themselves).
+
+Consider the cut set **{B, I, O}**:
+*   If **B** is removed, Path 1 (H-B-N) is cut.
+*   If **I** is removed, Path 2 (H-I-C-N) is cut.
+*   If **O** is removed, Path 3 (H-G-F-E-L-M-J-D-P-O-N) is cut.
+
+Let's verify if removing {B, I, O} completely disconnects H from N:
+*   **Neighbors of H:** {G, B, I}
+*   **Neighbors of N:** {B, C, Y, O}
+
+After removing B, I, O:
+*   H's remaining neighbor: {G}
+*   N's remaining neighbors: {C, Y}
+
+Now, we need to check if G can reach C or Y without passing through B, I, or O.
+*   G is connected to {F, X, K}.
+*   From {F, X, K}, we can reach {E, M, J}.
+*   E is connected to {L, M}.
+*   M is connected to {L, E, F, J}.
+*   J is connected to {M, D, P}.
+
+Let's trace paths from G to C or Y:
+*   Any path from G must go through F, X, or K.
+*   From F, X, K, paths lead to E, M, J.
+*   E, M, J are not directly connected to C or Y.
+*   J is connected to I (which is removed) and P. P is connected to O (which is removed). So, J cannot reach C or Y.
+*   Therefore, there are no paths from G to C or Y after removing B, I, and O.
+
+Since we found 3 vertex-disjoint paths, and we found a cut set of size 3 that disconnects H and N, the minimum number of nodes to remove is 3.
+
+Nodes to remove: 3, Cut Set: [B, I, O]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['B', 'I', 'P'], ['B', 'I', 'G'], ['B', 'I', 'E']]}
+Progress: 241/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task3_gt2_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(H, G), (K, G), (X, G)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 242/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task2_gt3_PAIR1
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (H and E), we need to find the minimum vertex cut between H and E. According to Menger's theorem, this is equal to the maximum number of vertex-disjoint paths between H and E.
+
+Let's identify vertex-disjoint paths between H and E. Vertex-disjoint paths are paths that do not share any intermediate nodes (nodes other than H and E).
+
+1.  **Path 1:** H - C - B - E
+    *   Intermediate nodes: {C, B}
+
+2.  **Path 2:** H - I - J - M - E
+    *   Intermediate nodes: {I, J, M}
+    *   This path is vertex-disjoint from Path 1, as {C, B} and {I, J, M} are distinct sets of nodes.
+
+3.  **Path 3:** H - G - F - P - E
+    *   Intermediate nodes: {G, F, P}
+    *   This path is vertex-disjoint from Path 1 ({C, B}) and Path 2 ({I, J, M}), as {G, F, P} is distinct from both sets.
+
+We have found three vertex-disjoint paths between H and E. Therefore, according to Menger's theorem, the minimum number of nodes that must be removed to disconnect H and E is at least 3.
+
+Now, let's identify a set of 3 nodes whose removal disconnects H and E.
+Consider the nodes directly connected to E: B, P, L, M.
+Node L is only connected to E and M. Any path to E through L must pass through M (e.g., H-...-M-L-E). So, if M is removed, L's connection to the rest of the graph (other than E) is severed. Thus, L is not a critical node for the cut set if M is considered. The critical neighbors of E are B, P, and M.
+
+Let's test the removal of the set {B, P, M}:
+*   If node B is removed, Path 1 (H - C - B - E) is cut.
+*   If node M is removed, Path 2 (H - I - J - M - E) is cut.
+*   If node P is removed, Path 3 (H - G - F - P - E) is cut.
+
+With the removal of nodes {B, P, M}, all three identified vertex-disjoint paths are broken. Furthermore, E's only remaining connection is to L, but L is only connected to M (which is removed) and E. Thus, E becomes completely isolated from the rest of the graph.
+
+Since we found 3 vertex-disjoint paths, and we found a cut set of size 3, this is the minimum number of nodes to remove.
+
+Nodes to remove: 3, Cut Set: [B, P, M]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'B', 'I'], ['F', 'B', 'M']]}
+Progress: 243/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task2_gt3_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [O, C, B]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['O', 'I', 'B'], ['O', 'I', 'E'], ['O', 'I', 'M']]}
+Progress: 244/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task2_gt3_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [B, L, F]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'B', 'I'], ['F', 'B', 'M']]}
+Progress: 245/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task2_gt3_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [B, I, J]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'B', 'I'], ['B', 'I', 'G']]}
+Progress: 246/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task2_gt3_PAIR1
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [M, B, F]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 247/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt3_PAIR5
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [M, J, I, H]
+--- Ground Truth ---
+{'length': 3, 'path': ['H', 'I', 'J', 'M']}
+Progress: 248/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task1_gt4_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [N, B, E, F, K]
+--- Ground Truth ---
+{'length': 4, 'path': ['K', 'G', 'H', 'B', 'N']}
+Progress: 249/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task2_gt3_PAIR3
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (E and H), we first need to understand the problem's interpretation regarding the direct edge between E and H.
+
+**Interpretation of "Completely Disconnected" when E and H are Adjacent:**
+The problem states that "A path is a chain-like structure between two nodes, which are connected through edges with zero or more intermediate nodes." It also states that "The two black nodes cannot be removed." Since E and H are directly connected by an edge (a path with zero intermediate nodes), and neither E nor H can be removed, this direct path can never be broken. In a strict graph theory sense, if two nodes are adjacent and cannot be removed, they cannot be "completely disconnected" by removing other nodes.
+
+However, the output format "Nodes to remove: X, Cut Set: [A, B, C]" implies a finite, positive integer answer. This suggests that the question implicitly asks for the minimum number of nodes to remove to disconnect E and H *through any path that involves at least one intermediate node*, effectively ignoring the direct edge (E,H) for the purpose of finding a vertex cut. This is a common convention in such problems to allow for a solvable finite answer. I will proceed with this interpretation.
+
+**Step-by-step analysis (assuming the direct edge E-H is ignored for the cut):**
+
+1.  **Identify Neighbors of E and H (excluding each other):**
+    *   Neighbors of E: {F, M, I}
+    *   Neighbors of H: {G, B, I}
+
+2.  **Find Node-Disjoint Paths between E and H:**
+    We are looking for paths that do not share any intermediate nodes.
+    *   **Path 1:** E - I - H
+        *   Intermediate node: {I}
+    *   **Path 2:** E - F - G - H
+        *   Intermediate nodes: {F, G}
+    *   **Path 3:** E - M - J - P - O - N - B - H
+        *   Intermediate nodes: {M, J, P, O, N, B}
+
+    Let's verify if these three paths are node-disjoint (except for E and H):
+    *   Path 1 uses I.
+    *   Path 2 uses F, G.
+    *   Path 3 uses M, J, P, O, N, B.
+    Indeed, the sets of intermediate nodes are mutually exclusive.
+
+3.  **Apply Menger's Theorem:**
+    Menger's Theorem states that the maximum number of node-disjoint paths between two non-adjacent nodes is equal to the minimum number of nodes that must be removed to disconnect them. Since we found 3 node-disjoint paths, the minimum number of nodes to remove must be at least 3.
+
+4.  **Find a Candidate Cut Set of Size 3:**
+    To disconnect E and H, we need to remove nodes such that every path from E to H (excluding the direct edge) is broken. A cut set must intersect every path.
+    Let's try to form a cut set by picking one node from each of our node-disjoint paths:
+    *   From Path 1: Pick I
+    *   From Path 2: Pick G (or F)
+    *   From Path 3: Pick B (or N, O, P, J, M, C)
+
+    Let's test the cut set **{I, G, B}**:
+    *   If I is removed: Path E - I - H is broken.
+    *   If G is removed: Path E - F - G - H is broken.
+    *   If B is removed: Path E - M - J - P - O - N - B - H is broken.
+
+    Now, let's verify if any other paths remain after removing {I, G, B}:
+    *   E's remaining neighbors (after removing I): {F, M}
+    *   H's remaining neighbors (after removing I, G, B): None from the original set {G, B, I}.
+
+    Let's trace from E:
+    *   From E to F: F is connected to K, X. Neither K nor X can reach H as H's neighbors (G, B, I) are removed.
+    *   From E to M: M is connected to L, J.
+        *   J is connected to D, P.
+        *   P is connected to J, D, O.
+        *   O is connected to N (removed), C (C is connected to B, which is removed), Y.
+    None of these paths can reach H because all of H's entry points (G, B, I) have been removed.
+
+    Therefore, removing {I, G, B} successfully disconnects E and H. Since we found 3 node-disjoint paths, and we found a cut set of size 3, this is the minimum.
+
+Another valid cut set of size 3 could be {F, M, I}, which disconnects E from all other nodes (except H, which is ignored).
+
+The minimum number of nodes to remove is 3.
+
+Nodes to remove: 3, Cut Set: [I, G, B]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'B', 'I'], ['F', 'B', 'M']]}
+Progress: 250/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task3_gt2_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(G, X), (G, F), (G, H)].
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 251/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt4_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [X, F, E, B, N]
+--- Ground Truth ---
+{'length': 4, 'path': [['N', 'B', 'H', 'G', 'X'], ['N', 'B', 'E', 'F', 'X']]}
+Progress: 252/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task2_gt3_PAIR2
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [M, I, P]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 253/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task2_gt3_PAIR2
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [B, F, M]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'B', 'I'], ['F', 'B', 'M']]}
+Progress: 254/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt2_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 2, Path: [E, B, H]
+--- Ground Truth ---
+{'length': 2, 'path': ['E', 'B', 'H']}
+Progress: 255/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task3_gt3_PAIR3
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(E, B), (E, P), (E, M)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['H', 'B'], ['H', 'I'], ['E', 'F']]}
+Progress: 256/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt3_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(H, B), (H, G), (H, I)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['B', 'H'], ['H', 'I'], ['G', 'H']]}
+Progress: 257/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task3_gt2_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(C, H), (I, H), (P, F)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 258/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task1_gt4_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [F, M, J, D]
+--- Ground Truth ---
+{'length': 4, 'path': ['F', 'E', 'M', 'J', 'D']}
+Progress: 259/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task3_gt3_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(H, B), (H, G), (H, I)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['H', 'B'], ['H', 'I'], ['E', 'F']]}
+Progress: 260/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task2_gt2_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [E, J]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['J', 'E']}
+Progress: 261/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task1_gt4_PAIR5
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [F, M, J, D]
+--- Ground Truth ---
+{'length': 4, 'path': ['F', 'E', 'M', 'J', 'D']}
+Progress: 262/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task3_gt2_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(L, E), (L, M)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['E', 'L'], ['L', 'M']]}
+Progress: 263/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task2_gt3_PAIR2
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 264/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt2_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 2, Path: [L, M, J]
+--- Ground Truth ---
+{'length': 2, 'path': ['J', 'M', 'L']}
+Progress: 264/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task1_gt3_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [E, B, C, I]
+--- Ground Truth ---
+{'length': 3, 'path': [['E', 'M', 'J', 'I'], ['E', 'B', 'C', 'I']]}
+Progress: 265/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task2_gt3_PAIR2
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [M, P]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 266/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task2_gt2_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (L and J), we need to find a minimum node cut set between L and J. The black nodes themselves (L and J) cannot be removed.
+
+1.  **Identify the neighbors of L:**
+    *   L is connected to E.
+    *   L is connected to M.
+    So, the neighbors of L are {E, M}.
+
+2.  **Identify the neighbors of J:**
+    *   J is connected to M.
+    *   J is connected to I.
+    *   J is connected to P.
+    *   J is connected to D.
+    So, the neighbors of J are {M, I, P, D}.
+
+3.  **Check for a cut set of size 1:**
+    *   If we remove M: L is still connected to E. J is still connected to I, P, D. A path like L-E-I-J still exists.
+    *   If we remove E: L is still connected to M. J is still connected to M, I, P, D. A path like L-M-J still exists.
+    *   If we remove I: L is still connected to E, M. J is still connected to M, P, D. Paths like L-M-J or L-E-M-J still exist.
+    *   If we remove P: L is still connected to E, M. J is still connected to M, I, D. Paths like L-M-J or L-E-I-J still exist.
+    *   If we remove D: L is still connected to E, M. J is still connected to M, I, P. Paths like L-M-J or L-E-I-J still exist.
+    Since removing any single node does not disconnect L and J, the minimum number of nodes to remove must be at least 2.
+
+4.  **Check for a cut set of size 2:**
+    We need to find a set of two nodes whose removal disconnects L from J.
+    Consider the direct neighbors of L: {E, M}.
+    If we remove both E and M:
+    *   L is connected to E. If E is removed, this connection is gone.
+    *   L is connected to M. If M is removed, this connection is gone.
+    With both E and M removed, L has no remaining connections to any other node in the graph. Therefore, L becomes completely isolated from the rest of the graph, including J.
+
+    Thus, the set {E, M} is a cut set of size 2.
+
+5.  **Conclusion:**
+    Since we've established that a single node removal is not sufficient, and we found a cut set of size 2, the minimum number of nodes to remove is 2.
+
+Nodes to remove: 2, Cut Set: [E, M]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'M']}
+Progress: 267/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task1_gt2_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 2, Path: [F, E, M]
+--- Ground Truth ---
+{'length': 2, 'path': ['F', 'E', 'M']}
+Progress: 268/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task3_gt2_PAIR3
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of edges that must be removed to completely disconnect the two black nodes (G and I), we need to find the minimum edge cut between G and I. This is equivalent to finding the maximum number of edge-disjoint paths between G and I (by Menger's Theorem).
+
+First, let's list the direct neighbors of G and I:
+*   **Neighbors of G:** H, K, F, X
+*   **Neighbors of I:** H, C, P, J
+
+Now, let's identify edge-disjoint paths from G to I. We are looking for paths that do not share any common edges.
+
+1.  **Path 1: G - H - I**
+    *   Edges: (G,H), (H,I)
+
+2.  **Path 2: G - F - P - I**
+    *   Edges: (G,F), (F,P), (P,I)
+    *   This path is edge-disjoint from Path 1.
+
+3.  **Path 3: G - K - F - E - M - J - I**
+    *   Edges: (G,K), (K,F), (F,E), (E,M), (M,J), (J,I)
+    *   Let's check if this path is edge-disjoint from Path 1 and Path 2:
+        *   Path 1 edges: {(G,H), (H,I)}
+        *   Path 2 edges: {(G,F), (F,P), (P,I)}
+        *   Path 3 edges: {(G,K), (K,F), (F,E), (E,M), (M,J), (J,I)}
+    *   All three sets of edges are distinct. Thus, these three paths are edge-disjoint.
+
+Since we have found 3 edge-disjoint paths between G and I, the minimum number of edges that must be removed to disconnect G and I is at least 3.
+
+Next, we need to find a set of 3 edges whose removal disconnects G and I. If we find such a set, then the minimum number of edges is exactly 3.
+
+Consider the following set of 3 edges: **{(G,H), (P,I), (J,I)}**
+
+Let's verify if removing these three edges disconnects G from I:
+
+1.  **Remove (G,H):**
+    *   This cuts all paths that go through H directly to I (G-H-I).
+    *   It also cuts all paths that go through H to C and then to I (G-H-C-I), because H is the only neighbor of G that connects to H, and H is the only neighbor of C that connects to G's side of the graph.
+
+2.  **Remove (P,I):**
+    *   This cuts all paths that reach I directly from P.
+    *   Paths like G-F-P-I, G-K-F-P-I, G-X-F-P-I are cut.
+    *   Also, paths like G-F-E-P-I, G-K-F-E-P-I, G-X-F-E-P-I are cut.
+    *   Essentially, any path that uses P as its last hop to I is cut.
+
+3.  **Remove (J,I):**
+    *   This cuts all paths that reach I directly from J.
+    *   Paths like G-F-P-J-I, G-K-F-P-J-I, G-X-F-P-J-I are cut.
+    *   Also, paths like G-F-E-M-J-I, G-K-F-E-M-J-I, G-X-F-E-M-J-I are cut.
+    *   Essentially, any path that uses J as its last hop to I is cut.
+
+After removing these three edges:
+*   Node I is connected to H, C, P, J.
+*   All paths from G to I must use one of the edges (H,I), (C,I), (P,I), or (J,I) as their final step.
+*   (H,I) is cut because (G,H) is removed, so G cannot reach H.
+*   (C,I) is cut because (G,H) is removed, so G cannot reach H, which is the only way to C from G's side.
+*   (P,I) is explicitly removed.
+*   (J,I) is explicitly removed.
+
+Therefore, no path remains between G and I. The set of edges {(G,H), (P,I), (J,I)} successfully disconnects G and I. Since we found 3 edge-disjoint paths, and we found a cut set of size 3, the minimum number of edges to remove is 3.
+
+Edges to remove: 3, Cut Set: [(G, H), (P, I), (J, I)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 269/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task1_gt3_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 2, Path: [G, B, N]
+--- Ground Truth ---
+{'length': 3, 'path': ['G', 'H', 'B', 'N']}
+Progress: 270/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task3_gt3_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['M', 'E'], ['M', 'J'], ['M', 'L']], [['M', 'J'], ['F', 'E'], ['B', 'E']]]}
+Progress: 271/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task3_gt3_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(H, B), (H, G), (H, I)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['B', 'H'], ['H', 'I'], ['G', 'H']]}
+Progress: 271/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task2_gt2_PAIR1
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [E, J]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['J', 'E']}
+Progress: 272/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt2_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(L, M), (L, E)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['E', 'L'], ['L', 'M']]}
+Progress: 273/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task2_gt2_PAIR3
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (G and I), we need to find the minimum vertex cut between G and I. According to Menger's theorem, the minimum number of nodes in a vertex cut is equal to the maximum number of vertex-disjoint paths between the two nodes (excluding the start and end nodes themselves).
+
+Let's identify vertex-disjoint paths between G and I:
+
+1.  **Path 1:** G - H - I (Intermediate node: H)
+2.  **Path 2:** G - C - I (Intermediate node: C)
+3.  **Path 3:** G - K - I (Intermediate node: K)
+
+Now we need to find paths that do not use H, C, or K.
+Neighbors of G (excluding H, C, K): F, B
+Neighbors of I (excluding H, C, K): J, P, O
+
+4.  **Path 4:** G - F - M - J - I (Intermediate nodes: F, M, J)
+    *   This path uses F, M, J, which are distinct from H, C, K. So, this is a vertex-disjoint path from the first three.
+
+Now we need to find a path that does not use H, C, K, F, M, J.
+Remaining neighbors of G (that haven't been used as intermediate nodes in disjoint paths): B
+Remaining neighbors of I (that haven't been used as intermediate nodes in disjoint paths): P, O
+
+5.  **Path 5:** G - B - N - Y - O - I (Intermediate nodes: B, N, Y, O)
+    *   This path uses B, N, Y, O, which are distinct from H, C, K, F, M, J. So, this is a vertex-disjoint path from the first four.
+
+We have found 5 vertex-disjoint paths between G and I:
+*   P1: G - **H** - I
+*   P2: G - **C** - I
+*   P3: G - **K** - I
+*   P4: G - **F** - **M** - **J** - I
+*   P5: G - **B** - **N** - **Y** - **O** - I
+
+Since we have found 5 vertex-disjoint paths, the minimum number of nodes that must be removed is at least 5.
+
+Now, let's find a cut set of 5 nodes that disconnects G and I. We can choose one intermediate node from each of these 5 disjoint paths. A good strategy is to pick nodes that are "central" or appear in multiple paths if possible, but for disjoint paths, any intermediate node will work.
+
+Let's choose the following nodes:
+*   From P1: H
+*   From P2: C
+*   From P3: K
+*   From P4: M (could also be F or J)
+*   From P5: Y (could also be B, N, or O)
+
+Proposed Cut Set: {H, C, K, M, Y}
+
+Let's verify that removing these 5 nodes disconnects G and I by checking all possible paths:
+
+1.  G - H - I (Cut by H)
+2.  G - C - I (Cut by C)
+3.  G - K - I (Cut by K)
+4.  G - F - K - I (Cut by K)
+5.  G - F - X - K - I (Cut by K)
+6.  G - F - M - J - I (Cut by M)
+7.  G - F - M - L - E - B - N - Y - O - I (Cut by M or Y)
+8.  G - B - E - L - M - J - I (Cut by M)
+9.  G - B - N - Y - O - I (Cut by Y)
+
+All identified paths between G and I are cut by the removal of nodes {H, C, K, M, Y}.
+Since we found 5 vertex-disjoint paths, the minimum cut is at least 5.
+And we found a cut set of size 5.
+Therefore, the minimum number of nodes to remove is 5.
+
+Nodes to remove: 5, Cut Set: [H, C, K, M, Y]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'H']}
+Progress: 274/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task2_gt3_PAIR2
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 5, Cut Set: [M, F, K, I, P]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 275/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task3_gt3_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(H, B), (H, G), (H, I)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['B', 'H'], ['H', 'I'], ['G', 'H']]}
+Progress: 276/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task1_gt3_PAIR5
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 3, Path: [I, J, M, L]
+--- Ground Truth ---
+{'length': 3, 'path': ['L', 'M', 'J', 'I']}
+Progress: 277/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task2_gt2_PAIR2
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [B, E, H]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'H']}
+Progress: 278/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task1_gt3_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Length: 4, Path: [M, E, I, C, N]
+--- Ground Truth ---
+{'length': 3, 'path': ['M', 'E', 'B', 'N']}
+Progress: 279/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task3_gt3_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 2
+--- Model Response ---
+Edges to remove: 4, Cut Set: [(E, B), (G, B), (C, B), (N, B)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['M', 'E'], ['M', 'J'], ['M', 'L']], [['M', 'J'], ['F', 'E'], ['B', 'E']]]}
+Progress: 280/280 images processed.
+============================================================

@@ -509,10 +509,10 @@ def main(
 if __name__ == "__main__":
     # Parameters
     test_images_dir = "dataset/test"
-    mode = "few_shot"  # "zero_shot" or "few_shot"
+    mode = "zero_shot"  # "zero_shot" or "few_shot"
     cot_mode = "no_cot"  # "no_cot" or "cot"
     model_name = "gemini-2.5-flash"  # Change to "mistral-small-3.1-24b" or other models as needed
-    attempt = 2
+    attempt = 3
     max_images_per_run = 280
 
     ### MODIFIED ###

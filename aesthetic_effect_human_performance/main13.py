@@ -510,7 +510,7 @@ if __name__ == "__main__":
     # Parameters
     test_images_dir = "dataset/test"
     mode = "zero_shot"  # "zero_shot" or "few_shot"
-    cot_mode = "cot"  # "no_cot" or "cot"
+    cot_mode = "no_cot"  # "no_cot" or "cot"
     model_name = "mistral-small-3.1-24b"
     attempt = 13
     max_images_per_run = 450

@@ -14891,3 +14891,110 @@ Edges to remove: 2, Cut Set: [(E, B), (H, J)].
 {'length': 1, 'cut_set': [['H', 'I']]}
 Progress: 447/450 images processed.
 ============================================================
+
+============================================================
+Image name: b+_task1_gt3_PAIR2
+Task: task1_shortest_path_length
+Model: mistral-small-3.1-24b
+Mode: zero_shot, COT: no_cot, Attempt: 16
+--- Model Response ---
+To find the shortest path between the two black nodes, F and I, we need to examine the possible paths in the graph.
+
+1. **Identify the direct edges connected to node F:**
+   - F is connected to E, B, and T.
+
+2. **Identify the direct edges connected to node I:**
+   - I is connected to H, J, and Q.
+
+3. **Find intermediate nodes that connect F and I:**
+
+   - Path via B:
+     - F → B
+     - B → C
+     - C → G
+     - G → J
+     - J → I
+
+   The path is: F → B → C → G → J → I
+
+4. **Calculate the length of the path:**
+   - The path F → B → C → G → J → I has a length of 4.
+
+There might be other paths, but this is the shortest path found so far.
+
+Length: 4, Path: [F, B, C, G, J, I]
+--- Ground Truth ---
+{'length': 3, 'path': [['F', 'B', 'H', 'I'], ['F', 'G', 'H', 'I']]}
+Progress: 448/450 images processed.
+============================================================
+
+============================================================
+Image name: b+_task3_gt3_PAIR4
+Task: task3_min_edges_removal
+Model: mistral-small-3.1-24b
+Mode: zero_shot, COT: no_cot, Attempt: 16
+--- Model Response ---
+To determine the minimum number of edges that must be removed so that the two black nodes (F and C) are completely disconnected, we need to identify all paths between F and C and find the smallest set of edges whose removal will eliminate all these paths.
+
+1. **Identify all paths from F to C:**
+   - F -> B -> C
+   - F -> B -> S -> N -> C
+   - F -> B -> E -> A -> S -> N -> C
+   - F -> B -> T -> G -> C
+   - F -> B -> T -> G -> J -> O -> R -> N -> C
+   - F -> T -> G -> J -> O -> R -> N -> C
+   - F -> T -> H -> I -> J -> O -> R -> N -> C
+   - F -> T -> H -> I -> J -> Q -> P -> O -> R -> N -> C
+
+2. **Find the minimum cut set:**
+   - Remove edges that disconnect all these paths. We need to pick edges in such a way that removing them disconnects the maximum number of paths simultaneously.
+
+  - Removing F -> B disconnects paths: F -> B -> C, F -> B -> S -> N -> C, F -> B -> E -> A -> S -> N -> C, F -> B -> T -> G -> C, and F -> B -> T -> G -> J -> O -> R -> N -> C.
+  - Removing T -> G disconnects paths: F -> B -> T -> G -> C, F -> B -> T -> G -> J -> O -> R -> N -> C, F -> T -> G -> J -> O -> R -> N -> C.
+  - Removing O -> R disconnects paths: F -> B -> T -> G -> J -> O -> R -> N -> C, F -> T -> G -> J -> O -> R -> N -> C.
+
+  However, removing these three edges will still leave:
+  - F -> T -> H -> I -> J -> O -> R -> N -> C
+  - F -> T -> H -> I -> J -> Q -> P -> O -> R -> N -> C
+
+  To disconnect these, we need to remove additional edges:
+  - Remove J -> O to disconnect the remaining paths.
+
+   After removing these edges, F and C are completely disconnected.
+
+  - Cut Set: [(F, B), (T, G), (O, R), (J, O)]
+
+Edges to remove: 4, Cut Set: [(F, B), (T, G), (O, R), (J, O)].
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['N', 'B'], ['C', 'B'], ['C', 'G']]}
+Progress: 449/450 images processed.
+============================================================
+
+============================================================
+Image name: c+_task1_gt3_PAIR2
+Task: task1_shortest_path_length
+Model: mistral-small-3.1-24b
+Mode: zero_shot, COT: no_cot, Attempt: 16
+--- Model Response ---
+To find the shortest path between the two black nodes labeled 'F' and 'I', we need to identify the sequence of nodes and edges that connect these two nodes with the minimum number of intermediate nodes.
+
+1. Start at node 'F'.
+2. Identify possible paths from 'F' to 'I':
+   - 'F' -> 'T' -> 'R' -> 'B' -> 'C' -> 'H' -> 'I' (Path length: 6)
+   - 'F' -> 'T' -> 'R' -> 'B' -> 'C' -> 'Q' -> 'P' -> 'I' (Path length: 7)
+   - 'F' -> 'T' -> 'R' -> 'B' -> 'J' -> 'H' -> 'I' (Path length: 6)
+   - 'F' -> 'T' -> 'R' -> 'B' -> 'J' -> 'C' -> 'H' -> 'I' (Path length: 7)
+   - 'F' -> 'T' -> 'E' -> 'S' -> 'A' -> 'N' -> 'O' -> 'G' -> 'H' -> 'I' (Path length: 9)
+   - 'F' -> 'T' -> 'E' -> 'S' -> 'A' -> 'N' -> 'O' -> 'C' -> 'H' -> 'I' (Path length: 9)
+   - 'F' -> 'T' -> 'E' -> 'S' -> 'A' -> 'N' -> 'O' -> 'C' -> 'Q' -> 'P' -> 'I' (Path length: 10)
+   - 'F' -> 'T' -> 'R' -> 'B' -> 'E' -> 'S' -> 'A' -> 'N' -> 'O' -> 'G' -> 'H' -> 'I' (Path length: 11)
+   - 'F' -> 'T' -> 'R' -> 'B' -> 'E' -> 'S' -> 'A' -> 'N' -> 'O' -> 'C' -> 'H' -> 'I' (Path length: 11)
+
+3. The shortest path length is 6.
+4. The shortest path is 'F' -> 'T' -> 'R' -> 'B' -> 'J' -> 'H' -> 'I'.
+
+Length: 6, Path: [F, T, R, B, J, H, I]
+--- Ground Truth ---
+{'length': 3, 'path': [['F', 'B', 'H', 'I'], ['F', 'G', 'H', 'I']]}
+Progress: 450/450 images processed.
+============================================================

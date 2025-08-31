@@ -4014,3 +4014,79 @@ Length: 3, Path: [M, E, B, H]
 {'length': 3, 'path': ['M', 'E', 'B', 'H']}
 Progress: 183/280 images processed.
 ============================================================
+
+============================================================
+Image name: FD-K_task1_gt2_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 3
+--- Model Response ---
+Length: 2, Path: [G, H, I]
+--- Ground Truth ---
+{'length': 2, 'path': ['G', 'H', 'I']}
+Progress: 184/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task2_gt3_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 3
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [O, I, J]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['O', 'I', 'B'], ['O', 'I', 'E'], ['O', 'I', 'M']]}
+Progress: 185/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task3_gt2_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: cot, Attempt: 3
+--- Model Response ---
+To determine the minimum number of edges that must be removed to completely disconnect the two black nodes (G and N), we need to find the minimum edge cut between G and N. This is equivalent to finding the maximum number of edge-disjoint paths between G and N, according to Menger's Theorem.
+
+Let's identify paths from G to N and look for edge-disjoint ones:
+
+**1. Identify Neighbors of G and N:**
+*   **Neighbors of G:** H, X, K, F
+*   **Neighbors of N:** Y, B, C, O
+
+**2. Analyze Paths and Identify Edge-Disjoint Paths:**
+
+*   **Path 1:** G → H → C → N
+    *   Edges: (G,H), (H,C), (C,N)
+
+*   **Path 2:** G → F → E → B → N
+    *   Edges: (G,F), (F,E), (E,B), (B,N)
+
+*   **Path 3:** G → K → J → P → O → N
+    *   Edges: (G,K), (K,J), (J,P), (P,O), (O,N)
+
+Let's check if these three paths are edge-disjoint:
+*   The edges in Path 1 are (G,H), (H,C), (C,N).
+*   The edges in Path 2 are (G,F), (F,E), (E,B), (B,N).
+*   The edges in Path 3 are (G,K), (K,J), (J,P), (P,O), (O,N).
+
+Upon inspection, all edges listed across these three paths are distinct. Therefore, we have found 3 edge-disjoint paths between G and N. By Menger's Theorem, this implies that the minimum number of edges to remove to disconnect G and N is at least 3.
+
+**3. Identify a Cut Set of Size 3:**
+Consider the edges directly connected to node N that are part of paths from G:
+*   (N,B)
+*   (N,C)
+*   (N,O)
+The edge (N,Y) does not participate in any path from G to N, as Y is only connected to N and O (and (N,O) is already considered).
+
+If we remove the edges {(N,B), (N,C), (N,O)}, node N will only be connected to node Y. Since Y is only connected to N (and O, but (N,O) is removed), there will be no path from G to N. This set of 3 edges successfully disconnects G from N.
+
+**4. Conclusion:**
+Since we found 3 edge-disjoint paths, the minimum cut is at least 3.
+Since we found a cut set of 3 edges, the minimum cut is at most 3.
+Therefore, the minimum number of edges to remove is 3.
+
+Edges to remove: 3, Cut Set: [(N, B), (N, C), (N, O)].
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 186/280 images processed.
+============================================================

@@ -47,6 +47,11 @@ def analyze_experiment_progress():
     for file_path in csv_file_paths:
         try:
             df = pd.read_csv(file_path)
+            
+            # Do not consider attempt 20 to not surpass the 7 days budget
+            if 'Attempt' in df.columns:
+                df = df[df['Attempt'] != 20]
+
             if 'Time (sec)' in df.columns:
                 numeric_strings = df['Time (sec)'].astype(str).str.extract(r'(\d+\.?\d*)')[0]
                 numeric_times = pd.to_numeric(numeric_strings, errors='coerce')
@@ -85,8 +90,8 @@ def analyze_experiment_progress():
             print(f" • Remaining: {Colors.GREEN}{remaining_time_sec:,.2f} sec{Colors.RESET} "
                   f"({remaining_time_sec/3600:.2f} hours)")
         else:
-            print(f" • Budget exceeded by: {Colors.RED}{-remaining_time_sec:,.2f} sec{Colors.RESET}")
-
+            print(f" • Budget exceeded by: {Colors.RED}{-remaining_time_sec:,.2f}sec ({-remaining_time_sec/3600:.2f} hours){Colors.RESET}") 
+    
         print(f"\n{Colors.BOLD}[ Rerun Estimation ]{Colors.RESET}")
         print(f" • Average time per task: {Colors.CYAN}{average_time_sec:.2f} sec{Colors.RESET}")
         print(f" • Estimated time per full rerun ({total_tasks_per_rerun} tasks): "

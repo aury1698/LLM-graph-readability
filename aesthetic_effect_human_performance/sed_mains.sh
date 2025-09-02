@@ -2,7 +2,7 @@
 
 # Set your desired modes here
 mode="few_shot"      # "zero_shot" or "few_shot"
-cot_mode="no_cot"     # "no_cot" or "cot"
+cot_mode="cot"     # "no_cot" or "cot"
 model_name="mistral-small-3.1-24b"  # Set your desired model name
 
 # Loop through main1.py to main20.py

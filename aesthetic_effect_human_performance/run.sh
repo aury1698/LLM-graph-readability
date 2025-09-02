@@ -1,6 +1,6 @@
-for i in `seq 11 20 `
+for i in `seq 1 20 `
 do
-  sleep 5
+  sleep 10
   python main$i.py &
 done
 

@@ -23,7 +23,7 @@ def initialize_model(model_name):
             raise ValueError("OPENAI_API_KEY is not set in the environment variables.")
         return ChatOpenAI(model="gpt-4o")
     elif model_name.startswith("gemini"):
-        api_key = os.getenv("GEMINI_API_KEY_SECONDARY")
+        api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError(
                 "GEMINI_API_KEY_SECONDARY is not set in the environment variables."

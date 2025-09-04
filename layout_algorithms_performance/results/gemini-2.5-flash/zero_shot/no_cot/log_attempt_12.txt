@@ -1,0 +1,630 @@
+
+============================================================
+Image name: FD-FR_task2_gt3_PAIR2
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [M, I, P]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 1/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task2_gt3_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (H and N), we need to find the minimum vertex cut between H and N. This is equivalent to finding the maximum number of vertex-disjoint paths between H and N, according to Menger's Theorem.
+
+Let's identify paths from H to N and check for vertex-disjointness (meaning they do not share any intermediate nodes).
+
+1.  **Path 1: H - B - N**
+    *   Intermediate node: {B}
+
+2.  **Path 2: H - I - C - N**
+    *   Intermediate nodes: {I, C}
+    *   This path is vertex-disjoint from Path 1, as {I, C} does not overlap with {B}.
+
+3.  **Path 3: H - E - M - J - P - O - N**
+    *   Intermediate nodes: {E, M, J, P, O}
+    *   Let's check for disjointness with Path 1 and Path 2:
+        *   {E, M, J, P, O} does not overlap with {B}.
+        *   {E, M, J, P, O} does not overlap with {I, C}.
+    *   Therefore, Path 3 is vertex-disjoint from both Path 1 and Path 2.
+
+We have found 3 vertex-disjoint paths between H and N:
+*   P1: H - B - N
+*   P2: H - I - C - N
+*   P3: H - E - M - J - P - O - N
+
+According to Menger's Theorem, the minimum number of nodes required to disconnect H and N is equal to the maximum number of vertex-disjoint paths between them. Since we found 3 vertex-disjoint paths, the minimum number of nodes to remove must be at least 3.
+
+Now, let's identify a set of 3 nodes that, if removed, would disconnect H and N.
+Consider the set of nodes {B, C, O}.
+*   If node B is removed, Path 1 (H-B-N) is broken.
+*   If node C is removed, Path 2 (H-I-C-N) is broken.
+*   If node O is removed, Path 3 (H-E-M-J-P-O-N) is broken.
+
+Let's verify if removing {B, C, O} disconnects H from N completely.
+*   N is connected to B, C, O, Y.
+*   If B, C, O are removed, N is only connected to Y.
+*   Y is connected to N and O. Since O is removed, Y is only connected to N.
+*   Therefore, N (and Y) would be isolated from the rest of the graph, including H.
+
+Since we found a cut set of size 3 ({B, C, O}) and we proved that at least 3 nodes are required, the minimum number of nodes to remove is 3.
+
+Nodes to remove: 3, Cut Set: [B, C, O]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['B', 'I', 'P'], ['B', 'I', 'G'], ['B', 'I', 'E']]}
+Progress: 2/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task1_gt2_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 2, Path: [E, B, H]
+--- Ground Truth ---
+{'length': 2, 'path': ['E', 'B', 'H']}
+Progress: 3/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt3_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(N,B), (N,C), (N,O)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'E'], ['H', 'B'], ['H', 'I']]}
+Progress: 4/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task1_gt2_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 2, Path: [L, M, J]
+--- Ground Truth ---
+{'length': 2, 'path': ['J', 'M', 'L']}
+Progress: 5/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task3_gt2_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(L, M), (L, E)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['E', 'L'], ['L', 'M']]}
+Progress: 6/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task2_gt2_PAIR1
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+To determine the minimum number of nodes that must be removed to completely disconnect the two black nodes (B and M), we need to find a minimum vertex cut between B and M. The black nodes themselves cannot be removed.
+
+Let's list the neighbors of the black nodes:
+*   Neighbors of B: {C, N, O, E, I}
+*   Neighbors of M: {L, E, J}
+
+We will test for a cut set of size 1, then 2, and so on.
+
+**Can 1 node disconnect B and M?**
+Let's consider removing each potential intermediate node:
+1.  **Remove E:**
+    *   Path B - I - J - M is still open.
+    *   Path B - O - P - J - M is still open.
+    *   Therefore, removing E alone is not sufficient.
+2.  **Remove J:**
+    *   Path B - E - M is still open.
+    *   Path B - E - L - M is still open.
+    *   Therefore, removing J alone is not sufficient.
+3.  **Remove I:**
+    *   Path B - E - M is still open.
+    *   Path B - E - J - M is still open.
+    *   Path B - O - P - J - M is still open.
+    *   Therefore, removing I alone is not sufficient.
+4.  **Remove P:**
+    *   Path B - E - M is still open.
+    *   Path B - E - J - M is still open.
+    *   Path B - I - J - M is still open.
+    *   Therefore, removing P alone is not sufficient.
+5.  **Remove L:**
+    *   Path B - E - M is still open.
+    *   Path B - E - J - M is still open.
+    *   Path B - I - J - M is still open.
+    *   Therefore, removing L alone is not sufficient.
+Removing any other single node (C, N, O, D, F, G, H, K, X, Y) would also leave multiple paths between B and M.
+Thus, a single node cannot disconnect B and M. The minimum number of nodes to remove is at least 2.
+
+**Can 2 nodes disconnect B and M?**
+Let's try removing pairs of nodes. A good strategy is to consider nodes that are "bottlenecks" or common to many paths. The nodes E, J, I, P are good candidates.
+
+Consider removing the set **{E, J}**:
+1.  **Paths through E:**
+    *   B - E - M (cut by removing E)
+    *   B - E - L - M (cut by removing E)
+    *   B - E - J - M (cut by removing E or J)
+    All paths that use E are cut.
+2.  **Paths through J (that don't use E):**
+    *   B - I - J - M (cut by removing J)
+    *   B - I - P - J - M (cut by removing J)
+    *   B - C - I - J - M (cut by removing J)
+    *   B - C - I - P - J - M (cut by removing J)
+    *   B - C - N - O - P - J - M (cut by removing J)
+    *   B - N - O - P - J - M (cut by removing J)
+    *   B - O - P - J - M (cut by removing J)
+    All paths that use J are cut.
+
+After removing E and J:
+*   M's remaining neighbors are only L.
+*   L's only connections are to M and E. Since E is removed, L is now only connected to M.
+*   Therefore, M is completely isolated from the rest of the graph (except for L, which is also isolated with M). There are no paths from B to L (since L is only connected to M and E, and E is removed).
+*   Thus, B and M are completely disconnected.
+
+The set {E, J} is a cut set of size 2. Since we've established that 1 node is not sufficient, the minimum number of nodes to remove is 2.
+
+Nodes to remove: 2, Cut Set: [E, J]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['J', 'E']}
+Progress: 7/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task3_gt3_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(H,B), (H,G), (H,I)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'E'], ['H', 'B'], ['H', 'I']]}
+Progress: 8/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task1_gt2_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 2, Path: [E, P, J]
+--- Ground Truth ---
+{'length': 2, 'path': ['E', 'M', 'J']}
+Progress: 9/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task2_gt2_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [M, E]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'M']}
+Progress: 10/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task3_gt3_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(J, M), (J, I), (J, P)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['E', 'B'], ['M', 'J'], ['G', 'H']], [['E', 'B'], ['M', 'J'], ['F', 'E']]]}
+Progress: 11/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt3_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['E', 'B'], ['M', 'J'], ['G', 'H']], [['E', 'B'], ['M', 'J'], ['F', 'E']]]}
+Progress: 12/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task2_gt3_PAIR1
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [J, C, H]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 12/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task2_gt2_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [E, P]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['J', 'E']}
+Progress: 13/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt3_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 4, Path: [L, E, B, H, I]
+--- Ground Truth ---
+{'length': 3, 'path': ['L', 'M', 'J', 'I']}
+Progress: 14/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task3_gt2_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(G, E), (F, E)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 15/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task1_gt3_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 2, Path: [F, P, J]
+--- Ground Truth ---
+{'length': 3, 'path': ['F', 'E', 'M', 'J']}
+Progress: 16/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task1_gt2_PAIR5
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 2, Path: [L, M, J]
+--- Ground Truth ---
+{'length': 2, 'path': ['J', 'M', 'L']}
+Progress: 17/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task2_gt3_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [H, J]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 18/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task3_gt3_PAIR3
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(J, D), (J, M), (J, I)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['E', 'B'], ['M', 'J'], ['G', 'H']]}
+Progress: 19/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task1_gt2_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 1, Path: [E, H]
+--- Ground Truth ---
+{'length': 2, 'path': ['E', 'B', 'H']}
+Progress: 20/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task3_gt3_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(B, H), (G, H), (H, I)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['H', 'B'], ['H', 'I'], ['E', 'F']], [['H', 'B'], ['H', 'I'], ['H', 'G']]]}
+Progress: 21/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task3_gt3_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(H, G), (H, B), (H, I)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'E'], ['H', 'B'], ['H', 'I']]}
+Progress: 22/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task1_gt4_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 4, Path: [X, G, H, B, N]
+--- Ground Truth ---
+{'length': 4, 'path': [['N', 'B', 'H', 'G', 'X'], ['N', 'B', 'E', 'F', 'X']]}
+Progress: 23/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt2_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 3, Path: [M, O, N, B]
+--- Ground Truth ---
+{'length': 2, 'path': ['B', 'E', 'M']}
+Progress: 24/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task3_gt2_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(J, D), (P, D)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['D', 'P'], ['D', 'J']]}
+Progress: 25/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt4_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 4, Path: [X, F, E, B, N]
+--- Ground Truth ---
+{'length': 4, 'path': [['N', 'B', 'H', 'G', 'X'], ['N', 'B', 'E', 'F', 'X']]}
+Progress: 26/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task2_gt2_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Nodes to remove: 3, Cut Set: [M, I, C]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'H']}
+Progress: 27/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt2_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 3, Path: [J, M, L, E]
+--- Ground Truth ---
+{'length': 2, 'path': ['E', 'M', 'J']}
+Progress: 28/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task1_gt2_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 2, Path: [B, E, M]
+--- Ground Truth ---
+{'length': 2, 'path': ['B', 'E', 'M']}
+Progress: 29/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt4_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 1, Path: [K, J]
+--- Ground Truth ---
+{'length': 4, 'path': ['J', 'M', 'E', 'F', 'K']}
+Progress: 30/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task3_gt2_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(E, F), (E, G)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 31/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt4_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 5, Path: [D, J, M, L, E, F]
+--- Ground Truth ---
+{'length': 4, 'path': ['F', 'E', 'M', 'J', 'D']}
+Progress: 32/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task2_gt2_PAIR1
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [G, B]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'M']}
+Progress: 33/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task1_gt2_PAIR5
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 2, Path: [L, M, J]
+--- Ground Truth ---
+{'length': 2, 'path': ['J', 'M', 'L']}
+Progress: 34/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task2_gt3_PAIR2
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Nodes to remove: 2, Cut Set: [M, P]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 35/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task3_gt2_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(G, H), (G, K), (G, X)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 36/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt2_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 2, Cut Set: [(L, E), (L, M)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['E', 'L'], ['L', 'M']]}
+Progress: 37/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task1_gt4_PAIR5
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 4, Path: [K, G, H, B, N]
+--- Ground Truth ---
+{'length': 4, 'path': ['K', 'G', 'H', 'B', 'N']}
+Progress: 38/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task1_gt4_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 4, Path: [L, E, B, C, Y]
+--- Ground Truth ---
+{'length': 4, 'path': ['L', 'E', 'B', 'N', 'Y']}
+Progress: 39/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task1_gt3_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 3, Path: [L, M, J, I]
+--- Ground Truth ---
+{'length': 3, 'path': ['L', 'M', 'J', 'I']}
+Progress: 40/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task1_gt2_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 2, Path: [G, H, I]
+--- Ground Truth ---
+{'length': 2, 'path': ['G', 'H', 'I']}
+Progress: 41/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task1_gt4_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Length: 3, Path: [K, F, M, J]
+--- Ground Truth ---
+{'length': 4, 'path': ['J', 'M', 'E', 'F', 'K']}
+Progress: 42/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task3_gt3_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: zero_shot, COT: no_cot, Attempt: 12
+--- Model Response ---
+Edges to remove: 3, Cut Set: [(C, H), (G, H), (I, H)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['B', 'H'], ['H', 'I'], ['G', 'H']]}
+Progress: 43/280 images processed.
+============================================================

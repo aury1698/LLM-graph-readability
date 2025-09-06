@@ -59,6 +59,58 @@
             color: white;
             border-color: #80868b;
         }
+
+        /* Style for the container of the task filter dropdown */
+        .filter-container {
+            text-align: center;
+            margin-bottom: 2rem; /* Add some space below the filter */
+        }
+
+        /* Style for the label of the filter (e.g., "Filter by Task:") */
+        .filter-container label {
+            font-size: 1rem;    /* Match the font size of other buttons */
+            color: #555;        /* Match the color of other headers */
+            vertical-align: middle; /* Align text nicely with the dropdown */
+        }
+
+        /* Style for the dropdown menu itself */
+        #taskFilter {
+            font-family: inherit; /* IMPORTANT: Inherit the main page font (system-ui) */
+            font-size: 1rem;
+            padding: 8px 12px;    /* A little padding to make it look nice */
+            margin-left: 0.5rem;  /* Space between the label and the dropdown */
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+            vertical-align: middle;
+        }
+
+        /* Style for the pagination container */
+        #pagination {
+            text-align: center;
+            margin-top: 2rem; /* Add space above the pagination */
+            font-size: 1rem;  /* Set the font size for "Page X of Y" text */
+            color: #222;     /* Match the main body text color */
+        }
+
+        /* Style for the pagination buttons (Prev/Next) */
+        #pagination button {
+            font-family: inherit; /* Inherit the main page font */
+            font-size: 1rem;
+            padding: 8px 16px; /* Similar padding to other buttons */
+            margin: 0 10px;    /* Space around the buttons */
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: #fff;
+            border-radius: 5px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        
+        /* Add a subtle hover effect for better user experience */
+        #pagination button:hover {
+            background-color: #f0f0f0;
+        }
+
     </style>
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
@@ -78,14 +130,32 @@
             <button id="btn-gemini">Gemini</button>
         </div>
     </div>
+    
+    <div style="text-align:center; margin-bottom:1rem;">
+    <label for="taskFilter"><b>Filter by Task:</b></label>
+    <select id="taskFilter">
+        <option value="">All Tasks</option>
+        <option value="task1">Task 1</option>
+        <option value="task2">Task 2</option>
+        <option value="task3">Task 3</option>
+    </select>
+    </div>
 
     <div id="results-container"></div>
+    <div id="pagination" style="text-align:center; margin-top:1rem;"></div>
 
 </body>
 <script>
+
+
 // ===================================================================================
 // SCRIPT REFACTORED FOR INDEPENDENT CONTROLS
 // ===================================================================================
+
+let currentPage = 1;
+const pageSize = 5; // Quanti test mostrare per pagina
+let filteredAgglomeratedTestNames = [];
+let globalResultFile = [];
 
 let currentModel = 'mistral-small-3.1-24b';
 let currentMode = 'aurora';
@@ -105,8 +175,8 @@ async function loadAndAggregateResults(basePath, modelName, mode) {
         // NEW: Dynamic attempts.
         // Instead of a fixed array, we will try to load files up to a maximum number.
         // If a file doesn't exist, the .catch() block will handle it gracefully.
-        // You can increase this number if you ever have more than 50 attempts.
-        const MAX_ATTEMPTS_TO_CHECK = 50;
+        // You can increase this number if you ever have more than 20 attempts.
+        const MAX_ATTEMPTS_TO_CHECK = 20;
 
         for (const shot of shotTypes) {
             for (const cot of cotTypes) {
@@ -145,7 +215,7 @@ async function renderResults() {
     resultsContainer.innerHTML = '<h2>Loading results...</h2>';
 
     document.getElementById('btn-mistral').classList.toggle('active', currentModel === 'mistral-small-3.1-24b');
-    document.getElementById('btn-gemini').classList.toggle('active', currentModel === 'gemini');
+    document.getElementById('btn-gemini').classList.toggle('active', currentModel === 'gemini-2.5-flash');
     document.getElementById('btn-aurora').classList.toggle('active', currentMode === 'aurora');
     document.getElementById('btn-bastian').classList.toggle('active', currentMode === 'bastian');
 
@@ -198,8 +268,21 @@ async function renderResults() {
             agglomerated_test_names.push(`${letter}_${task}`);
         }
     }
+
+    // Apply task filter if selected
+    const selectedTask = document.getElementById('taskFilter') ? document.getElementById('taskFilter').value : '';
+    filteredAgglomeratedTestNames = selectedTask
+        ? agglomerated_test_names.filter(name => name.endsWith(selectedTask))
+        : agglomerated_test_names;
+
+    // Pagination logic
+    const totalPages = Math.ceil(filteredAgglomeratedTestNames.length / pageSize);
+    currentPage = Math.min(currentPage, totalPages) || 1;
+    const startIdx = (currentPage - 1) * pageSize;
+    const endIdx = startIdx + pageSize;
+    const pageTestNames = filteredAgglomeratedTestNames.slice(startIdx, endIdx);
     
-    for (let test of agglomerated_test_names){
+    for (let test of pageTestNames){
         let test_agglomerated_results = resultfile.filter(d => d.Layout.includes(test));
         if (test_agglomerated_results.length === 0) continue;
 
@@ -291,7 +374,33 @@ async function renderResults() {
             }
         }
     }
+    renderPagination(Math.ceil(filteredAgglomeratedTestNames.length / pageSize));
 }
+
+// Pagination controls
+function renderPagination(totalPages) {
+    const paginationDiv = document.getElementById('pagination');
+    if (totalPages <= 1) {
+        paginationDiv.innerHTML = '';
+        return;
+    }
+    let html = '';
+    if (currentPage > 1) {
+        html += `<button onclick="gotoPage(${currentPage - 1})">Prev</button>`;
+    }
+    html += ` Page ${currentPage} of ${totalPages} `;
+    if (currentPage < totalPages) {
+        html += `<button onclick="gotoPage(${currentPage + 1})">Next</button>`;
+    }
+    paginationDiv.innerHTML = html;
+}
+
+window.gotoPage = function(page) {
+    currentPage = page;
+    renderResults();
+};
+
+
 
 document.getElementById('btn-mistral').addEventListener('click', () => {
     currentModel = 'mistral-small-3.1-24b';
@@ -307,6 +416,11 @@ document.getElementById('btn-aurora').addEventListener('click', () => {
 });
 document.getElementById('btn-bastian').addEventListener('click', () => {
     currentMode = 'bastian';
+    renderResults();
+});
+
+document.getElementById('taskFilter').addEventListener('change', function() {
+    currentPage = 1;
     renderResults();
 });
 

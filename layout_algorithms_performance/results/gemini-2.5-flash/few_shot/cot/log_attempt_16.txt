@@ -1,0 +1,1956 @@
+
+============================================================
+Image name: PGS_task2_gt2_PAIR2
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+1.  **Identify the target nodes:** The two black nodes are G and I. I need to find the minimum number of white nodes to remove to disconnect G and I. I cannot remove G or I.
+
+2.  **Identify immediate neighbors:**
+    *   Neighbors of G: F, H, K, X
+    *   Neighbors of I: J, P, C, H
+
+3.  **Find node-disjoint paths:** According to Menger's theorem, the minimum number of nodes to remove (node-cut) is equal to the maximum number of node-disjoint paths between the two target nodes. I will try to find as many node-disjoint paths as possible. Two paths are node-disjoint if they do not share any intermediate nodes (nodes other than G and I).
+
+    *   **Path 1:** G - H - I
+        *   Intermediate node: H
+
+    *   **Path 2:** G - K - J - I
+        *   Intermediate nodes: K, J
+        *   This path is disjoint from Path 1 (H is not K or J).
+
+    *   **Path 3:** G - F - M - L - E - B - C - I
+        *   Intermediate nodes: F, M, L, E, B, C
+        *   This path is disjoint from Path 1 (H is not in {F, M, L, E, B, C}).
+        *   This path is disjoint from Path 2 ({K, J} are not in {F, M, L, E, B, C}).
+
+    *   **Attempt to find Path 4:** I need a path from G to I that does not use any of the intermediate nodes from P1, P2, or P3 ({H, K, J, F, M, L, E, B, C}).
+        *   Remaining nodes connected to G: X.
+        *   Remaining nodes connected to I: P.
+        *   From G, I can go to X. From X, I can go to K (used by P2) or F (used by P3). There is no other path from X to I using only unused nodes.
+        *   Therefore, I cannot find a fourth node-disjoint path.
+
+    *   **Conclusion on disjoint paths:** There are a maximum of 3 node-disjoint paths between G and I. This implies that the minimum number of nodes to remove is at least 3.
+
+4.  **Find a cut set of size 3:** Based on the 3 node-disjoint paths, I can try to select one node from each path to form a cut set. A good strategy is to pick nodes that are "bottlenecks" or central to the paths.
+    *   From Path 1 (G - H - I), I choose H.
+    *   From Path 2 (G - K - J - I), I choose J.
+    *   From Path 3 (G - F - M - L - E - B - C - I), I choose B (as it's a central node in this longer path).
+
+    Let's propose the cut set: **{H, J, B}**.
+
+5.  **Verify the proposed cut set {H, J, B}:**
+    *   **Remove H:** All paths directly through H (e.g., G-H-I) are broken.
+    *   **Remove J:** All paths through J (e.g., G-K-J-I, G-X-K-J-I, G-F-X-K-J-I, and paths to P via J) are broken.
+    *   **Remove B:** All paths through B (e.g., G-F-M-L-E-B-C-I, G-F-M-L-E-B-N-O-P-I) are broken.
+
+    Let's systematically check all possible routes from G to I after removing H, J, B:
+    *   **From G's neighbors:** G is connected to F, K, X.
+    *   **To I's neighbors:** I is connected to P, C (since H and J are removed, and B is removed, I is no longer connected to B).
+
+    *   **Paths starting G-K:**
+        *   G-K-J... (J is removed, so no path).
+        *   No other connections from K lead to I without using J or B.
+
+    *   **Paths starting G-X:**
+        *   G-X-K-J... (J is removed, so no path).
+        *   G-X-F... (see paths starting G-F).
+        *   No other connections from X lead to I without using J or B.
+
+    *   **Paths starting G-F:**
+        *   G-F-X-K-J... (J is removed, so no path).
+        *   G-F-M-L-E-B... (B is removed, so no path).
+        *   No other connections from F lead to I without using J or B.
+
+    Since all paths from G's remaining neighbors (F, K, X) to I's remaining neighbors (P, C) are broken by the removal of H, J, and B, the set {H, J, B} successfully disconnects G and I.
+
+6.  **Confirm minimality:** Since I found 3 node-disjoint paths, the minimum cut size must be at least 3. I have found a cut set of size 3. Therefore, this is the minimum number of nodes to remove.
+
+The final answer is:
+Nodes to remove: 3, Cut Set: [H, J, B]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['E', 'H'], ['F', 'H']]}
+Progress: 1/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task1_gt4_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning. The two black nodes are labeled Y and L. I will perform a breadth-first search (BFS) starting from node Y to find the shortest path to node L.
+
+1.  **Level 0:** Start node.
+    *   Queue: `[(Y, [Y])]`
+    *   Visited: `{Y}`
+
+2.  **Level 1:** Neighbors of Y.
+    *   Dequeue `(Y, [Y])`.
+    *   Y is connected to N and O.
+    *   Add `(N, [Y, N])` to queue. Visited: `{Y, N}`
+    *   Add `(O, [Y, O])` to queue. Visited: `{Y, N, O}`
+    *   Queue: `[(N, [Y, N]), (O, [Y, O])]`
+
+3.  **Level 2:** Neighbors of N and O (excluding already visited nodes).
+    *   Dequeue `(N, [Y, N])`.
+    *   N is connected to Y, C, B, O. Y and O are visited.
+    *   Add `(C, [Y, N, C])` to queue. Visited: `{Y, N, O, C}`
+    *   Add `(B, [Y, N, B])` to queue. Visited: `{Y, N, O, C, B}`
+    *   Dequeue `(O, [Y, O])`.
+    *   O is connected to Y, N, C, B, P. Y, N, C, B are visited.
+    *   Add `(P, [Y, O, P])` to queue. Visited: `{Y, N, O, C, B, P}`
+    *   Queue: `[(C, [Y, N, C]), (B, [Y, N, B]), (P, [Y, O, P])]`
+
+4.  **Level 3:** Neighbors of C, B, P (excluding already visited nodes).
+    *   Dequeue `(C, [Y, N, C])`.
+    *   C is connected to N, B, O, I. N, B, O are visited.
+    *   Add `(I, [Y, N, C, I])` to queue. Visited: `{Y, N, O, C, B, P, I}`
+    *   Dequeue `(B, [Y, N, B])`.
+    *   B is connected to C, E, H, N, O. C, N, O are visited.
+    *   Add `(E, [Y, N, B, E])` to queue. Visited: `{Y, N, O, C, B, P, I, E}`
+    *   Add `(H, [Y, N, B, H])` to queue. Visited: `{Y, N, O, C, B, P, I, E, H}`
+    *   Dequeue `(P, [Y, O, P])`.
+    *   P is connected to D, E, F, I, J, O. O, E, I are visited.
+    *   Add `(D, [Y, O, P, D])` to queue. Visited: `{Y, N, O, C, B, P, I, E, H, D}`
+    *   Add `(F, [Y, O, P, F])` to queue. Visited: `{Y, N, O, C, B, P, I, E, H, D, F}`
+    *   Add `(J, [Y, O, P, J])` to queue. Visited: `{Y, N, O, C, B, P, I, E, H, D, F, J}`
+    *   Queue: `[(I, [Y, N, C, I]), (E, [Y, N, B, E]), (H, [Y, N, B, H]), (D, [Y, O, P, D]), (F, [Y, O, P, F]), (J, [Y, O, P, J])]`
+
+5.  **Level 4:** Neighbors of I, E, H, D, F, J (excluding already visited nodes).
+    *   Dequeue `(I, [Y, N, C, I])`.
+    *   I is connected to C, H, J, P. C, H, J, P are visited.
+    *   Dequeue `(E, [Y, N, B, E])`.
+    *   E is connected to B, L, M, P. B and P are visited.
+    *   **L is the target node!** Path: `[Y, N, B, E, L]`. Length: 4.
+    *   Since BFS guarantees the first time the target node is reached, this is the shortest path.
+
+I verify the path:
+*   Y is connected to N.
+*   N is connected to B.
+*   B is connected to E.
+*   E is connected to L.
+All connections are valid.
+
+Final Answer: Length: 4, Path: [Y, N, B, E, L]
+--- Ground Truth ---
+{'length': 4, 'path': ['L', 'E', 'B', 'N', 'Y']}
+Progress: 2/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task3_gt2_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+1.  **Identify Target Nodes:** The two black nodes are F and D.
+2.  **Goal:** Determine the minimum number of edges to remove to ensure no path exists between F and D.
+3.  **Analyze Node D's Connections:** Node D is directly connected to two other nodes: J and P. The edges are (J, D) and (P, D).
+4.  **Consider Disconnecting D:** To completely disconnect D from the rest of the graph, all edges directly connected to it must be removed. In this case, removing (J, D) and (P, D) would isolate D.
+5.  **Evaluate Cut Size:** Removing these two edges results in a cut set of size 2: [(J, D), (P, D)].
+6.  **Check for Smaller Cuts (Size 1):**
+    *   If only (J, D) is removed, a path from F to D could still exist via P (e.g., F-...-P-D).
+    *   If only (P, D) is removed, a path from F to D could still exist via J (e.g., F-...-J-D).
+    *   Therefore, removing a single edge is not sufficient to disconnect F and D.
+7.  **Conclusion:** Since a cut of size 1 is not possible, and we have found a valid cut of size 2, the minimum number of edges to remove is 2.
+
+An alternative minimal cut set of size 2 could be [(G, H), (F, E)]. All paths from F to D must pass through either node G (which then connects to H) or node E. Removing (G, H) breaks all paths through G, and removing (F, E) breaks all paths through E. This also results in a cut of size 2. Both are valid minimal solutions.
+
+Edges to remove: 2, Cut Set: [(J, D), (P, D)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['D', 'P'], ['D', 'J']]}
+Progress: 3/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt2_PAIR5
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning. The two black nodes are labeled M and F. I will perform a breadth-first search (BFS) starting from node M to find the shortest path to node F.
+
+*   **Level 0:** Start node: [M]
+*   **Level 1:** Neighbors of M:
+    *   M is connected to J. Path: [M, J] (Length 1)
+    *   M is connected to O. Path: [M, O] (Length 1)
+    *   M is connected to L. Path: [M, L] (Length 1)
+
+*   **Level 2:** Neighbors of nodes from Level 1 (excluding M):
+    *   From J: D, I
+        *   Path: [M, J, D] (Length 2)
+        *   Path: [M, J, I] (Length 2)
+    *   From O: P, Y, N, C
+        *   Path: [M, O, P] (Length 2)
+        *   Path: [M, O, Y] (Length 2)
+        *   Path: [M, O, N] (Length 2)
+        *   Path: [M, O, C] (Length 2)
+    *   From L: E
+        *   Path: [M, L, E] (Length 2)
+
+*   **Level 3:** Neighbors of nodes from Level 2 (excluding M, J, O, L):
+    *   From D: P (already covered by M-O-P)
+    *   From I: P, C, H
+        *   Path: [M, J, I, P] (Length 3)
+        *   Path: [M, J, I, C] (Length 3)
+        *   Path: [M, J, I, H] (Length 3)
+    *   From P: Y, I (already covered)
+    *   From Y: N (already covered)
+    *   From N: B, C (already covered by M-O-C)
+        *   Path: [M, O, N, B] (Length 3)
+    *   From C: B, I, H (already covered by M-J-I-H and M-O-N-B)
+        *   Path: [M, O, C, B] (Length 3)
+        *   Path: [M, O, C, H] (Length 3)
+    *   From E: B, F
+        *   E is connected to B. Path: [M, L, E, B] (Length 3)
+        *   E is connected to F. **F is the target node!** Path: [M, L, E, F] (Length 3)
+
+The first time the target node F is reached is via the path [M, L, E, F], which has a length of 3. Since BFS explores layer by layer, this is guaranteed to be the shortest path.
+
+I verify the connections for the path [M, L, E, F]:
+1.  M is directly connected to L. (Visible line)
+2.  L is directly connected to E. (Visible line)
+3.  E is directly connected to F. (Visible line)
+
+All connections are valid.
+
+Final Answer: Length: 3, Path: [M, L, E, F]
+--- Ground Truth ---
+{'length': 2, 'path': ['F', 'E', 'M']}
+Progress: 4/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task2_gt3_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['O', 'I', 'B'], ['O', 'I', 'E'], ['O', 'I', 'M']]}
+Progress: 5/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task1_gt2_PAIR5
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning. The two black nodes are labeled L and J. I begin a breadth-first search (BFS) from node L.
+
+*   **Level 0:** Start at node L.
+    *   Current path: `[L]`
+
+*   **Level 1:** Explore neighbors of L.
+    *   L is connected to M. Path: `[L, M]`
+    *   L is connected to E. Path: `[L, E]`
+
+*   **Level 2:** Explore neighbors of nodes found in Level 1 (excluding already visited nodes).
+    *   From M:
+        *   M is connected to L (already visited).
+        *   M is connected to E (already visited).
+        *   M is connected to J. J is the target node! Path: `[L, M, J]`. This path has a length of 2.
+
+Since I found the target node J at Level 2, this is the shortest possible path.
+
+I verify the connections for the path [L, M, J]:
+1.  Is node L directly connected to node M? Yes, there is a continuous black line.
+2.  Is node M directly connected to node J? Yes, there is a continuous black line.
+
+The path is valid and has a length of 2.
+
+Final Answer: Length: 2, Path: [L, M, J]
+--- Ground Truth ---
+{'length': 2, 'path': ['J', 'M', 'L']}
+Progress: 5/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task2_gt2_PAIR3
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning.
+1.  **Identify the target nodes:** The two black nodes are L and J.
+2.  **Identify immediate connections from L:** Node L is directly connected to node E and node M. These are the only two nodes through which any path from L can enter the rest of the graph.
+3.  **Evaluate single-node removal:**
+    *   If node E is removed: L is still connected to M, and M is connected to K, which is connected to J (L-M-K-J). So, removing E alone does not disconnect L from J.
+    *   If node M is removed: L is still connected to E, and E is connected to F, which is connected to K, which is connected to J (L-E-F-K-J). So, removing M alone does not disconnect L from J.
+    *   If any other single node (e.g., B, C, H, I, K, P, G, X, F, O, N, D, Y) is removed, there will always be alternative paths between L and J. For example, if K is removed, L-E-F-G-H-I-J is still a path. If I is removed, L-E-B-C-O-P-J is still a path.
+    Therefore, a single node removal is not sufficient to disconnect L and J.
+4.  **Evaluate two-node removal:**
+    *   Consider removing nodes E and M. If both E and M are removed, node L becomes completely isolated from the rest of the graph. Since L has no remaining connections, no path can exist from L to J. This successfully disconnects L from J.
+    *   Since we've established that a single node removal is insufficient, and removing two nodes (E and M) achieves disconnection, the minimum number of nodes to remove is 2.
+
+Final Answer: Nodes to remove: 2, Cut Set: [E, M]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'M']}
+Progress: 6/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt2_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+The target nodes are L and J. My goal is to find the minimum number of edges to remove to ensure no path exists between L and J.
+
+1.  **Identify the target nodes and their direct connections:**
+    *   Node L (black) is connected to E and M.
+    *   Node J (black) is connected to M, I, P, and D.
+
+2.  **Consider isolating one of the target nodes:**
+    Node L has only two direct connections: (L, E) and (L, M). If both of these edges are removed, node L becomes completely isolated from the rest of the graph. Consequently, no path can exist from L to J (or any other node). This would be a cut set of size 2: `[(L, E), (L, M)]`.
+
+3.  **Check if a cut of size 1 is possible:**
+    *   If we remove only (L, E): Node L is still connected to M via (L, M). From M, there is a direct path to J (M-J). So, L-M-J is still a path. Thus, removing only (L, E) is not sufficient.
+    *   If we remove only (L, M): Node L is still connected to E via (L, E). From E, there are multiple paths to J, for example:
+        *   L-E-M-J (via M)
+        *   L-E-I-J (via I)
+        *   L-E-I-P-J (via I and P)
+        Thus, removing only (L, M) is not sufficient.
+    Since removing any single edge does not disconnect L from J, the minimum number of edges required must be at least 2.
+
+4.  **Confirm the minimal cut:**
+    We found a cut set of size 2: `[(L, E), (L, M)]`. Since we've established that a cut of size 1 is not possible, a cut of size 2 is indeed the minimum. This set of edges effectively isolates node L, ensuring no path to J.
+
+Final Answer:
+Edges to remove: 2, Cut Set: [(L, E), (L, M)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['E', 'L'], ['L', 'M']]}
+Progress: 7/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task3_gt3_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+The target nodes are H (black) and N (black). The goal is to find the minimum number of edges to remove to disconnect H and N.
+
+First, I identify all direct neighbors of H and N:
+Neighbors of H: G, B, I
+Neighbors of N: B, C, Y, O
+
+Next, I consider all possible paths between H and N. To disconnect them, I must remove at least one edge from every such path.
+
+Let's categorize the paths based on the first node reached from H (G, B, or I) and the last node before N (B, C, Y, or O).
+
+Paths from H to N:
+1.  **Direct path through B:** H - B - N
+2.  **Paths through I:**
+    *   H - I - C - N
+    *   H - I - P - O - N
+3.  **Paths through G:**
+    *   H - G - E - B - N
+    *   H - G - E - B - C - N
+    *   H - G - E - B - O - N
+    *   H - G - F - M - L - E - B - N
+    *   H - G - F - M - L - E - B - C - N
+    *   H - G - F - M - L - E - B - O - N
+    *   H - G - F - X - K - J - P - O - N
+    *   H - G - K - J - P - O - N
+    *   H - G - F - X - K - J - D - P - O - N
+    *   H - G - K - J - D - P - O - N
+
+I will look for a minimal cut set of edges. A common strategy is to consider the edges directly connected to one of the target nodes.
+
+Consider the edges directly connected to H: (H, G), (H, B), (H, I).
+If I remove all three of these edges, H becomes isolated from the rest of the graph, thus disconnecting it from N. This is a cut set of size 3: `[(H, G), (H, B), (H, I)]`.
+Let's verify if this set is minimal:
+*   If (H, G) is not removed, paths like H-G-E-B-N would remain.
+*   If (H, B) is not removed, paths like H-B-N would remain.
+*   If (H, I) is not removed, paths like H-I-C-N would remain.
+Therefore, all three edges are necessary, and this is a minimal cut of size 3.
+
+Now, let's consider the edges directly connected to N: (N, B), (N, C), (N, Y), (N, O).
+If I remove all four of these edges, N becomes isolated from the rest of the graph, thus disconnecting it from H. This is a cut set of size 4. Since we already found a cut of size 3, this is not the minimum.
+
+However, I need to check if all nodes connected to N are reachable from H.
+*   N is connected to B. B is reachable from H (e.g., H-B).
+*   N is connected to C. C is reachable from H (e.g., H-I-C).
+*   N is connected to O. O is reachable from H (e.g., H-I-P-O).
+*   N is connected to Y. Let's check if Y is reachable from H.
+    *   Y is only connected to N and O.
+    *   Paths from H to O exist (e.g., H-I-P-O).
+    *   However, there is no direct path from H to Y, nor any path from H to O that then leads to Y without passing through N.
+    *   Therefore, Y is not reachable from H.
+
+This means that any path from H to N must pass through B, C, or O to reach N.
+So, if I remove the edges (N, B), (N, C), and (N, O), N will only be connected to Y. Since Y is not reachable from H, H and N will be disconnected.
+This is a cut set of size 3: `[(N, B), (N, C), (N, O)]`.
+Let's verify if this set is minimal:
+*   If (N, B) is not removed, paths like H-B-N would remain.
+*   If (N, C) is not removed, paths like H-I-C-N would remain.
+*   If (N, O) is not removed, paths like H-I-P-O-N would remain.
+Therefore, all three edges are necessary, and this is a minimal cut of size 3.
+
+Since I have found two distinct cut sets of size 3, the minimum number of edges to remove is 3.
+
+Final Answer:
+Edges to remove: 3, Cut Set: [(H, G), (H, B), (H, I)] or [(N, B), (N, C), (N, O)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'E'], ['H', 'B'], ['H', 'I']]}
+Progress: 8/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task3_gt2_PAIR2
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+The target nodes are G and I. My task is to find the minimum number of edges to remove to completely disconnect G from I. This is a minimum cut problem. According to Menger's theorem, the minimum number of edges in an edge cut is equal to the maximum number of edge-disjoint paths between the two nodes.
+
+First, I will attempt to find edge-disjoint paths from G to I.
+
+**1. Identify Edge-Disjoint Paths:**
+
+*   **Path 1 (P1): G - H - I**
+    *   Edges: (G, H), (H, I)
+    *   Mark these edges as used.
+
+*   **Path 2 (P2): G - K - J - I**
+    *   Edges: (G, K), (K, J), (J, I)
+    *   These edges are distinct from P1's edges. Mark them as used.
+    *   P1 and P2 are edge-disjoint.
+
+*   **Path 3 (P3): G - F - E - B - N - C - I**
+    *   Edges: (G, F), (F, E), (E, B), (B, N), (N, C), (C, I)
+    *   Let's check if these edges are distinct from P1 and P2's edges:
+        *   (G, F) is distinct from (G, H) and (G, K).
+        *   (F, E) is distinct.
+        *   (E, B) is distinct.
+        *   (B, N) is distinct.
+        *   (N, C) is distinct.
+        *   (C, I) is distinct from (H, I) and (J, I).
+    *   Mark these edges as used.
+    *   P1, P2, and P3 are edge-disjoint.
+
+*   **Attempt to find Path 4 (P4):**
+    *   The edges connected to I are (H, I), (J, I), (C, I), (P, I). P1, P2, and P3 have used (H, I), (J, I), and (C, I) respectively. So, if a fourth edge-disjoint path exists, it must use the edge (P, I).
+    *   We need to find a path from G to P using only unused edges.
+    *   Available edges from G: (G, X)
+    *   From X: (X, F) and (X, K) are available.
+        *   If G - X - F: (G, X) and (X, F) are available. From F, (F, E) is used by P3. (F, M) is available.
+            *   G - X - F - M. (F, M) is available. From M, (M, L) is used by P3. (M, F) is used by P3.
+            *   This path cannot proceed without using edges from P3.
+        *   If G - X - K: (G, X) and (X, K) are available. From K, (K, J) is used by P2. (K, G) is used by P2.
+            *   This path cannot proceed without using edges from P2.
+    *   Therefore, no fourth edge-disjoint path can be found.
+
+**Conclusion on Edge-Disjoint Paths:** There are a maximum of 3 edge-disjoint paths between G and I. By Menger's theorem, the minimum number of edges to remove to disconnect G and I is 3.
+
+**2. Find a Minimal Cut Set of 3 Edges:**
+Based on the identified edge-disjoint paths and the structure of the graph, I will look for a set of 3 edges that cuts all possible paths between G and I.
+
+Consider the following cut set: **[(H, I), (K, J), (N, B)]**
+
+Let's verify if removing these 3 edges disconnects G from I by checking all possible paths:
+
+*   **Paths through H to I:**
+    *   G - H - I: Broken by removing (H, I).
+    *   G - F - M - L - E - B - H - I: Broken by removing (H, I).
+
+*   **Paths through J to I (via K, X, or F-X):**
+    *   G - K - J - I: Broken by removing (K, J).
+    *   G - X - K - J - I: Broken by removing (K, J).
+    *   G - F - X - K - J - I: Broken by removing (K, J).
+
+*   **Paths through C to I (via N-B-E-L-M-F or N-B-H):**
+    *   G - F - M - L - E - B - N - C - I: Broken by removing (N, B).
+    *   G - H - B - N - C - I: Broken by removing (N, B).
+
+*   **Paths through P to I (via D-J-K or O-N-B-H):**
+    *   G - K - J - D - P - I: Broken by removing (K, J).
+    *   G - X - K - J - D - P - I: Broken by removing (K, J).
+    *   G - F - X - K - J - D - P - I: Broken by removing (K, J).
+    *   G - H - B - N - O - P - I: Broken by removing (N, B).
+
+All identified paths from G to I are broken by the removal of edges (H, I), (K, J), and (N, B). Since we determined that the minimum cut is 3, this set of 3 edges is a minimal cut set.
+
+Final Answer:
+Edges to remove: 3, Cut Set: [(H, I), (K, J), (N, B)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 9/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task3_gt2_PAIR3
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+1.  **Identify the target nodes:** The two black nodes are D and F.
+2.  **Analyze the connections of the target nodes:**
+    *   Node D is connected to nodes J and P.
+    *   Node F is connected to nodes E, K, X, and G.
+3.  **Identify all possible paths between D and F:**
+    To find the minimum number of edges to remove, we can use Menger's theorem, which states that the minimum number of edges in an edge cut is equal to the maximum number of edge-disjoint paths between the two nodes.
+
+    Let's find edge-disjoint paths from D to F:
+    *   **Path 1:** D - J - I - H - G - X - F
+        Edges: {(D, J), (J, I), (I, H), (H, G), (G, X), (X, F)}
+    *   **Path 2:** D - P - O - N - B - E - F
+        Edges: {(D, P), (P, O), (O, N), (N, B), (B, E), (E, F)}
+
+    Let's verify if these two paths are edge-disjoint:
+    *   The first edge from D is (D, J) for Path 1 and (D, P) for Path 2. These are distinct.
+    *   The subsequent edges in Path 1 (J, I), (I, H), (H, G), (G, X), (X, F) do not appear in Path 2.
+    *   The subsequent edges in Path 2 (P, O), (O, N), (N, B), (B, E), (E, F) do not appear in Path 1.
+    Therefore, these two paths are indeed edge-disjoint.
+
+4.  **Determine the lower bound for the cut size:**
+    Since we found 2 edge-disjoint paths between D and F, by Menger's theorem, at least 2 edges must be removed to disconnect D from F.
+
+5.  **Find a cut set of size 2:**
+    Consider the edges directly connected to node D: (D, J) and (D, P).
+    If we remove both of these edges, node D becomes isolated from the rest of the graph. Consequently, no path can exist between D and F.
+    This cut set is [(D, J), (D, P)] and its size is 2.
+
+6.  **Conclusion:**
+    Since we have identified a cut set of size 2, and we know that the minimum cut size must be at least 2, the minimum number of edges to remove is 2.
+
+Final Answer: Edges to remove: 2, Cut Set: [(D, J), (D, P)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['D', 'P'], ['D', 'J']]}
+Progress: 10/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task2_gt3_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning.
+The two black nodes are N and P. My goal is to find the minimum number of white nodes to remove to disconnect N from P. I cannot remove N or P.
+
+I will identify all distinct paths from N to P and look for common intermediate nodes or sets of nodes that, if removed, would sever all connections.
+
+Let's list the direct neighbors of N: {Y, B, M, C}.
+Let's list the direct neighbors of P: {C, O, J, I}.
+
+I will identify vertex-disjoint paths between N and P. By Menger's Theorem, the minimum number of nodes to remove (vertex cut) is equal to the maximum number of vertex-disjoint paths.
+
+Here are four vertex-disjoint paths from N to P (meaning they do not share any intermediate nodes):
+
+1.  **Path 1:** N - C - P
+    *   Intermediate node: C
+
+2.  **Path 2:** N - Y - O - P
+    *   Intermediate nodes: Y, O
+
+3.  **Path 3:** N - M - J - P
+    *   Intermediate nodes: M, J
+
+4.  **Path 4:** N - B - H - I - P
+    *   Intermediate nodes: B, H, I
+
+Let's verify that these paths are indeed vertex-disjoint (excluding N and P):
+*   Path 1 uses {C}
+*   Path 2 uses {Y, O}
+*   Path 3 uses {M, J}
+*   Path 4 uses {B, H, I}
+The sets of intermediate nodes {C}, {Y, O}, {M, J}, {B, H, I} are all mutually disjoint. Therefore, these are 4 vertex-disjoint paths.
+
+According to Menger's Theorem, since there are 4 vertex-disjoint paths, at least 4 nodes must be removed to disconnect N and P.
+
+Now, let's identify a cut set of size 4.
+Consider the set of all direct neighbors of P: {C, O, J, I}. If these four nodes are removed, P will have no remaining connections to any other node in the graph, thus disconnecting it from N.
+
+Let's verify that removing {C, O, J, I} breaks all paths:
+*   **Removing C:** Breaks N - C - P and N - M - L - E - B - C - P.
+*   **Removing O:** Breaks N - Y - O - P.
+*   **Removing J:** Breaks N - M - J - P.
+*   **Removing I:** Breaks N - B - H - I - P, N - M - L - E - B - H - I - P, N - M - L - E - F - X - K - G - H - I - P, and N - M - L - E - F - K - G - H - I - P.
+
+Since all paths from N to P must pass through at least one of C, O, J, or I (as these are all the direct neighbors of P), removing these four nodes will indeed disconnect N from P.
+
+Since we found 4 vertex-disjoint paths, and we found a cut set of size 4, this is the minimum number of nodes to remove.
+
+Final Answer: Nodes to remove: 4, Cut Set: [C, O, J, I]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['O', 'I', 'B'], ['O', 'I', 'E'], ['O', 'I', 'M']]}
+Progress: 11/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task3_gt3_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+1.  **Identify the target nodes:** The two black nodes are E and J. Our goal is to find the minimum number of edges to remove to ensure no path exists between E and J.
+
+2.  **Analyze the graph structure and identify paths:**
+    I'll categorize paths based on the first hop from node E, as E has four direct neighbors: L, M, F, and B.
+    *   **Paths starting E -> L or E -> M:**
+        *   E-L-M-...
+        *   E-M-L-...
+        From L, the only other connection is M. From M, the only other connection is F. So, any path from E through L or M must eventually pass through F to reach J.
+        Example: E-L-M-F-K-J, E-M-F-G-K-J, etc.
+    *   **Paths starting E -> F:**
+        *   E-F-K-J
+        *   E-F-G-K-J
+        *   E-F-X-K-J
+        All paths from E through F eventually converge on K, then J.
+    *   **Paths starting E -> B:**
+        *   E-B-H-I-J
+        *   E-B-C-I-J
+        *   E-B-N-C-I-J
+        *   E-B-N-O-P-J
+        Paths from E through B can lead to J via I or P.
+
+    From this analysis, all paths from E to J can be broadly grouped into two main "bundles":
+    *   **Bundle 1:** Paths that start from E and go through node F (or L/M then F) to reach J.
+    *   **Bundle 2:** Paths that start from E and go through node B to reach J.
+
+3.  **Determine the minimum number of edges:**
+    *   **Can we disconnect with 1 edge?** No. There are clearly multiple independent paths between E and J. For example, E-F-K-J and E-B-H-I-J do not share any edges. Therefore, removing any single edge will leave at least one path intact. The minimum number of edges must be at least 2.
+
+    *   **Can we disconnect with 2 edges?** Let's explore potential cut sets of size 2.
+        *   **Option A: Cut edges directly connected to E.**
+            If we remove the edge (E, F), all paths in Bundle 1 (those going through F) are broken at their source from E.
+            If we remove the edge (E, B), all paths in Bundle 2 (those going through B) are broken at their source from E.
+            Let's verify this cut set: **[(E, F), (E, B)]**.
+            1.  After removing (E, F) and (E, B), node E is only connected to L and M.
+            2.  Node L is connected to E and M.
+            3.  Node M is connected to E, L, and F.
+            4.  Since (E, F) has been removed, F is no longer reachable from E (or L or M).
+            5.  Since (E, B) has been removed, B is no longer reachable from E.
+            6.  Therefore, E (and its remaining connected components L and M) cannot reach F or B, which are the only gateways to J. This cut set successfully disconnects E from J.
+            This cut set has a size of 2.
+
+        *   **Option B: Cut edges directly connected to J.**
+            To cut all paths in Bundle 1 (via F), the most efficient single edge to remove is (K, J).
+            To cut all paths in Bundle 2 (via B), we need to cut paths going through I and paths going through P. This requires removing both (I, J) and (P, J).
+            Combining these, we get the cut set: [(K, J), (I, J), (P, J)]. This cut set has a size of 3. Since we found a cut of size 2, this is not the minimum.
+            Any combination of two edges directly connected to J (e.g., (K, J) and (I, J)) would leave at least one path active (e.g., E-B-N-O-P-J would still be active if (K, J) and (I, J) are removed).
+
+4.  **Conclusion:** The minimum number of edges that must be removed is 2. The cut set [(E, F), (E, B)] achieves this by severing E's connections to the two main branches leading to J.
+
+The final answer is \boxed{Edges to remove: 2, Cut Set: [(E, F), (E, B)]}
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['E', 'B'], ['M', 'J'], ['G', 'H']], [['E', 'B'], ['M', 'J'], ['F', 'E']]]}
+Progress: 12/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task2_gt3_PAIR3
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning.
+1.  **Identify the target nodes:** The two black nodes are E and H. I need to find the minimum number of white nodes to remove to disconnect E from H.
+
+2.  **Identify immediate connections and potential bottlenecks:**
+    *   Neighbors of E: {F, L, M, I, B}
+    *   Neighbors of H: {G, B, I}
+
+3.  **Trace initial paths and identify potential cut nodes:**
+    *   Path 1: E - B - H. This path uses node B.
+    *   Path 2: E - I - H. This path uses node I.
+    *   Path 3: E - F - G - H. This path uses nodes F and G.
+
+4.  **Check for node-disjoint paths:** To determine the minimum cut set, I look for node-disjoint paths between E and H (excluding E and H themselves).
+    *   Path A: E - B - H (Intermediate node: B)
+    *   Path B: E - I - H (Intermediate node: I)
+    *   Path C: E - F - G - H (Intermediate nodes: F, G)
+
+    These three paths are node-disjoint in their intermediate nodes: B, I, F, G are all distinct.
+    According to Menger's Theorem, if there are *k* node-disjoint paths between two nodes, then the minimum number of nodes to remove to disconnect them is at least *k*. Since I found 3 node-disjoint paths, the minimum cut set size must be at least 3.
+
+5.  **Propose a cut set of size 3:** Based on the identified paths, the nodes B, I, and G appear to be critical. Let's test the cut set {B, I, G}.
+    *   Removing B breaks Path A (E - B - H) and any other path that uses B to connect to H (e.g., E-C-B-H, E-I-C-B-H).
+    *   Removing I breaks Path B (E - I - H) and any other path that uses I to connect to H (e.g., E-C-I-H, E-B-C-I-H, E-L-M-J-I-H, E-M-J-I-H).
+    *   Removing G breaks Path C (E - F - G - H) and any other path that uses G to connect to H (e.g., E-F-K-G-H, E-F-X-G-H).
+
+6.  **Verify that all paths are broken by removing {B, I, G}:**
+    *   Any path from E to H must pass through one of E's neighbors {F, L, M, I, B} and eventually reach H via one of H's neighbors {G, B, I}.
+    *   If a path goes E -> B -> ... -> H, it's broken by removing B.
+    *   If a path goes E -> I -> ... -> H, it's broken by removing I.
+    *   If a path goes E -> F -> ... -> H, it must eventually pass through G to reach H (as F is only connected to G, K, X, and K, X are only connected to G in the direction of H). So, it's broken by removing G.
+    *   If a path goes E -> L -> M -> J -> ... -> H, it must eventually pass through I or P. If it passes through I, it's broken by removing I. If it passes through P, it must go P -> O -> C -> I or P -> O -> C -> B. Both of these options lead to I or B, which are removed.
+    *   If a path goes E -> M -> J -> ... -> H, similar to the E-L path, it must eventually pass through I or B, which are removed.
+
+    Therefore, removing {B, I, G} successfully disconnects E and H.
+
+7.  **Conclusion:** Since we found 3 node-disjoint paths, the minimum cut set is at least 3. We also found a cut set of size 3 ({B, I, G}). Thus, this is the minimum.
+
+Final Answer: Nodes to remove: 3, Cut Set: [B, I, G]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['F', 'B', 'I'], ['F', 'B', 'M']]}
+Progress: 13/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task1_gt2_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning. The two black nodes are labeled M and B. I begin a breadth-first search (BFS) from node M.
+
+*   **Level 0:** [M]
+    *   Current path: [M]
+
+*   **Level 1:** Neighbors of M
+    *   M is connected to L. Path: [M, L]
+    *   M is connected to E. Path: [M, E]
+    *   M is connected to F. Path: [M, F]
+    *   M is connected to J. Path: [M, J]
+    *   Nodes to explore next: L, E, F, J.
+
+*   **Level 2:** Neighbors of Level 1 nodes (excluding already visited nodes)
+    *   From L: E (already visited via M)
+    *   From E: L (visited), F (visited), G (Path: [M, E, G]), B (TARGET FOUND! Path: [M, E, B])
+    *   Since the target node B was found at Level 2, the shortest path has a length of 2.
+
+I verify the path [M, E, B]:
+1.  Is M directly connected to E? Yes, there is a continuous black line.
+2.  Is E directly connected to B? Yes, there is a continuous black line.
+
+This path is valid and has a length of 2. Since a path of length 1 would mean M is directly connected to B, and this is not the case (M's neighbors are L, E, F, J, none of which are B), a path of length 2 is indeed the shortest possible.
+
+Final Answer: Length: 2, Path: [M, E, B]
+--- Ground Truth ---
+{'length': 2, 'path': ['B', 'E', 'M']}
+Progress: 14/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task1_gt4_PAIR2
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning. The two black nodes are labeled X and N. I begin a breadth-first search (BFS) from node X.
+
+*   **Level 0:** [X]
+    *   Current path: [X]
+
+*   **Level 1:** Neighbors of X
+    *   X is connected to F, K, G.
+    *   Paths: [X, F], [X, K], [X, G]
+
+*   **Level 2:** Neighbors of nodes in Level 1 (excluding already visited nodes)
+    *   From F: F is connected to M, E, G, X. (G, X already visited)
+        *   [X, F, M]
+        *   [X, F, E]
+    *   From K: K is connected to F, X, G, I. (F, X, G already visited)
+        *   [X, K, I]
+    *   From G: G is connected to F, X, K, H, B. (F, X, K already visited)
+        *   [X, G, H]
+        *   [X, G, B]
+
+*   **Level 3:** Neighbors of nodes in Level 2 (excluding already visited nodes)
+    *   From M: M is connected to L, E, F, J. (E, F already visited)
+        *   [X, F, M, L]
+        *   [X, F, M, J]
+    *   From E: E is connected to L, M, F, B. (L, M, F already visited)
+        *   [X, F, E, B]
+    *   From I: I is connected to K, H, J, P, C. (K, H already visited)
+        *   [X, K, I, J]
+        *   [X, K, I, P]
+        *   [X, K, I, C]
+    *   From H: H is connected to G, I, B. (G, I already visited)
+        *   [X, G, H, B]
+    *   From B: B is connected to G, E, H, C, N. (G, E, H already visited)
+        *   [X, G, B, C]
+        *   **[X, G, B, N]** - Target node N found!
+
+The path found is [X, G, B, N] with a length of 3. Since BFS explores layer by layer, this is guaranteed to be the shortest path.
+
+Final Answer: Length: 3, Path: [X, G, B, N]
+--- Ground Truth ---
+{'length': 4, 'path': [['N', 'B', 'H', 'G', 'X'], ['N', 'B', 'E', 'F', 'X']]}
+Progress: 15/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task1_gt4_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning. The two black nodes are labeled F and D. I begin a breadth-first search (BFS) from node F.
+
+*   **Level 0:** The starting node is F.
+    *   Current paths: [[F]]
+
+*   **Level 1:** Explore neighbors of F.
+    *   F is connected to G, K, X, P.
+    *   Current paths: [[F, G], [F, K], [F, X], [F, P]]
+
+*   **Level 2:** Explore neighbors of nodes in Level 1.
+    *   From G: Neighbors are N, H, K, F, X. (K, F, X are already visited or in Level 1).
+        *   New paths: [F, G, N], [F, G, H]
+    *   From K: Neighbors are G, X, F. (All already visited or in Level 1).
+    *   From X: Neighbors are G, K, F. (All already visited or in Level 1).
+    *   From P: Neighbors are O, I, J, E, F, D. (F is already visited).
+        *   **Target D found!** The path is [F, P, D]. This path has a length of 2.
+
+Since BFS guarantees that the first path found to the target node is the shortest, a path of length 2 is the minimum.
+
+Final Answer: Length: 2, Path: [F, P, D]
+--- Ground Truth ---
+{'length': 4, 'path': ['F', 'E', 'M', 'J', 'D']}
+Progress: 16/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt3_PAIR4
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+The target nodes are B and M. My goal is to find the minimum number of edges to remove to ensure no path exists between B and M.
+
+1.  **Identify all edges connected to the target node M:**
+    Node M is connected to three other nodes: E, J, and L.
+    The edges connected to M are: (E, M), (J, M), and (L, M).
+
+2.  **Consider the effect of removing these edges:**
+    If I remove all three of these edges – (E, M), (J, M), and (L, M) – then node M will have no connections to any other node in the graph. Consequently, no path can exist between B and M. This set of edges has a size of 3.
+
+3.  **Determine if a smaller cut (e.g., 2 edges) is possible:**
+    To prove that 3 is the minimum, I need to show that removing any two edges is insufficient to disconnect B from M. Let's consider all combinations of removing two edges from the set {(E, M), (J, M), (L, M)}:
+
+    *   **Case 1: Remove (E, M) and (J, M).**
+        After removing these two edges, M is still connected to L via (L, M).
+        I need to check if there's a path from B to L.
+        A path exists: B - E - L. (B is connected to E, and E is connected to L).
+        Therefore, the path B - E - L - M still exists. This means removing (E, M) and (J, M) is not sufficient.
+
+    *   **Case 2: Remove (E, M) and (L, M).**
+        After removing these two edges, M is still connected to J via (J, M).
+        I need to check if there's a path from B to J.
+        A path exists: B - I - J. (B is connected to I, and I is connected to J).
+        Therefore, the path B - I - J - M still exists. This means removing (E, M) and (L, M) is not sufficient.
+
+    *   **Case 3: Remove (J, M) and (L, M).**
+        After removing these two edges, M is still connected to E via (E, M).
+        I need to check if there's a path from B to E.
+        A path exists: B - E. (B is directly connected to E).
+        Therefore, the path B - E - M still exists. This means removing (J, M) and (L, M) is not sufficient.
+
+4.  **Conclusion on minimum cut size:**
+    Since removing any two of the three edges directly connected to M leaves at least one path from B to M, it is impossible to disconnect B and M by removing only two edges.
+    However, removing all three edges (E, M), (J, M), and (L, M) successfully disconnects M from the rest of the graph, and thus from B.
+
+Therefore, the minimum number of edges to remove is 3.
+
+Final Answer: Edges to remove: 3, Cut Set: [(E, M), (J, M), (L, M)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['M', 'E'], ['M', 'J'], ['M', 'L']], [['M', 'J'], ['F', 'E'], ['B', 'E']]]}
+Progress: 17/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task3_gt2_PAIR3
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+The target nodes are F and J. My goal is to find the minimum number of edges to remove to disconnect F from J.
+
+1.  **Identify direct connections of target nodes:**
+    *   Node F is connected to E, X, and K.
+    *   Node J is connected to M, P, and D.
+    Since both F and J have a degree of 3, removing any single edge will not disconnect them, as there will always be at least two other paths originating from or leading to them. Therefore, the minimum number of edges to remove must be at least 2.
+
+2.  **Analyze all possible paths from F to J:**
+    All paths originating from F must start with one of its direct connections: (F, E), (F, X), or (F, K).
+
+    *   **Paths starting with (F, E):**
+        Any path that begins F-E will use the edge (F, E). Examples:
+        *   F-E-M-J
+        *   F-E-L-M-J
+        *   F-E-B-N-Y-O-P-J
+        *   F-E-B-H-I-D-J (and many more through B)
+
+    *   **Paths starting with (F, X) or (F, K):**
+        Let's trace these paths.
+        *   From F-X, the path can go to K (F-X-K) or G (F-X-G).
+        *   From F-K, the path can go to X (F-K-X) or G (F-K-G).
+        Notice that all these branches (F-X-K, F-X-G, F-K-X, F-K-G) eventually lead to node G.
+        From node G, the only way to proceed towards the "J-side" of the graph is through node H, via the edge (G, H). (G also connects to X and K, but these lead back towards F).
+        Therefore, any path from F that does not start with (F, E) must pass through the edge (G, H) to reach the rest of the graph and eventually J. Examples:
+        *   F-X-K-G-H-I-D-J
+        *   F-K-G-H-B-N-C-P-J
+
+3.  **Identify critical edges that all paths must traverse:**
+    Based on the analysis above, all paths from F to J fall into one of two categories:
+    *   Paths that use the edge (F, E).
+    *   Paths that use the edge (G, H) (after traversing F-X-K-G or F-K-G).
+
+    This means that if we remove both the edge (F, E) and the edge (G, H), all possible paths from F to J will be broken.
+
+4.  **Verify the cut set and its minimality:**
+    *   **Cut Set:** [(F, E), (G, H)]
+    *   **Number of edges:** 2
+    *   **Verification:**
+        *   Removing (F, E) disconnects F from node E, thus breaking all paths that start F-E.
+        *   Removing (G, H) disconnects node G from node H. Since all other paths from F (i.e., those starting F-X or F-K) must pass through G and then H to reach J, removing (G, H) breaks all these alternative paths.
+        *   Since all paths from F to J must use either (F, E) or (G, H), removing these two edges ensures complete disconnection.
+    *   **Minimality:** As established in step 1, a single edge removal is insufficient. Therefore, 2 edges is the minimum possible.
+
+Final Answer: Edges to remove: 2, Cut Set: [(F, E), (G, H)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 18/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task1_gt3_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning. The two black nodes are labeled L and I. I begin a breadth-first search (BFS) from node L.
+
+*   **Level 0:** Start at node L.
+    *   Current path: [L]
+
+*   **Level 1:** Explore neighbors of L.
+    *   L is connected to M. Path: [L, M]
+    *   L is connected to E. Path: [L, E]
+
+*   **Level 2:** Explore neighbors of nodes found in Level 1 (M, E).
+    *   From M:
+        *   M is connected to J. Path: [L, M, J]
+        *   M is connected to K. Path: [L, M, K]
+    *   From E:
+        *   E is connected to F. Path: [L, E, F]
+        *   E is connected to B. Path: [L, E, B]
+
+*   **Level 3:** Explore neighbors of nodes found in Level 2 (J, K, F, B).
+    *   From J:
+        *   J is connected to I (the target node). Path: [L, M, J, I]. This path has a length of 3.
+    *   Since BFS guarantees that the first time the target node is reached, it is via the shortest path, we can stop here.
+
+I verify the connections for the path [L, M, J, I]:
+1.  Is L directly connected to M? Yes.
+2.  Is M directly connected to J? Yes.
+3.  Is J directly connected to I? Yes.
+
+The path is valid, and its length is 3.
+
+Final Answer: Length: 3, Path: [L, M, J, I]
+--- Ground Truth ---
+{'length': 3, 'path': ['L', 'M', 'J', 'I']}
+Progress: 19/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task2_gt3_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+1.  **Identify Target Nodes:** The two black nodes are H and O. My goal is to disconnect them by removing the minimum number of white nodes. I cannot remove H or O.
+
+2.  **Analyze Connections to Target Nodes:**
+    *   Nodes directly connected to H: G, F, B, I.
+    *   Nodes directly connected to O: C, N, P, Y.
+
+3.  **Identify Potential Bottlenecks (Cut Nodes):**
+    I will systematically explore possible cut sets, starting with single nodes, then moving to pairs.
+
+    *   **Single Node Cut (Size 1):**
+        *   **Remove E:** Paths like H-B-C-O and H-I-P-O would still exist. (Not a cut)
+        *   **Remove I:** Paths like H-B-C-O and H-G-F-E-L-M-J-P-O would still exist. (Not a cut)
+        *   **Remove C:** Paths like H-I-P-O and H-G-F-E-L-M-J-P-O would still exist. (Not a cut)
+        *   **Remove P:** Paths like H-B-C-O and H-I-C-O would still exist. (Not a cut)
+        *   **Remove B:** Paths like H-I-P-O and H-G-F-E-L-M-J-P-O would still exist. (Not a cut)
+        *   **Remove J:** Paths like H-B-C-O and H-I-C-O and H-I-P-O would still exist. (Not a cut)
+        *   **Remove N:** Paths like H-B-C-O and H-I-P-O would still exist. (Not a cut)
+        *   Other nodes (G, F, L, M, D, K, X, Y) are either too far from the main paths or only part of specific branches, leaving many other paths intact.
+        Since no single node can disconnect H and O, the minimum cut set must be of size 2 or more.
+
+    *   **Two Node Cut (Size 2):**
+        Let's consider the nodes that are essential for connecting to O. O is directly connected to C, N, P, and Y.
+        *   Node Y is only connected to N.
+        *   Node N is connected to C and O.
+        Therefore, any path reaching O must pass through either C or P. If a path goes through N, it must come from C (or O itself, which is not allowed). So, all paths to O must ultimately pass through C or P.
+
+        Let's test the cut set **{C, P}**:
+        1.  **Removing C:** This severs all paths that use C to reach O. Examples: H-B-C-O, H-B-C-N-O, H-I-C-O, H-I-C-N-O, H-G-F-E-I-C-O, H-F-E-I-C-N-O, etc.
+        2.  **Removing P:** This severs all paths that use P to reach O. Examples: H-I-P-O, H-I-J-P-O, H-G-F-E-I-P-O, H-G-F-E-L-M-J-P-O, H-B-E-M-J-P-O, etc.
+
+        By removing both C and P, we ensure that no path can reach O, as every path to O must pass through one of these two nodes.
+
+4.  **Verification:**
+    *   All paths from H to O must eventually pass through a node directly connected to O (C, N, P, Y).
+    *   If a path goes through Y, it must go through N.
+    *   If a path goes through N, it must go through C (since N's only other connection is to O).
+    *   Therefore, any path to O must pass through C or P.
+    *   Removing C and P will break all such paths.
+    *   Since we've already established that a single node removal is insufficient, a cut set of size 2 is the minimum.
+
+Final Answer: Nodes to remove: 2, Cut Set: [C, P]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'I']}
+Progress: 20/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task3_gt3_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+The target nodes are B (black) and M (black). The goal is to find the minimum number of edges to remove to completely disconnect B from M.
+
+1.  **Identify direct connections to M:**
+    Node M is directly connected to nodes E, J, and L. The edges are (E, M), (J, M), and (L, M).
+    If we remove these three edges, M becomes isolated from the rest of the graph, and thus from B. This forms a cut set of size 3: `[(E, M), (J, M), (L, M)]`. This is a potential candidate for the minimum cut.
+
+2.  **Explore if a smaller cut (size 1 or 2) is possible:**
+    *   **Can 1 edge disconnect B and M?**
+        If we remove any single edge, for example (E, M), there are still paths from B to M through J (e.g., B-E-J-M) and L (e.g., B-E-L-M). Therefore, 1 edge is not sufficient.
+    *   **Can 2 edges disconnect B and M?**
+        Let's consider the "entry points" to the subgraph containing M (nodes E, J, L) from the rest of the graph (the "B-side"). Any path from B to M must pass through one of these entry points.
+        The edges connecting to E, J, or L from the "B-side" (i.e., from nodes other than M, E, J, L themselves, or D which is not connected to B) are:
+        *   To E: (B, E), (P, E)
+        *   To J: (P, J) (Note: (D, J) is not relevant as D is not connected to B)
+        *   To L: None (L is only connected to E and M)
+
+        So, all paths from B to M must traverse at least one of these three edges: (B, E), (P, E), or (P, J). Let's call these E1=(B,E), E2=(P,E), E3=(P,J).
+
+        Let's test if removing any two of these three edges disconnects B and M:
+        *   **Removing E1 and E2: [(B, E), (P, E)]**
+            After removing these two edges, the edge (P, J) remains. Node P is connected to B via multiple paths (e.g., B-C-I-P, B-H-I-P, B-N-O-P, B-O-P, B-H-G-F-P). Therefore, a path like B-C-I-P-J-M still exists. This cut is not sufficient.
+        *   **Removing E1 and E3: [(B, E), (P, J)]**
+            After removing these two edges, the edge (P, E) remains. Node P is connected to B. Therefore, a path like B-C-I-P-E-M still exists. This cut is not sufficient.
+        *   **Removing E2 and E3: [(P, E), (P, J)]**
+            After removing these two edges, the edge (B, E) remains. Therefore, a path like B-E-M still exists. This cut is not sufficient.
+
+        Since removing any two of these three critical edges (B, E), (P, E), (P, J) leaves at least one path between B and M, a cut of size 2 is not possible.
+
+3.  **Confirm the minimum cut of size 3:**
+    We have identified two potential minimal cut sets of size 3:
+    *   `[(E, M), (J, M), (L, M)]` (isolating M directly)
+    *   `[(B, E), (P, E), (P, J)]` (cutting all entry points to M's neighborhood from B)
+
+    Let's verify the second cut set `[(B, E), (P, E), (P, J)]`:
+    *   **Removal of (B, E):** All direct paths from B to E are cut.
+    *   **Removal of (P, E):** All paths from P to E are cut. Since P is the only other node (besides B) that connects to E from the "B-side" of the graph, E is now completely disconnected from B.
+    *   **Removal of (P, J):** All paths from P to J are cut. Since E is already disconnected from B, any path B-...-E-J-M is also broken. Therefore, J is now completely disconnected from B.
+    *   **Node L:** L is only connected to E and M. Since E is disconnected from B, L is also disconnected from B.
+
+    With E, J, and L all disconnected from B, M is completely disconnected from B. This cut set of 3 edges is effective.
+
+Since we've proven that 2 edges are not enough, and we found a cut set of 3 edges, the minimum number of edges to remove is 3.
+
+Final Answer:
+Edges to remove: 3, Cut Set: [(B, E), (P, E), (P, J)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [[['M', 'E'], ['M', 'J'], ['M', 'L']], [['M', 'J'], ['F', 'E'], ['B', 'E']]]}
+Progress: 21/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task1_gt4_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning. The two black nodes are labeled K and J. I will perform a breadth-first search (BFS) starting from node K to find the shortest path to node J.
+
+1.  **Level 0:** Start node.
+    *   Queue: `[(K, [K])]`
+    *   Visited: `{}`
+
+2.  **Level 1:** Neighbors of K.
+    *   Dequeue `(K, [K])`.
+    *   Neighbors of K are X, F, G.
+    *   Add to queue: `(X, [K, X])`, `(F, [K, F])`, `(G, [K, G])`.
+    *   Visited: `{K}`
+
+3.  **Level 2:** Neighbors of nodes from Level 1.
+    *   Dequeue `(X, [K, X])`. Neighbors of X are K, G. K is visited, G is in queue. No new nodes.
+    *   Dequeue `(F, [K, F])`. Neighbors of F are K, G, E. K, G are visited/in queue.
+        *   Add `(E, [K, F, E])`.
+    *   Dequeue `(G, [K, G])`. Neighbors of G are K, X, F, H. K, X, F are visited/in queue.
+        *   Add `(H, [K, G, H])`.
+    *   Current Queue: `[(E, [K, F, E]), (H, [K, G, H])]`
+    *   Visited: `{K, X, F, G}`
+
+4.  **Level 3:** Neighbors of nodes from Level 2.
+    *   Dequeue `(E, [K, F, E])`. Neighbors of E are F, L, M, I, B. F is visited.
+        *   Add `(L, [K, F, E, L])`.
+        *   Add `(M, [K, F, E, M])`.
+        *   Add `(I, [K, F, E, I])`.
+        *   Add `(B, [K, F, E, B])`.
+    *   Dequeue `(H, [K, G, H])`. Neighbors of H are G, B, I. G is visited. B and I are already in the queue from E, so their paths from K via H would be of the same length (3) but not necessarily shorter. We prioritize the first path found.
+    *   Current Queue: `[(L, [K, F, E, L]), (M, [K, F, E, M]), (I, [K, F, E, I]), (B, [K, F, E, B])]`
+    *   Visited: `{K, X, F, G, E, H}`
+
+5.  **Level 4:** Neighbors of nodes from Level 3.
+    *   Dequeue `(L, [K, F, E, L])`. Neighbors of L are E, M. E is visited, M is in queue. No new nodes.
+    *   Dequeue `(M, [K, F, E, M])`. Neighbors of M are L, E, J. L, E are visited/in queue.
+        *   **J is the target node!** We have found a path: `[K, F, E, M, J]`.
+        *   The length of this path is 4.
+
+Since BFS guarantees the first path found to the target node is the shortest, the path `[K, F, E, M, J]` of length 4 is the shortest path.
+
+**Verification of the path [K, F, E, M, J]:**
+*   Is K connected to F? Yes.
+*   Is F connected to E? Yes.
+*   Is E connected to M? Yes.
+*   Is M connected to J? Yes.
+
+All connections are valid.
+
+Final Answer: Length: 4, Path: [K, F, E, M, J]
+--- Ground Truth ---
+{'length': 4, 'path': ['J', 'M', 'E', 'F', 'K']}
+Progress: 22/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task3_gt2_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+The target nodes are F (black) and M (black). My goal is to find the minimum number of edges to remove to ensure no path exists between F and M.
+
+1.  **Identify the target nodes and their immediate connections:**
+    *   Node F is connected to: K, X, G, E.
+    *   Node M is connected to: L, E, J.
+
+2.  **Analyze the overall graph structure to identify potential "bottlenecks" or "cut points":**
+    I can observe that the graph can be conceptually divided into two main regions:
+    *   A "left" region containing F and its immediate cluster: {F, K, X, G}.
+    *   A "right" region containing M and the rest of the graph: {M, L, E, J, D, P, O, Y, N, C, I, B, H}.
+
+3.  **Identify all edges that connect the "left" region to the "right" region:**
+    *   From F, there is an edge (F, E). Node E is in the "right" region.
+    *   From G (which is part of F's cluster), there is an edge (G, H). Node H is in the "right" region.
+    *   Nodes K and X are only connected to F and G within the "left" region. They do not have direct connections to the "right" region.
+
+    Therefore, any path from F to M must traverse either the edge (F, E) or the edge (G, H).
+
+4.  **Test if a cut of size 1 is possible:**
+    *   If I remove (F, E), paths like F-G-H-...-M would still exist.
+    *   If I remove (G, H), paths like F-E-...-M would still exist.
+    *   Since there are at least two distinct "entry points" from F's cluster to M's cluster, a single edge removal is insufficient to disconnect F and M.
+
+5.  **Test a cut of size 2 using the identified bottleneck edges:**
+    *   Consider removing the edges (F, E) and (G, H).
+    *   If (F, E) is removed: All paths starting directly from F to E (e.g., F-E-M, F-E-L-M, F-E-H-...) are broken.
+    *   If (G, H) is removed: All paths starting from F, going through G, and then to H (e.g., F-G-H-E-M, F-G-H-I-J-M, F-K-G-H-...) are broken.
+    *   Since all paths from F to M must pass through either (F, E) or (G, H), removing both of these edges will completely disconnect F from M.
+
+6.  **Verify the cut set:**
+    *   After removing (F, E) and (G, H), the nodes {F, K, X, G} form a disconnected component from the rest of the graph. Since M is in the rest of the graph, F is disconnected from M.
+    *   This cut set has a size of 2. Since a cut of size 1 was not possible, this cut of size 2 is minimal.
+
+The minimum number of edges to remove is 2. The cut set consists of the edges (F, E) and (G, H).
+
+Final Answer:
+Edges to remove: 2, Cut Set: [(F, E), (G, H)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 23/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task3_gt3_PAIR5
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+The target nodes are H and B. My goal is to find the minimum number of edges to remove to completely disconnect H from B. This is a minimum cut problem, which can be solved by finding the maximum number of edge-disjoint paths between H and B (Menger's Theorem).
+
+First, I will identify all possible paths between H and B. Then, I will attempt to find a set of edge-disjoint paths. The number of edge-disjoint paths will give me a lower bound for the minimum cut. Finally, I will identify a cut set of edges that matches this lower bound.
+
+**1. Identify potential paths from H to B:**
+*   Direct path: H - B
+*   Paths through E: H - E - B, H - F - E - B, H - G - F - E - B, H - E - M - J - P - I - B
+*   Paths through I: H - I - B, H - I - C - B, H - I - C - N - B, H - I - P - O - N - B
+
+**2. Find edge-disjoint paths between H and B:**
+I will try to find as many edge-disjoint paths as possible.
+
+*   **Path 1 (P1): H - B**
+    *   Edges: {(H, B)}
+
+*   **Path 2 (P2): H - E - B**
+    *   Edges: {(H, E), (E, B)}
+    *   P2 is edge-disjoint from P1.
+
+*   **Path 3 (P3): H - I - B**
+    *   Edges: {(H, I), (I, B)}
+    *   P3 is edge-disjoint from P1 and P2.
+
+*   **Path 4 (P4): H - F - E - M - J - P - I - C - B**
+    *   Edges: {(H, F), (F, E), (E, M), (M, J), (J, P), (P, I), (I, C), (C, B)}
+    *   Let's check if P4 is edge-disjoint from P1, P2, and P3:
+        *   P1: (H, B) - No overlap.
+        *   P2: (H, E), (E, B) - No overlap.
+        *   P3: (H, I), (I, B) - No overlap.
+    *   P4 is indeed edge-disjoint from P1, P2, and P3.
+
+I have found 4 edge-disjoint paths between H and B. According to Menger's Theorem, the minimum number of edges that must be removed to disconnect H and B is at least 4.
+
+**3. Identify a cut set of 4 edges:**
+Now I need to find a set of 4 edges whose removal disconnects H and B. Based on the structure of the paths, I will look for edges that act as "bottlenecks" or "gateways" for multiple paths.
+
+Consider the following set of 4 edges: **[(H, B), (H, E), (H, I), (F, E)]**
+
+Let's verify if removing these 4 edges disconnects H from B:
+*   **Path H - B**: This path is broken by removing edge (H, B).
+*   **Paths through E**:
+    *   H - E - B: Broken by removing edge (H, E).
+    *   H - F - E - B: Broken by removing edge (F, E).
+    *   H - G - F - E - B: Broken by removing edge (F, E).
+    *   H - E - M - J - P - I - B: Broken by removing edge (H, E).
+*   **Paths through I**:
+    *   H - I - B: Broken by removing edge (H, I).
+    *   H - I - C - B: Broken by removing edge (H, I).
+    *   H - I - C - N - B: Broken by removing edge (H, I).
+    *   H - I - P - O - N - B: Broken by removing edge (H, I).
+
+All identified paths between H and B are broken by the removal of these 4 edges. Since I found 4 edge-disjoint paths, and I have identified a cut set of 4 edges, this is the minimum number of edges required.
+
+Final Answer:
+Edges to remove: 4, Cut Set: [(H, B), (H, E), (H, I), (F, E)]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['B', 'H'], ['H', 'I'], ['G', 'H']]}
+Progress: 24/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task1_gt4_PAIR3
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning.
+The two black nodes are labeled Y and L. I will perform a breadth-first search (BFS) starting from node Y to find the shortest path to node L.
+
+1.  **Initialize:**
+    *   Queue: `[(Y, [Y])]`
+    *   Visited: `{Y}`
+
+2.  **Level 1 (Distance 1 from Y):**
+    *   Dequeue `(Y, [Y])`.
+    *   Neighbors of Y: N, O.
+    *   Add `(N, [Y, N])` and `(O, [Y, O])` to the queue.
+    *   Visited: `{Y, N, O}`.
+    *   Queue: `[(N, [Y, N]), (O, [Y, O])]`
+
+3.  **Level 2 (Distance 2 from Y):**
+    *   Dequeue `(N, [Y, N])`.
+    *   Neighbors of N (not visited): B, C. (O is already visited).
+    *   Add `(B, [Y, N, B])` and `(C, [Y, N, C])` to the queue.
+    *   Visited: `{Y, N, O, B, C}`.
+    *   Queue: `[(O, [Y, O]), (B, [Y, N, B]), (C, [Y, N, C])]`
+    *   Dequeue `(O, [Y, O])`.
+    *   Neighbors of O (not visited): P. (C, N are already visited).
+    *   Add `(P, [Y, O, P])` to the queue.
+    *   Visited: `{Y, N, O, B, C, P}`.
+    *   Queue: `[(B, [Y, N, B]), (C, [Y, N, C]), (P, [Y, O, P])]`
+
+4.  **Level 3 (Distance 3 from Y):**
+    *   Dequeue `(B, [Y, N, B])`.
+    *   Neighbors of B (not visited): H. (C, N are already visited).
+    *   Add `(H, [Y, N, B, H])` to the queue.
+    *   Visited: `{Y, N, O, B, C, P, H}`.
+    *   Queue: `[(C, [Y, N, C]), (P, [Y, O, P]), (H, [Y, N, B, H])]`
+    *   Dequeue `(C, [Y, N, C])`.
+    *   Neighbors of C (not visited): I. (B, N, O are already visited).
+    *   Add `(I, [Y, N, C, I])` to the queue.
+    *   Visited: `{Y, N, O, B, C, P, H, I}`.
+    *   Queue: `[(P, [Y, O, P]), (H, [Y, N, B, H]), (I, [Y, N, C, I])]`
+    *   Dequeue `(P, [Y, O, P])`.
+    *   Neighbors of P (not visited): J, D. (I, O are already visited).
+    *   Add `(J, [Y, O, P, J])` and `(D, [Y, O, P, D])` to the queue.
+    *   Visited: `{Y, N, O, B, C, P, H, I, J, D}`.
+    *   Queue: `[(H, [Y, N, B, H]), (I, [Y, N, C, I]), (J, [Y, O, P, J]), (D, [Y, O, P, D])]`
+
+5.  **Level 4 (Distance 4 from Y):**
+    *   Dequeue `(H, [Y, N, B, H])`.
+    *   Neighbors of H (not visited): G, E. (B, I are already visited).
+    *   Add `(G, [Y, N, B, H, G])` and `(E, [Y, N, B, H, E])` to the queue.
+    *   Visited: `{Y, N, O, B, C, P, H, I, J, D, G, E}`.
+    *   Queue: `[(I, [Y, N, C, I]), (J, [Y, O, P, J]), (D, [Y, O, P, D]), (G, [Y, N, B, H, G]), (E, [Y, N, B, H, E])]`
+    *   Dequeue `(I, [Y, N, C, I])`.
+    *   Neighbors of I: H, C, P, J (all visited). No new nodes.
+    *   Dequeue `(J, [Y, O, P, J])`.
+    *   Neighbors of J (not visited): M. (I, P, D are already visited).
+    *   Add `(M, [Y, O, P, J, M])` to the queue.
+    *   Visited: `{Y, N, O, B, C, P, H, I, J, D, G, E, M}`.
+    *   Queue: `[(D, [Y, O, P, D]), (G, [Y, N, B, H, G]), (E, [Y, N, B, H, E]), (M, [Y, O, P, J, M])]`
+    *   Dequeue `(D, [Y, O, P, D])`.
+    *   Neighbors of D: J, P (all visited). No new nodes.
+
+6.  **Level 5 (Distance 5 from Y):**
+    *   Dequeue `(G, [Y, N, B, H, G])`.
+    *   Neighbors of G (not visited): K, X, F. (E, H are already visited).
+    *   Add `(K, [Y, N, B, H, G, K])`, `(X, [Y, N, B, H, G, X])`, `(F, [Y, N, B, H, G, F])` to the queue.
+    *   Visited: `{Y, N, O, B, C, P, H, I, J, D, G, E, M, K, X, F}`.
+    *   Queue: `[(E, [Y, N, B, H, E]), (M, [Y, O, P, J, M]), (K, [Y, N, B, H, G, K]), (X, [Y, N, B, H, G, X]), (F, [Y, N, B, H, G, F])]`
+    *   Dequeue `(E, [Y, N, B, H, E])`.
+    *   Neighbors of E (not visited): **L**. (M, H, G, F are already visited).
+    *   **L is the target node!** The path is `[Y, N, B, H, E, L]`.
+    *   The length of this path is 5.
+
+Since BFS guarantees the first path found to the target node is the shortest, the shortest path length is 5.
+
+Final Answer: Length: 5, Path: [Y, N, B, H, E, L]
+--- Ground Truth ---
+{'length': 4, 'path': ['L', 'E', 'B', 'N', 'Y']}
+Progress: 25/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task3_gt2_PAIR3
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+1.  **Identify the target nodes:** The two black nodes are F and D.
+2.  **Objective:** Determine the minimum number of edges to remove to completely disconnect F and D, meaning no path exists between them.
+3.  **Analyze connections to target node D:** Node D is directly connected to two other nodes: J and P.
+    *   There is an edge (J, D).
+    *   There is an edge (P, D).
+4.  **Evaluate single edge removal:**
+    *   If we remove only the edge (J, D), paths from F to D via P would still exist (e.g., F - ... - P - D).
+    *   If we remove only the edge (P, D), paths from F to D via J would still exist (e.g., F - ... - J - D).
+    *   Therefore, removing a single edge is not sufficient to disconnect F and D. This implies the minimum number of edges to remove must be at least 2.
+5.  **Evaluate two edge removal:**
+    *   Consider removing both edges directly connected to D: (J, D) and (P, D).
+    *   If these two edges are removed, node D becomes completely isolated from the rest of the graph.
+    *   Since D is isolated, no path from F (or any other node) can reach D.
+    *   This set of two edges successfully disconnects F and D.
+6.  **Conclusion:** Since a single edge removal is insufficient, and we found a set of two edges that achieves disconnection, the minimum number of edges to remove is 2.
+
+Edges to remove: 2, Cut Set: [(J, D), (P, D)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['D', 'P'], ['D', 'J']]}
+Progress: 26/280 images processed.
+============================================================
+
+============================================================
+Image name: PGS_task1_gt3_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning. The two black nodes are labeled L and H. I begin a breadth-first search (BFS) from node L.
+
+*   **Level 0:** [L]
+    *   Current path: [L]
+*   **Level 1:** Neighbors of L
+    *   M (Path: [L, M])
+    *   E (Path: [L, E])
+*   **Level 2:** Neighbors of nodes from Level 1 (excluding already visited nodes)
+    *   From M: F (Path: [L, M, F])
+    *   From E: B (Path: [L, E, B])
+*   **Level 3:** Neighbors of nodes from Level 2 (excluding already visited nodes)
+    *   From F: X (Path: [L, M, F, X]), G (Path: [L, M, F, G]), K (Path: [L, M, F, K])
+    *   From B: N (Path: [L, E, B, N]), C (Path: [L, E, B, C]), H (Path: [L, E, B, H]) - **TARGET FOUND!**
+
+The shortest path found is [L, E, B, H] with a length of 3.
+I verify the connections:
+1.  L is directly connected to E.
+2.  E is directly connected to B.
+3.  B is directly connected to H.
+All connections are valid. Since this was found during a BFS, it is guaranteed to be the shortest path.
+
+Final Answer: Length: 3, Path: [L, E, B, H]
+--- Ground Truth ---
+{'length': 3, 'path': ['L', 'E', 'B', 'H']}
+Progress: 27/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBa_task2_gt2_PAIR1
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning.
+1.  **Identify Target Nodes:** The two black nodes are E and D. I need to find the minimum number of white nodes to remove to disconnect E from D.
+
+2.  **Analyze E's Connections:**
+    *   E is connected to M, L, F, B.
+
+3.  **Analyze D's Connections:**
+    *   D is connected to J, P. To disconnect D, we must sever all paths leading to J and P.
+
+4.  **Trace Paths and Identify Bottlenecks:**
+    Let's categorize the paths from E based on its immediate neighbors:
+
+    *   **Paths starting from E via M, L, F (the "left" side):**
+        *   E -> M -> K -> (X or F) -> G -> H -> I -> (J or P) -> D
+        *   E -> L -> M -> K -> (X or F) -> G -> H -> I -> (J or P) -> D
+        *   E -> F -> (X or K) -> G -> H -> I -> (J or P) -> D
+        *   E -> F -> G -> H -> I -> (J or P) -> D
+        All these paths from E that go through M, L, F, K, X, G eventually converge at node G, and from G, the only way to reach the "right" side of the graph (towards D) is through node H. Therefore, removing node **H** would cut all these paths.
+
+    *   **Paths starting from E via B:**
+        *   E -> B -> H -> I -> (J or P) -> D
+            *   *Observation:* If H is removed (as identified above), these paths would also be cut.
+        *   E -> B -> C -> I -> (J or P) -> D
+        *   E -> B -> C -> N -> O -> (P or Y) -> (J or P) -> D
+        *   E -> B -> C -> O -> (P or Y) -> (J or P) -> D
+        These paths go through node C.
+
+5.  **Formulate a Candidate Cut Set:**
+    Based on the observations:
+    *   If we remove **H**, all paths from E through M, L, F, G are cut. Also, paths E -> B -> H are cut.
+    *   The only remaining paths from E to D would be those going through E -> B -> C.
+    *   From C, all paths to D's neighborhood (J, P) go through I, N, or O.
+        *   C -> I -> (J/P) -> D
+        *   C -> N -> O -> (P/Y) -> (J/P) -> D
+        *   C -> O -> (P/Y) -> (J/P) -> D
+    *   Therefore, if we also remove node **C**, all remaining paths from E to D would be severed.
+
+    This gives us a candidate cut set: [H, C]. This set has 2 nodes.
+
+6.  **Verify Minimum Number of Nodes (Can it be 1?):**
+    Let's check if removing any single node can disconnect E and D:
+    *   **H:** If H is removed, paths like E -> B -> C -> I -> J -> D still exist.
+    *   **C:** If C is removed, paths like E -> B -> H -> I -> J -> D still exist, and E -> F -> G -> H -> I -> J -> D still exist.
+    *   **I:** If I is removed, paths like E -> B -> C -> O -> P -> D still exist.
+    *   **O:** If O is removed, paths like E -> B -> C -> I -> J -> D still exist.
+    *   **J or P:** These are direct neighbors of D. Removing them would be equivalent to removing D itself, which is not allowed.
+    Since no single node can disconnect E and D, the minimum number of nodes must be at least 2.
+
+7.  **Conclusion:**
+    The minimum number of nodes to remove is 2, and one such cut set is [H, C]. (Another valid cut set of size 2 is [I, O], as removing I cuts all paths through I, and removing O cuts all paths through O, and also isolates Y from E's side).
+
+Final Answer: Nodes to remove: 2, Cut Set: [H, C]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['J', 'P']}
+Progress: 28/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-FR_task2_gt2_PAIR5
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning.
+1.  **Identify the target nodes:** The two black nodes are L and J.
+2.  **Identify direct connections from L:** Node L is directly connected to E and M.
+3.  **Identify direct connections from J:** Node J is directly connected to M, I, P, and D. Note that D is a leaf node connected only to J, so it cannot be an intermediate node in any path from L to J.
+4.  **Analyze path structure:** Any path from L to J must start by traversing either the L-E edge or the L-M edge.
+5.  **Identify vertex-disjoint paths:**
+    *   **Path 1:** L - M - J. The only intermediate node on this path is M.
+    *   **Path 2:** L - E - I - J. The intermediate nodes on this path are E and I.
+6.  **Check for disjointness:** The set of intermediate nodes for Path 1 is {M}. The set of intermediate nodes for Path 2 is {E, I}. These two sets are disjoint (M is not E, and M is not I).
+7.  **Apply Menger's Theorem:** Since we have found two vertex-disjoint paths between L and J (excluding L and J themselves), Menger's theorem states that at least two nodes must be removed to disconnect L from J.
+8.  **Propose a cut set of size 2:** Based on the identified disjoint paths, a natural candidate for a minimum cut set would be to remove one node from each path. Removing M breaks Path 1. Removing E (or I) breaks Path 2. Let's consider removing M and E.
+9.  **Verify the proposed cut set [M, E]:**
+    *   If node M is removed, the path L-M-J is broken.
+    *   If node E is removed, all paths originating from L via E (e.g., L-E-I-J, L-E-H-I-J, L-E-B-C-O-P-J, etc.) are broken.
+    *   Since L is only connected to M and E, removing both M and E will completely isolate L from the rest of the graph, thereby disconnecting it from J.
+10. **Conclusion:** The cut set [M, E] successfully disconnects L from J, and its size is 2. Since we determined that at least 2 nodes must be removed, this is the minimum possible number.
+
+Final Answer: Nodes to remove: 2, Cut Set: [M, E]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'M']}
+Progress: 29/280 images processed.
+============================================================
+
+============================================================
+Image name: POGBb_task2_gt3_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning.
+1.  **Identify the target nodes:** The two black nodes are O and H. I need to find the minimum number of white nodes to remove to disconnect O and H.
+
+2.  **Explore paths between O and H:** I will systematically identify all possible paths from O to H. To determine the minimum cut set, I will look for vertex-disjoint paths, as per Menger's Theorem, which states that the minimum number of vertices to remove to disconnect two non-adjacent vertices is equal to the maximum number of vertex-disjoint paths between them.
+
+    Let's find vertex-disjoint paths (paths that share no intermediate nodes):
+
+    *   **Path 1:** O - Y - N - B - H
+        *   Intermediate nodes: {Y, N, B}
+
+    *   **Path 2:** O - P - J - M - E - F - K - G - H
+        *   Intermediate nodes: {P, J, M, E, F, K, G}
+        *   This path is vertex-disjoint from Path 1, as none of its intermediate nodes ({P, J, M, E, F, K, G}) are in {Y, N, B}.
+
+    *   **Path 3:** O - C - I - H
+        *   Intermediate nodes: {C, I}
+        *   This path is vertex-disjoint from Path 1 ({Y, N, B}) and Path 2 ({P, J, M, E, F, K, G}), as none of its intermediate nodes ({C, I}) are in the sets of intermediate nodes from Path 1 or Path 2.
+
+3.  **Determine the maximum number of vertex-disjoint paths:** I have successfully identified three vertex-disjoint paths between O and H.
+
+    *   Path 1: O - Y - N - B - H
+    *   Path 2: O - P - J - M - E - F - K - G - H
+    *   Path 3: O - C - I - H
+
+    Since there are 3 vertex-disjoint paths, according to Menger's Theorem, the minimum number of nodes that must be removed to disconnect O and H is 3.
+
+4.  **Identify a minimum cut set:** Now I need to find a set of 3 nodes whose removal disconnects O and H. To break all three vertex-disjoint paths, I must remove at least one intermediate node from each path.
+
+    Consider the set of nodes {B, I, G}:
+    *   Removing **B** breaks Path 1 (O - Y - N - B - H).
+    *   Removing **I** breaks Path 3 (O - C - I - H).
+    *   Removing **G** breaks Path 2 (O - P - J - M - E - F - K - G - H).
+
+    Since removing B, I, and G breaks all three identified vertex-disjoint paths, and by extension all paths between O and H, this set of 3 nodes is a valid cut set. No smaller set of nodes can disconnect O and H because we found 3 vertex-disjoint paths. The target nodes O and H are not included in the cut set.
+
+Final Answer: Nodes to remove: 3, Cut Set: [B, I, G]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'I']}
+Progress: 30/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task2_gt3_PAIR1
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+1.  **Identify the target nodes:** The two black nodes are I and E. I cannot remove these nodes.
+2.  **Understand the goal:** Find the minimum number of white nodes to remove to completely disconnect I from E. This is a minimum vertex cut problem.
+3.  **Explore paths from I to E:** I will systematically identify paths to understand the graph's structure and potential bottlenecks.
+    *   **Paths starting from I's neighbor J:**
+        *   I - J - M - E
+        *   I - J - D - P - O - N - B - E
+        *   I - J - D - P - O - Y - N - B - E
+        *   I - J - D - P - O - C - B - E
+    *   **Paths starting from I's neighbor H:**
+        *   I - H - X - K - F - E
+        *   I - H - G - X - K - F - E
+        *   I - H - G - K - F - E
+    *   **Paths starting from I's neighbor C:**
+        *   I - C - B - E
+        *   I - C - O - N - B - E
+        *   I - C - O - Y - N - B - E
+        *   I - C - O - P - D - J - M - E
+    *   **Paths starting from I's neighbor O:**
+        *   I - O - N - B - E
+        *   I - O - Y - N - B - E
+        *   I - O - C - B - E
+        *   I - O - P - D - J - M - E
+4.  **Identify direct connections to E:** Node E is directly connected to B, F, L, and M. Node L is only connected to E and nothing else, so no path from I can reach L without first passing through E. Therefore, L is not a relevant node for paths from I to E. The critical nodes directly connected to E are B, F, and M.
+5.  **Attempt to find a cut set of size 1:**
+    *   Removing B: Paths through F and M would remain (e.g., I - J - M - E, I - H - F - E).
+    *   Removing F: Paths through B and M would remain (e.g., I - J - M - E, I - C - B - E).
+    *   Removing M: Paths through B and F would remain (e.g., I - C - B - E, I - H - F - E).
+    *   Removing any other single node (J, H, C, O, D, P, N, Y, X, K, G) would also leave multiple paths intact.
+    *   Conclusion: A single node removal is not sufficient.
+6.  **Attempt to find a cut set of size 2:**
+    *   Consider removing any two of {B, F, M}:
+        *   Removing B and F: Paths through M would remain (e.g., I - J - M - E).
+        *   Removing B and M: Paths through F would remain (e.g., I - H - F - E).
+        *   Removing F and M: Paths through B would remain (e.g., I - C - B - E).
+    *   Consider other pairs of nodes (e.g., H and J):
+        *   Removing H breaks all paths to F.
+        *   Removing J breaks paths like I - J - M - E and I - J - D - P - O - ... - B - E.
+        *   However, paths like I - C - B - E and I - O - N - B - E would still exist. So [H, J] is not enough.
+    *   Consider other pairs like [H, C] or [H, O]. Similar analysis shows they are not sufficient as other paths remain.
+    *   Conclusion: A two-node removal is not sufficient.
+7.  **Consider a cut set of size 3:**
+    *   Based on the analysis of direct connections to E, the nodes B, F, and M are the "gateways" to E from the rest of the graph. If all paths from I to E must pass through one of these three nodes, then removing all three would disconnect I from E.
+    *   Let's verify the cut set [B, F, M]:
+        *   Removing B: All paths I -> ... -> B -> E are broken.
+        *   Removing F: All paths I -> ... -> F -> E are broken.
+        *   Removing M: All paths I -> ... -> M -> E are broken.
+        *   With B, F, and M removed, E is only connected to L. Since L is not connected to any other node that I can reach, E is effectively disconnected from I.
+    *   This is a valid cut set of size 3.
+8.  **Verify minimality using Menger's Theorem (finding vertex-disjoint paths):** To confirm that 3 is the minimum, I need to find at least 3 vertex-disjoint paths between I and E (excluding I and E themselves).
+    *   **Path 1:** I - J - M - E (Intermediate nodes: {J, M})
+    *   **Path 2:** I - C - B - E (Intermediate nodes: {C, B})
+    *   **Path 3:** I - H - G - K - F - E (Intermediate nodes: {H, G, K, F})
+    *   Checking for disjointness:
+        *   {J, M} ∩ {C, B} = ∅
+        *   {J, M} ∩ {H, G, K, F} = ∅
+        *   {C, B} ∩ {H, G, K, F} = ∅
+    *   Since these three paths are vertex-disjoint, by Menger's Theorem, at least 3 nodes must be removed to disconnect I from E.
+9.  **Conclusion:** Since a cut set of size 3 ([B, F, M]) has been found, and it's proven that at least 3 nodes are required, the minimum number of nodes to remove is 3.
+
+Final Answer: Nodes to remove: 3, Cut Set: [B, F, M]
+--- Ground Truth ---
+{'length': 3, 'cut_set': ['F', 'B', 'M']}
+Progress: 31/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task1_gt3_PAIR4
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning. The two black nodes are labeled I and E. I will perform a breadth-first search (BFS) starting from node I to find the shortest path to node E.
+
+**Level 0:**
+- Start node: I
+- Path: [I]
+
+**Level 1:** Neighbors of I
+- I is connected to J, H, C, P.
+- Paths: [I, J], [I, H], [I, C], [I, P]
+
+**Level 2:** Neighbors of Level 1 nodes (excluding already visited nodes)
+- From J: D, P, M (I is already visited)
+    - Paths: [I, J, D], [I, J, P], [I, J, M]
+- From H: X, G (I, C are already visited or will be visited at a shorter path)
+    - Paths: [I, H, X], [I, H, G]
+- From C: N, B (I, H are already visited or will be visited at a shorter path)
+    - Paths: [I, C, N], [I, C, B]
+- From P: D, O (I, J are already visited or will be visited at a shorter path)
+    - Paths: [I, P, D], [I, P, O]
+
+**Level 3:** Neighbors of Level 2 nodes (excluding already visited nodes)
+- From D (via [I, J, D]): P (already visited)
+- From P (via [I, J, P]): O (already visited)
+- From M (via [I, J, M]): O, E (J is already visited)
+    - Path: [I, J, M, E] - **Target E found!** This path has a length of 3.
+- From X (via [I, H, X]): K, G (H is already visited)
+    - Paths: [I, H, X, K], [I, H, X, G]
+- From G (via [I, H, G]): K, F (H, X are already visited)
+    - Paths: [I, H, G, K], [I, H, G, F]
+- From N (via [I, C, N]): Y, O, B (C is already visited)
+    - Paths: [I, C, N, Y], [I, C, N, O], [I, C, N, B]
+- From B (via [I, C, B]): N, O, E, F (C is already visited)
+    - Path: [I, C, B, E] - **Target E found!** This path also has a length of 3.
+- From D (via [I, P, D]): J (already visited)
+- From O (via [I, P, O]): Y, N, B, M (P is already visited)
+    - Paths: [I, P, O, Y], [I, P, O, N], [I, P, O, B], [I, P, O, M]
+
+Since BFS explores level by level, the first time the target node E is reached, the path found is guaranteed to be the shortest. We found two paths of length 3: [I, J, M, E] and [I, C, B, E]. Both are valid and of the minimum length. I will choose [I, C, B, E].
+
+Verification of path [I, C, B, E]:
+1. Is node I directly connected to node C? Yes.
+2. Is node C directly connected to node B? Yes.
+3. Is node B directly connected to node E? Yes.
+
+The path is valid and has a length of 3. No shorter path (length 1 or 2) was found during the BFS.
+
+Final Answer: Length: 3, Path: [I, C, B, E]
+--- Ground Truth ---
+{'length': 3, 'path': ['E', 'M', 'J', 'I']}
+Progress: 32/280 images processed.
+============================================================
+
+============================================================
+Image name: SEIS_task3_gt2_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+The target nodes are X and C. My goal is to find the minimum number of edges to remove to completely disconnect X from C.
+
+1.  **Identify the target nodes and their immediate connections:**
+    *   Node X is connected to F, K, and G.
+    *   Node C is connected to B, O, I, N, and Y.
+
+2.  **Consider isolating one of the target nodes:**
+    *   To isolate X, I can remove all edges directly connected to it: (X, F), (X, K), and (X, G). This would be a cut set of size 3. If X is isolated, no path can exist between X and C.
+    *   To isolate C, I can remove all edges directly connected to it: (C, B), (C, O), (C, I), (C, N), and (C, Y). This would be a cut set of size 5. This is larger than 3, so it's not the minimum.
+
+3.  **Explore for a smaller cut (e.g., size 1 or 2):**
+    *   **Cut of size 1:** A single edge removal would only disconnect X and C if that edge is a bridge that all paths must traverse. By visual inspection, there are multiple distinct paths between X and C, so no single edge can disconnect them. For example, removing (X, F) leaves paths through K and G. Removing (G, B) leaves paths through F-E and G-H. Thus, a cut of size 1 is not possible.
+
+    *   **Cut of size 2:** I need to find two edges whose removal breaks all paths from X to C. Let's list some representative paths to identify potential bottlenecks:
+        *   Paths starting X-F:
+            *   X-F-E-B-C
+            *   X-F-E-L-M-J-P-O-C
+            *   X-F-E-L-M-J-P-I-C
+            *   X-F-G-B-C
+            *   X-F-G-H-I-C
+        *   Paths starting X-K:
+            *   X-K-G-B-C
+            *   X-K-G-H-I-C
+        *   Paths starting X-G:
+            *   X-G-B-C
+            *   X-G-H-I-C
+
+    *   Notice that all paths from X must first go through F, K, or G. From these nodes, the paths branch out.
+        *   Paths through F can go via E or G.
+        *   Paths through K must go via G.
+        *   Paths through G can go via B or H.
+
+    *   Let's consider the "entry points" from the {F, K, G} cluster to the rest of the graph (excluding X itself and internal edges like (F,G), (K,G)). These are the edges: (F, E), (G, B), and (G, H).
+        *   If I remove (F, E) and (G, B): Paths like X-F-G-H-I-C (and X-K-G-H-I-C, X-G-H-I-C) still exist. So, this pair is not enough.
+        *   If I remove (F, E) and (G, H): Paths like X-F-G-B-C (and X-K-G-B-C, X-G-B-C) still exist. So, this pair is not enough.
+        *   If I remove (G, B) and (G, H): Paths like X-F-E-B-C (and X-F-E-L-M-J-P-O-C, X-F-E-L-M-J-P-I-C) still exist. So, this pair is not enough.
+
+    *   Since any combination of two edges from the set {(F, E), (G, B), (G, H)} leaves at least one path open, a cut of size 2 is not possible. This implies that at least 3 edges are required.
+
+4.  **Confirm the minimum cut of size 3:**
+    *   As identified in step 2, removing the three edges directly connected to X: [(X, F), (X, K), (X, G)] will completely isolate X from the rest of the graph, thus disconnecting it from C. This is a valid cut set of size 3.
+    *   Alternatively, the set [(F, E), (G, B), (G, H)] also disconnects X from C, as demonstrated in step 3. This is also a valid cut set of size 3.
+
+Since I have systematically explored and ruled out cuts of size 1 and 2, and found a valid cut of size 3, the minimum number of edges to remove is 3. I will use the cut set that directly isolates X.
+
+Final Answer: Edges to remove: 3, Cut Set: [(X, F), (X, K), (X, G)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['F', 'E'], ['G', 'H']]}
+Progress: 33/280 images processed.
+============================================================
+
+============================================================
+Image name: Tu_task3_gt2_PAIR1
+Task: task3_min_edges_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning.
+The target nodes are L and J. My goal is to find the minimum number of edges to remove to ensure no path exists between L and J.
+
+First, I identify all direct connections for the target nodes:
+- Node L is connected to E and M.
+- Node J is connected to P, M, and D.
+
+Next, I list all possible simple paths from L to J:
+1.  **L - M - J**: This is a direct path through M.
+2.  **L - E - M - J**: This path goes through E and then M to J.
+3.  **L - E - P - J**: This path goes through E and then P to J.
+
+Now, I consider potential cut sets:
+
+**Attempt 1: Cut edges directly connected to L.**
+- If I remove only (L, M), paths 2 and 3 (L-E-M-J and L-E-P-J) still exist. So, 1 edge is not enough.
+- If I remove only (L, E), path 1 (L-M-J) still exists. So, 1 edge is not enough.
+- If I remove both (L, M) and (L, E):
+    - Path 1 (L-M-J) is broken by removing (L, M).
+    - Path 2 (L-E-M-J) is broken by removing (L, E).
+    - Path 3 (L-E-P-J) is broken by removing (L, E).
+    - With these two edges removed, node L is completely isolated from the rest of the graph, meaning no path can exist between L and J.
+This forms a valid cut set of size 2: `[(L, M), (L, E)]`.
+
+**Attempt 2: Cut edges directly connected to J that are part of paths from L.**
+- Node J is connected to P, M, and D. However, node D is not connected to any path originating from L. So, (J, D) is not relevant for paths from L.
+- The relevant edges connected to J are (M, J) and (P, J).
+- If I remove only (M, J), path 3 (L-E-P-J) still exists. So, 1 edge is not enough.
+- If I remove only (P, J), paths 1 and 2 (L-M-J and L-E-M-J) still exist. So, 1 edge is not enough.
+- If I remove both (M, J) and (P, J):
+    - Path 1 (L-M-J) is broken by removing (M, J).
+    - Path 2 (L-E-M-J) is broken by removing (M, J).
+    - Path 3 (L-E-P-J) is broken by removing (P, J).
+    - All paths from L to J are broken.
+This forms another valid cut set of size 2: `[(M, J), (P, J)]`.
+
+Since both identified minimal cut sets have a size of 2, and I have demonstrated that a single edge removal is insufficient, the minimum number of edges to remove is 2. I will provide one of these cut sets.
+
+Final Answer: Edges to remove: 2, Cut Set: [(L, E), (L, M)]
+--- Ground Truth ---
+{'length': 2, 'cut_set': [['E', 'L'], ['L', 'M']]}
+Progress: 34/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task1_gt2_PAIR1
+Task: task1_shortest_path_length
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning. The two black nodes are labeled F and M. I begin a breadth-first search (BFS) from node F.
+
+*   **Level 0:** [F]
+*   **Level 1:** Neighbors of F
+    *   F is connected to K, G, E.
+    *   Paths: [F, K], [F, G], [F, E]
+    *   The target node M is not in this level.
+*   **Level 2:** Neighbors of Level 1 nodes (excluding already visited nodes)
+    *   From K: K is connected to X, G, F. (F is visited, G is in Level 1). New neighbor: X.
+        *   Path: [F, K, X]
+    *   From G: G is connected to X, K, F, H. (F, K are visited, X is in Level 2). New neighbor: H.
+        *   Path: [F, G, H]
+    *   From E: E is connected to F, G, H, L, M. (F is visited, G, H are in Level 1/2). New neighbors: L, M.
+        *   Path: [F, E, L]
+        *   Path: [F, E, M] - **Target node M found!**
+
+The shortest path found is [F, E, M] with a length of 2. Since BFS guarantees the first path found to the target is the shortest, this is the minimal length.
+
+I verify the connections:
+1.  Is node F directly connected to node E? Yes, there is a continuous black line.
+2.  Is node E directly connected to node M? Yes, there is a continuous black line.
+
+Final Answer: Length: 2, Path: [F, E, M]
+--- Ground Truth ---
+{'length': 2, 'path': ['F', 'E', 'M']}
+Progress: 35/280 images processed.
+============================================================
+
+============================================================
+Image name: PG_task2_gt2_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning.
+1.  **Identify the target nodes:** The two black nodes are J and L.
+2.  **Identify direct connections to target nodes:**
+    *   Node J is directly connected to D, P, M, and I.
+    *   Node L is directly connected to M and E.
+3.  **Analyze the structure of paths:** All paths from J to L must pass through one of J's neighbors (D, P, M, I) and eventually reach one of L's neighbors (M, E) to connect to L.
+4.  **Consider the "bottleneck" nodes near L:** The only nodes directly connected to L are M and E. This means any path from J to L *must* pass through either M or E (or both).
+5.  **Test for a single-node cut:**
+    *   If we remove M: Paths like J-D-P-O-N-B-E-L would still exist, as E is still connected to L.
+    *   If we remove E: Paths like J-M-L would still exist, as M is still connected to L.
+    *   If we remove any other single node (e.g., D, P, I, H, B, etc.), there will always be alternative paths through M or E to L. For example, removing D leaves paths through P, M, and I.
+    *   Therefore, a single node removal is not sufficient to disconnect J and L. The minimum cut set must be at least 2.
+6.  **Test for a two-node cut:**
+    *   Since all paths to L must pass through either M or E, removing both M and E will sever all connections to L from the rest of the graph (except for J, which is the source).
+    *   If M is removed, L is only connected to E. Any path from J to L must now go through E.
+    *   If E is removed, L is only connected to M. Any path from J to L must now go through M.
+    *   By removing both M and E, L becomes isolated from all other white nodes, and thus from J.
+7.  **Verify minimality:** We've established that a single node is not enough. Removing M and E successfully disconnects J and L. Therefore, 2 is the minimum number of nodes.
+
+Final Answer: Nodes to remove: 2, Cut Set: [M, E]
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['E', 'M']}
+Progress: 36/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task2_gt3_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning.
+1.  **Identify the target nodes:** The two black nodes are H and N. I cannot remove these nodes.
+2.  **Identify all possible paths between H and N:**
+    *   **Direct path:** H - B - N
+    *   **Paths through B:**
+        *   H - B - N
+        *   H - B - C - N
+    *   **Paths through I:**
+        *   H - I - C - N
+        *   H - I - P - O - N
+    *   **Paths through E:**
+        *   H - E - I - C - N
+        *   H - E - I - P - O - N
+        *   H - E - M - J - P - O - N
+        *   H - E - L - M - J - P - O - N
+    *   **Paths through G (which then lead to E):**
+        *   H - G - F - E - I - C - N
+        *   H - G - F - E - I - P - O - N
+        *   H - G - F - E - M - J - P - O - N
+        *   H - G - F - E - L - M - J - P - O - N
+
+3.  **Attempt to find a cut set of size 1:**
+    *   If I remove B: Paths like H - I - C - N or H - E - M - J - P - O - N still exist.
+    *   If I remove C: Paths like H - B - N or H - I - P - O - N still exist.
+    *   If I remove O: Paths like H - B - N or H - I - C - N still exist.
+    *   If I remove I: Paths like H - B - N or H - E - M - J - P - O - N still exist.
+    *   If I remove E: Paths like H - B - N or H - I - C - N still exist.
+    *   No single node removal disconnects H and N.
+
+4.  **Attempt to find a cut set of size 2:**
+    *   Consider the main "entry points" from H's side to the rest of the graph leading to N: B, I, E.
+        *   If I remove B and I: Paths through E still exist (e.g., H - E - M - J - P - O - N).
+        *   If I remove B and E: Paths through I still exist (e.g., H - I - C - N).
+        *   If I remove I and E: Paths through B still exist (e.g., H - B - N).
+    *   Consider the main "exit points" to N from the rest of the graph: B, C, O.
+        *   If I remove B and C: Paths through O still exist (e.g., H - I - P - O - N).
+        *   If I remove B and O: Paths through C still exist (e.g., H - I - C - N).
+        *   If I remove C and O: Paths through B still exist (e.g., H - B - N).
+    *   No combination of two nodes disconnects H and N.
+
+5.  **Attempt to find a cut set of size 3:**
+    *   Consider the nodes B, I, E. These are the direct neighbors of H (excluding G, which leads to E).
+        *   If I remove B, I, and E:
+            *   H is now only connected to G.
+            *   G is connected to F, K, X.
+            *   None of F, K, X are connected to N or any of N's remaining neighbors (C, O, Y).
+            *   Therefore, H is completely disconnected from N.
+        *   This is a valid cut set of size 3: [B, I, E].
+    *   Consider the nodes B, C, O. These are the direct neighbors of N (excluding Y, which is a leaf node not connected to H's side).
+        *   If I remove B, C, and O:
+            *   N is now only connected to Y.
+            *   Y is only connected to N.
+            *   H (and its connected components) cannot reach Y.
+            *   Therefore, H is completely disconnected from N.
+        *   This is a valid cut set of size 3: [B, C, O].
+
+6.  **Conclusion:** Since no cut set of size 1 or 2 was found, and I have found multiple valid cut sets of size 3, the minimum number of nodes to remove is 3.
+
+Final Answer: Nodes to remove: 3, Cut Set: [B, I, E]
+--- Ground Truth ---
+{'length': 3, 'cut_set': [['B', 'I', 'P'], ['B', 'I', 'G'], ['B', 'I', 'E']]}
+Progress: 37/280 images processed.
+============================================================
+
+============================================================
+Image name: FD-K_task2_gt2_PAIR4
+Task: task2_min_nodes_removal
+Model: gemini-2.5-flash
+Mode: few_shot, COT: cot, Attempt: 16
+--- Model Response ---
+Step-by-step reasoning:
+1.  **Identify the target nodes:** The two black nodes are B and M. My goal is to find the minimum number of white nodes to remove to disconnect B and M. I cannot remove B or M.
+
+2.  **Analyze connections to M:**
+    *   M is directly connected to E, L, and J.
+    *   Any path from B to M must pass through one of these three nodes (E, L, or J) as its last step before M.
+
+3.  **Evaluate the role of L:**
+    *   Node L is only connected to E and M.
+    *   This means that if a path from B reaches M via L (i.e., B -> ... -> L -> M), it must have first reached L from E (i.e., B -> ... -> E -> L -> M).
+    *   Therefore, any path from B to M that uses L must also pass through E.
+
+4.  **Identify critical "bottleneck" nodes:**
+    *   Based on the analysis in step 3, any path from B to M must either pass through E (to reach M directly, or via L) or pass through J.
+    *   In other words, E and J are the only "entry points" from the rest of the graph to M's immediate neighborhood that are reachable from B.
+
+5.  **Formulate a potential cut set:**
+    *   If all paths from B to M must pass through either E or J, then removing both E and J should disconnect B from M.
+    *   Let's test this hypothesis.
+
+6.  **Verify the cut set [E, J]:**
+    *   **Paths through E:** Any path like B -> ... -> E -> M or B -> ... -> E -> L -> M would be broken by removing E.
+    *   **Paths through J:** Any path like B -> ... -> J -> M would be broken by removing J.
+    *   Since all paths from B to M must pass through E or J, removing both E and J will indeed sever all connections between B and M.
+
+7.  **Check for a smaller cut set (size 1):**
+    *   I need to confirm that no single node removal can disconnect B and M.
+    *   **Removing E:** Paths through J would remain (e.g., B -> H -> I -> J -> M).
+    *   **Removing J:** Paths through E would remain (e.g., B -> H -> E -> M).
+    *   **Removing H:** Paths through C or N would remain (e.g., B -> C -> I -> J -> M).
+    *   **Removing C:** Paths through H or N would remain (e.g., B -> H -> E -> M).
+    *   **Removing N:** Paths through H or C would remain (e.g., B -> H -> E -> M).
+    *   **Removing I:** Paths through E or O would remain (e.g., B -> H -> E -> M, B -> C -> O -> P -> J -> M).
+    *   **Removing P:** Paths through E or I->J would remain (e.g., B -> H -> E -> M, B -> H -> I -> J -> M).
+    *   **Removing O:** Paths through E or I->J would remain (e.g., B -> H -> E -> M, B -> H -> I -> J -> M).
+    *   Since no single node removal disconnects B and M, the minimum number of nodes to remove must be at least 2.
+
+8.  **Conclusion:** The cut set [E, J] has a size of 2, and it successfully disconnects B from M. Since no single node removal works, 2 is the minimum.
+
+The final answer is $\boxed{\text{Nodes to remove: 2, Cut Set: [E, J]}}$
+--- Ground Truth ---
+{'length': 2, 'cut_set': ['J', 'E']}
+Progress: 38/280 images processed.
+============================================================

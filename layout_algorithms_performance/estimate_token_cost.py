@@ -3,30 +3,28 @@ import glob
 import os
 import math
 
-# --- CONFIGURATION ---
-
-# 1. Path to the CSV results. This is critical for accuracy.
+# Path to the CSV results. This is critical for accuracy.
 BASE_SEARCH_PATH = 'results/mistral-small-3.1-24b'
 
-# 2. Which attempt number to analyze.
+# Which attempt number to analyze.
 TARGET_ATTEMPT = 1 
 
-# 3. OpenAI Model Pricing (Source: https://platform.openai.com/docs/pricing)
+# OpenAI Model Pricing (Source: https://platform.openai.com/docs/pricing): need to check better
 TARGET_MODEL_NAME = "GPT-4o"
 MODEL_TEXT_PRICING = {
     "input_cost_per_million": 2.50,
     "output_cost_per_million": 10.00
 }
 
-# 4. Image Token Calculation Rules (based on official OpenAI documentation)
-#    Formula: Total Tokens = BASE_TOKENS + (TOKENS_PER_TILE * num_tiles)
+# Image Token Calculation Rules (based on official OpenAI documentation)
+# Formula: Total Tokens = BASE_TOKENS + (TOKENS_PER_TILE * num_tiles)
 BASE_TOKENS_PER_IMAGE = 85
 TOKENS_PER_512PX_TILE = 170
 
-# 5. Currency Conversion (optional)
+# Currency Conversion (optional)
 USD_TO_EUR_RATE = 0.86
 
-# 6. Dimensions of your specific images.
+# Dimensions of your specific images to calculate costs accurately.
 TASK_IMAGE_DIMS = {
     "FD-FR": (1024, 1044), "FD-K": (1024, 957), "PG": (1024, 1160),
     "PGS": (1024, 576), "POGBa": (1024, 685), "POGBb": (1024, 1089),

@@ -5,7 +5,7 @@ import math
 
 # --- CONFIGURATION ---
 
-BASE_SEARCH_PATH = '../layout_algorithms_performance/results/mistral-small-3.1-24b'  #or gemini-2.5-flash
+BASE_SEARCH_PATH = '../layout_algorithms_performance/results/mistral-small-3.1-24b'  #mistral-small-3.1-24b or gemini-2.5-flash 
 TASKS_PER_CONFIGURATION = 280   # Tasks per configuration
 NUM_CONFIGURATIONS = 4          # Configurations tested (e.g., cot/no_cot * zero/few_shot)
 TARGET_COMPUTE_DAYS = 7         # Total compute budget in days

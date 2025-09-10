@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Results Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="icon.ico">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* --- General Page Styles --- */
+        body { font-family: system-ui, sans-serif; margin: 2rem; background: #fafbfc; color: #222; }
+        h1, h2 { text-align: center; }
+        p { text-align: center; max-width: 800px; margin: 1rem auto; color: #555; }
+        a { color: #1a73e8; }
+        .controls-container { display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 2px solid #eee; }
+        .controls { text-align: center; }
+        .controls h3 { margin-top: 0; color: #555; }
+        .controls button { padding: 10px 20px; font-size: 1rem; margin: 0 5px; cursor: pointer; border: 1px solid #ccc; background: #fff; border-radius: 5px; transition: background-color 0.2s, color 0.2s; }
+        .mode-controls button.active { background: #e8711a; color: white; border-color: #e8711a; }
+        .mode-controls button:not(.active) { background: #80868b; color: white; border-color: #80868b; }
+
+        /* --- Chart Specific Styles --- */
+        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 2rem; }
+        .chart-wrapper { max-width: 900px; margin: 1rem auto; padding: 1.5rem; border: 1px solid #eee; border-radius: 8px; background: #fff; }
+        .full-width { grid-column: 1 / -1; }
+        .chart-title { text-align: center; margin-top: 0; margin-bottom: 2rem; color: #333; }
+        .axis-label { font-size: 0.8rem; fill: #555; }
+        .tick text { font-size: 0.8rem; }
+        .legend { font-size: 0.9rem; }
+        .tooltip { position: absolute; visibility: hidden; background-color: rgba(0, 0, 0, 0.8); color: #fff; padding: 8px 12px; border-radius: 5px; font-size: 0.8rem; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <h1>LLM Results Dashboard</h1>
+    <p>This dashboard provides a high-level summary of model performance. For a detailed view, see the <a href="visualization.html">main visualization page</a>.</p>
+    <div class="controls-container">
+        <div class="controls mode-controls">
+            <h3>Select Dataset</h3>
+            <button id="btn-aurora">Aurora</button>
+            <button id="btn-bastian">Bastian</button>
+        </div>
+    </div>
+    <div id="charts-container" class="chart-grid"></div>
+    <div id="tooltip" class="tooltip"></div>
+</body>
+<script>
+let currentMode = 'aurora';
+const tooltip = d3.select("#tooltip");
+
+// --- DATA LOADING (No changes) ---
+async function loadAndAggregateResults(basePath, mode) { /* ... same as before ... */ }
+
+// --- DATA PROCESSING FUNCTIONS ---
+function processDataForBarCharts(rawData) {
+    const groupedData = d3.group(rawData, d => d["Model Name"], d => d["LLM Mode"], d => d["COT Mode"]);
+    const summary = [];
+    for (const [modelName, modelData] of groupedData) {
+        for (const [llmMode, llmModeData] of modelData) {
+            for (const [cotMode, results] of llmModeData) {
+                if (results.length === 0) continue;
+                const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+                summary.push({
+                    // FIXED: Category now includes the model name for clarity
+                    category: `${modelName.includes('mistral') ? 'Mistral' : 'Gemini'} ${llmMode} (${cotMode})`,
+                    model: modelName.includes('mistral') ? 'Mistral' : 'Gemini',
+                    accuracy: (results.length > 0) ? (correct / results.length) * 100 : 0,
+                    avgTime: d3.mean(results, d => parseFloat(d["Time (sec)"])),
+                    avgTokens: d3.mean(results, d => +d["Total Tokens"])
+                });
+            }
+        }
+    }
+    return summary;
+}
+// Other processing functions for grouped charts remain the same
+function processDataForTaskChart(rawData) { /* ... same as before ... */ }
+function processDataForLayoutChart(rawData) { /* ... same as before ... */ }
+
+
+// --- D3.JS CHART DRAWING FUNCTIONS ---
+
+// Reusable function for SIMPLE BAR CHARTS (Now with clearer labels)
+function drawSimpleBarChart(containerId, chartData, yAxisLabel, valueKey) {
+    d3.select(containerId).select("svg").remove();
+    const margin = { top: 20, right: 30, bottom: 150, left: 60 }; // Increased bottom margin
+    const width = 800 - margin.left - margin.right;
+    const height = 450 - margin.top - margin.bottom;
+    const svg = d3.select(containerId).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleBand().domain(chartData.map(d => d.category)).range([0, width]).padding(0.2);
+    const y = d3.scaleLinear().domain([0, d3.max(chartData, d => d[valueKey]) * 1.1]).range([height, 0]);
+    const color = d3.scaleOrdinal().domain(['Mistral', 'Gemini', 'Human']).range(['#1a73e8', '#e8711a', '#34a853']);
+
+    svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x))
+        .selectAll("text").attr("transform", "translate(-10,0)rotate(-45)").style("text-anchor", "end");
+    svg.append("g").call(d3.axisLeft(y));
+    svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).attr("transform", "rotate(-90)").text(yAxisLabel);
+
+    svg.selectAll(".bar").data(chartData).join("rect")
+        .attr("x", d => x(d.category)).attr("y", d => y(d[valueKey]))
+        .attr("width", x.bandwidth()).attr("height", d => height - y(d[valueKey]))
+        .attr("fill", d => color(d.model))
+        .on("mouseover", () => tooltip.style("visibility", "visible"))
+        .on("mousemove", (event, d) => {
+            tooltip.html(`<b>${d.category}</b><br>${yAxisLabel}: ${d[valueKey].toFixed(2)}`)
+                .style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");
+        })
+        .on("mouseout", () => tooltip.style("visibility", "hidden"));
+}
+
+// NEW: Function to draw the SCATTER PLOT
+function drawScatterPlot(containerId, chartData, yAxisLabel, xAxisLabel, yValueKey, xValueKey) {
+    d3.select(containerId).select("svg").remove();
+    const margin = { top: 40, right: 150, bottom: 60, left: 60 };
+    const width = 800 - margin.left - margin.right;
+    const height = 450 - margin.top - margin.bottom;
+    const svg = d3.select(containerId).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    
+    const x = d3.scaleLinear().domain([0, d3.max(chartData, d => d[xValueKey]) * 1.1]).range([0, width]);
+    const y = d3.scaleLinear().domain([0, 100]).range([height, 0]); // Accuracy is always 0-100
+    const color = d3.scaleOrdinal().domain(['Mistral', 'Gemini']).range(['#1a73e8', '#e8711a']);
+
+    svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x));
+    svg.append("g").call(d3.axisLeft(y));
+
+    // Axis labels
+    svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("x", width).attr("y", height + margin.bottom - 10).text(xAxisLabel);
+    svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", 0).text(yAxisLabel);
+
+    // Add points
+    svg.selectAll("circle").data(chartData).join("circle")
+        .attr("cx", d => x(d[xValueKey]))
+        .attr("cy", d => y(d[yValueKey]))
+        .attr("r", 8)
+        .style("fill", d => color(d.model))
+        .style("opacity", 0.8)
+        .on("mouseover", () => tooltip.style("visibility", "visible"))
+        .on("mousemove", (event, d) => {
+            tooltip.html(`<b>${d.category}</b><br>${yAxisLabel}: ${d[yValueKey].toFixed(2)}<br>${xAxisLabel}: ${d[xValueKey].toFixed(2)}`)
+                .style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");
+        })
+        .on("mouseout", () => tooltip.style("visibility", "hidden"));
+    
+    // Add Legend
+    const legend = svg.selectAll(".legend").data(color.domain()).join("g")
+        .attr("class", "legend").attr("transform", (d, i) => `translate(0,${i * 25})`);
+    legend.append("rect").attr("x", width + 20).attr("width", 18).attr("height", 18).style("fill", color);
+    legend.append("text").attr("x", width + 45).attr("y", 9).attr("dy", ".35em").style("text-anchor", "start").text(d => d);
+}
+
+// Grouped bar chart function remains the same
+function drawGroupedBarChart(containerId, chartData, groupKey) {
+    d3.select(containerId).select("svg").remove();
+    const { data, categories } = chartData;
+
+    const margin = { top: 40, right: 30, bottom: 60, left: 60 };
+    const width = 800 - margin.left - margin.right;
+    const height = 450 - margin.top - margin.bottom;
+
+    const svg = d3.select(containerId).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const x0 = d3.scaleBand().domain(data.map(d => d[groupKey])).range([0, width]).padding(0.25);
+    const x1 = d3.scaleBand().domain(categories).range([0, x0.bandwidth()]).padding(0.05);
+    const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
+    
+    const color = d3.scaleOrdinal()
+        .domain(categories)
+        .range(d3.schemeTableau10); // A nice color scheme for multiple categories
+
+    svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x0));
+    svg.append("g").call(d3.axisLeft(y));
+    svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).attr("transform", "rotate(-90)").text("Average Accuracy (%)");
+
+    const group = svg.selectAll(".group").data(data).join("g")
+        .attr("class", "group")
+        .attr("transform", d => `translate(${x0(d[groupKey])},0)`);
+
+    group.selectAll("rect").data(d => categories.map(key => ({ key, value: d[key] || 0 })))
+        .join("rect")
+        .attr("x", d => x1(d.key))
+        .attr("y", d => y(d.value))
+        .attr("width", x1.bandwidth())
+        .attr("height", d => height - y(d.value))
+        .attr("fill", d => color(d.key))
+        .on("mouseover", () => tooltip.style("visibility", "visible"))
+        .on("mousemove", (event, d) => {
+            tooltip.html(`<b>${d.key}</b><br>Accuracy: ${d.value.toFixed(2)}%`)
+                .style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");
+        })
+        .on("mouseout", () => tooltip.style("visibility", "hidden"));
+
+    // Add Legend
+    const legend = svg.selectAll(".legend").data(categories).join("g")
+        .attr("class", "legend")
+        .attr("transform", (d, i) => `translate(0,${i * 20})`);
+    
+    legend.append("rect").attr("x", width - 18).attr("width", 18).attr("height", 18).style("fill", color);
+    legend.append("text").attr("x", width - 24).attr("y", 9).attr("dy", ".35em").style("text-anchor", "end").text(d => d);
+}
+
+// --- MAIN RENDER FUNCTION ---
+async function renderDashboard() {
+    document.getElementById('charts-container').innerHTML = '<h2>Loading and processing results...</h2>';
+    document.getElementById('btn-aurora').classList.toggle('active', currentMode === 'aurora');
+    document.getElementById('btn-bastian').classList.toggle('active', currentMode === 'bastian');
+    
+    let human_results_bastian = { "errors": {"b-": 0.53, "b+": 0.24, "c-": 0.80, "c+": 0.29, "m-": 0.38, "m+": 0.36, "o-": 0.36, "o+": 0.36, "s-": 0.31, "s+": 0.29} };
+    let human_results_aurora = { "errors": {"FD-FR": 0.164, "FD-K": 0.109, "PG": 0.291, "PGS": 0.236, "POGBa": 0.236, "POGBb": 0.255, "SEIS": 0.436, "Tu": 0.145} };
+    let human_results = (currentMode === 'bastian') ? human_results_bastian : human_results_aurora;
+    let path = (currentMode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
+
+    const rawData = await loadAndAggregateResults(path, currentMode);
+    
+    if (rawData.length === 0) {
+        document.getElementById('charts-container').innerHTML = `<h1>No results found.</h1>`;
+        return;
+    }
+
+    // 1. Process data ONCE for all simple bar charts and the scatterplot
+    const barChartData = processDataForBarCharts(rawData);
+    // Add human performance only to accuracy data
+    const accuracyData = [...barChartData];
+    const humanAccuracy = (1 - d3.mean(Object.values(human_results.errors))) * 100;
+    accuracyData.push({ category: 'Human Performance', model: 'Human', accuracy: humanAccuracy });
+
+    // Process data for grouped charts
+    const taskSummary = processDataForTaskChart(rawData);
+    const layoutSummary = processDataForLayoutChart(rawData);
+
+    // 2. Render the page structure
+    document.getElementById('charts-container').innerHTML = `
+        <div class="chart-wrapper full-width">
+            <h2 class="chart-title">Trade-off: Accuracy vs. Response Time</h2>
+            <div id="scatterplot-container"></div>
+        </div>
+        <div class="chart-wrapper full-width">
+            <h2 class="chart-title">Overall Accuracy by Configuration</h2>
+            <div id="accuracy-chart-container"></div>
+        </div>
+        <div class="chart-wrapper">
+            <h2 class="chart-title">Average Response Time (seconds)</h2>
+            <div id="time-chart-container"></div>
+        </div>
+        <div class="chart-wrapper">
+            <h2 class="chart-title">Average Total Tokens</h2>
+            <div id="token-chart-container"></div>
+        </div>
+        <div class="chart-wrapper full-width">
+            <h2 class="chart-title">Accuracy by Task</h2>
+            <div id="task-accuracy-chart-container"></div>
+        </div>
+        <div class="chart-wrapper">
+            <h2 class="chart-title">Accuracy by Layout Algorithm</h2>
+            <div id="layout-accuracy-chart-container"></div>
+        </div>
+    `;
+
+    // 3. Draw each chart
+    drawScatterPlot("#scatterplot-container", barChartData, "Accuracy (%)", "Average Time (sec)", "accuracy", "avgTime");
+    drawSimpleBarChart("#accuracy-chart-container", accuracyData, "Average Accuracy (%)", "accuracy");
+    drawSimpleBarChart("#time-chart-container", barChartData, "Average Time (sec)", "avgTime");
+    drawSimpleBarChart("#token-chart-container", barChartData, "Average Total Tokens", "avgTokens");
+    drawGroupedBarChart("#task-accuracy-chart-container", taskSummary, "task");
+    drawGroupedBarChart("#layout-accuracy-chart-container", layoutSummary, "layout");
+}
+
+// Event Listeners & Initial Load
+document.getElementById('btn-aurora').addEventListener('click', () => { currentMode = 'aurora'; renderDashboard(); });
+document.getElementById('btn-bastian').addEventListener('click', () => { currentMode = 'bastian'; renderDashboard(); });
+renderDashboard();
+
+// Dummy functions to be replaced by actual code
+async function loadAndAggregateResults(basePath, mode) {
+    let allFilePaths = [];
+    const modelsToLoad = ["gemini-2.5-flash", "mistral-small-3.1-24b"];
+    for (const modelName of modelsToLoad) {
+        const shotTypes = ["zero_shot", "few_shot"];
+        const cotTypes = ["cot", "no_cot"];
+        const MAX_ATTEMPTS_TO_CHECK = 20;
+        for (const shot of shotTypes) {
+            for (const cot of cotTypes) {
+                for (let attempt = 1; attempt <= MAX_ATTEMPTS_TO_CHECK; attempt++) {
+                    const fileName = `results_attempt_${attempt}.csv`;
+                    const basePathForModel = (mode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
+                    const filePath = `${basePathForModel}/results/${modelName}/${shot}/${cot}/${fileName}`;
+                    allFilePaths.push(filePath);
+                }
+            }
+        }
+    }
+    const promises = allFilePaths.map(path => d3.csv(path).catch(error => []));
+    const resultsFromAllFiles = await Promise.all(promises);
+    return resultsFromAllFiles.flat();
+}
+function processDataForTaskChart(rawData) {
+    const groupedData = d3.group(rawData, 
+        d => d.Task.split('_')[0], 
+        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
+    );
+    const summary = [];
+    const categories = new Set();
+    for (const [task, taskData] of groupedData) {
+        const taskSummary = { task: task };
+        for (const [config, results] of taskData) {
+            if (results.length === 0) continue;
+            const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+            const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+            taskSummary[config] = accuracy;
+            categories.add(config);
+        }
+        summary.push(taskSummary);
+    }
+    return { data: summary, categories: Array.from(categories) };
+}
+function processDataForLayoutChart(rawData) {
+    const groupedData = d3.group(rawData, 
+        d => d.Layout.split('_')[0], 
+        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
+    );
+    const summary = [];
+    const categories = new Set();
+    for (const [layout, layoutData] of groupedData) {
+        const layoutSummary = { layout: layout };
+        for (const [config, results] of layoutData) {
+             if (results.length === 0) continue;
+            const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+            const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+            layoutSummary[config] = accuracy;
+            categories.add(config);
+        }
+        summary.push(layoutSummary);
+    }
+    return { data: summary, categories: Array.from(categories).sort() };
+}
+
+function drawGroupedBarChart(containerId, chartData, groupKey) {
+    d3.select(containerId).select("svg").remove();
+    const { data, categories } = chartData;
+
+    // MODIFIED: Increased the right margin to make space for the long legend text.
+    const margin = { top: 40, right: 250, bottom: 60, left: 60 }; 
+    const width = 800 - margin.left - margin.right;
+    const height = 450 - margin.top - margin.bottom;
+
+    const svg = d3.select(containerId).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const x0 = d3.scaleBand().domain(data.map(d => d[groupKey])).range([0, width]).padding(0.25);
+    const x1 = d3.scaleBand().domain(categories).range([0, x0.bandwidth()]).padding(0.05);
+    const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
+    
+    const color = d3.scaleOrdinal().domain(categories).range(d3.schemeTableau10);
+
+    svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x0));
+    svg.append("g").call(d3.axisLeft(y));
+    svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).attr("transform", "rotate(-90)").text("Average Accuracy (%)");
+
+    const group = svg.selectAll(".group").data(data).join("g")
+        .attr("class", "group")
+        .attr("transform", d => `translate(${x0(d[groupKey])},0)`);
+
+    group.selectAll("rect").data(d => categories.map(key => ({ key, value: d[key] || 0 })))
+        .join("rect")
+        .attr("x", d => x1(d.key))
+        .attr("y", d => y(d.value))
+        .attr("width", x1.bandwidth())
+        .attr("height", d => height - y(d.value))
+        .attr("fill", d => color(d.key))
+        .on("mouseover", () => tooltip.style("visibility", "visible"))
+        .on("mousemove", (event, d) => {
+            tooltip.html(`<b>${d.key}</b><br>Accuracy: ${d.value.toFixed(2)}%`)
+                .style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");
+        })
+        .on("mouseout", () => tooltip.style("visibility", "hidden"));
+
+    // --- Add Legend ---
+    const legend = svg.selectAll(".legend").data(categories).join("g")
+        .attr("class", "legend")
+        // Position each legend item vertically
+        .attr("transform", (d, i) => `translate(0,${i * 20})`);
+    
+    // MODIFIED: Position the legend elements within the new margin space.
+    // 'width + 20' places it just to the right of the chart area.
+    legend.append("rect")
+        .attr("x", width + 20) 
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", color);
+
+    legend.append("text")
+        .attr("x", width + 45) // Position text next to the color swatch
+        .attr("y", 9)
+        .attr("dy", ".35em")
+        .style("text-anchor", "start") // Anchor text to the start (left)
+        .text(d => d);
+}
+
+
+</script>
+</html>

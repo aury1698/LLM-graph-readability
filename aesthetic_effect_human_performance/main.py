@@ -22,6 +22,11 @@ def initialize_model(model_name):
         if not api_key:
             raise ValueError("OPENAI_API_KEY is not set in the environment variables.")
         return ChatOpenAI(model="gpt-4o")
+    elif model_name == "gpt-5":
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY is not set in the environment variables.")
+        return ChatOpenAI(model="gpt-5", timeout=900.0, service_tier="flex")
     elif model_name.startswith("gemini"):
         api_key = os.getenv("GEMINI_API_KEY_SECONDARY")
         if not api_key:
@@ -511,8 +516,8 @@ if __name__ == "__main__":
     test_images_dir = "dataset/test"
     mode = "zero_shot"  # "zero_shot" or "few_shot"
     cot_mode = "no_cot"  # "no_cot" or "cot"
-    model_name = "mistral-small-3.1-24b"
-    attempt = 6
+    model_name = "gpt-5"
+    attempt = 1
     max_images_per_run = 450
 
     ### MODIFIED ###

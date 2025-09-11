@@ -8,7 +8,7 @@ from mimetypes import guess_type
 
 import pandas as pd
 from google.genai import types
-from langchain.schema import HumanMessage
+from langchain.schema import HumanMessage, SystemMessage
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
@@ -21,12 +21,16 @@ def initialize_model(model_name):
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY is not set in the environment variables.")
-        return ChatOpenAI(model="gpt-4o")
+        return ChatOpenAI(model="gpt-4o", temperature=0.1)
     elif model_name == "gpt-5":
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY is not set in the environment variables.")
-        return ChatOpenAI(model="gpt-5", timeout=900.0, service_tier="flex")
+        return ChatOpenAI(
+            model="gpt-5",
+            temperature=0.1,
+            timeout=900.0,
+            service_tier="flex")
     elif model_name.startswith("gemini"):
         api_key = os.getenv("GEMINI_API_KEY_SECONDARY")
         if not api_key:
@@ -34,13 +38,16 @@ def initialize_model(model_name):
                 "GEMINI_API_KEY_SECONDARY is not set in the environment variables."
             )
         return ChatGoogleGenerativeAI(
-            model=model_name, temperature=0.1, api_key=api_key
+            model=model_name,
+            temperature=0.1,
+            api_key=api_key
         )
     # add proxied requests to tuwien aqueduct
     elif model_name == "mistral-small-3.1-24b" or model_name == "qwen-32b":
         api_key = os.getenv("AQUEDUCT_KEY")
         return ChatOpenAI(
             model=model_name,
+            temperature=0.1,
             base_url="https://aqueduct.ai.datalab.tuwien.ac.at",
             api_key=SecretStr(api_key),
         )
@@ -65,9 +72,7 @@ def create_prompt(model_name, system_msg, user_msg, image_url, few_shots = []):
     content.append({"type": "text", "text": user_msg})
     content.append({"type": "image_url", "image_url": {"url": image_url}})
 
-    return HumanMessage(
-        content=content
-    )
+    return [SystemMessage(content=system_msg), HumanMessage(content=content)]
 
 
 # 4.Configure the model
@@ -85,7 +90,7 @@ def invoke_model(model_name, model, prompt, config=None):
     """Invoke the model with the given prompt."""
 
     start_time = time.time()
-    response = model.invoke([prompt])  # method of the class ChatGoogleGenerativeAI
+    response = model.invoke(prompt)  # method of the class ChatGoogleGenerativeAI
     end_time = time.time()
     latency = end_time - start_time
     usage_metadata = response.usage_metadata

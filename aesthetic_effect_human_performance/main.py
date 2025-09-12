@@ -22,15 +22,14 @@ def initialize_model(model_name):
         if not api_key:
             raise ValueError("OPENAI_API_KEY is not set in the environment variables.")
         return ChatOpenAI(model="gpt-4o", temperature=0.1)
-    elif model_name == "gpt-5":
+    elif model_name == "gpt-5" or model_name == "gpt-5-2025-08-07":
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY is not set in the environment variables.")
         return ChatOpenAI(
-            model="gpt-5",
+            model=model_name,
             temperature=0.1,
-            timeout=900.0,
-            service_tier="flex")
+            reasoning_effort="minimal")
     elif model_name.startswith("gemini"):
         api_key = os.getenv("GEMINI_API_KEY_SECONDARY")
         if not api_key:

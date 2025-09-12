@@ -5,7 +5,7 @@ set -euo pipefail
 # Set your desired modes here
 mode="zero_shot"      # "zero_shot" or "few_shot"
 cot_mode="no_cot"     # "no_cot" or "cot"
-model_name="glm-4.5v-106b"  # Set your desired model name gpt-4o, gemini-2.5-flash, mistral-small-3.2-24b, glm-4.5v-106b
+model_name="gpt-5-2025-08-07"  # Set your desired model name gpt-4o, gpt-5, gpt-5-2025-08-07, gemini-2.5-flash, mistral-small-3.2-24b, glm-4.5v-106b
 
 # Loop through main1.py to main20.py
 for i in {1..20}; do

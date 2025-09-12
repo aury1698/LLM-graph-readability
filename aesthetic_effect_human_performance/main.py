@@ -43,7 +43,7 @@ def initialize_model(model_name):
             api_key=api_key
         )
     # add proxied requests to tuwien aqueduct
-    elif model_name == "mistral-small-3.1-24b" or model_name == "qwen-32b":
+    elif model_name in ["mistral-small-3.1-24b", "mistral-small-3.2-24b", "glm-4.5v-106b"]:
         api_key = os.getenv("AQUEDUCT_KEY")
         return ChatOpenAI(
             model=model_name,

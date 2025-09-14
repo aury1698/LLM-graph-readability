@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>LLM Results Dashboard</title>
     <link rel="icon" type="image/x-icon" href="icon.ico">
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -69,7 +69,7 @@
             gap: 2rem;
         }
         .chart-wrapper {
-            max-width: 900px;
+            max-width: 1200px;
             margin: 1rem auto;
             padding: 1.5rem;
             border: 1px solid #eee;
@@ -132,7 +132,7 @@
 <script>
 
 // ===================================================================================
-// SCRIPT FOR CHARTS VISUALIZATION
+// SCRIPT FOR CHARTS VISUALIZATION (MODIFIED: grouped-chart sizing + color mapping)
 // ===================================================================================
 
 let currentMode = 'aurora';
@@ -281,14 +281,18 @@ function drawOverallAccuracyChart(summaryData) {
         .on("mouseout", () => tooltip.style("visibility", "hidden"));
 }
 
-// 2. NEW: Draw a GROUPED BAR CHART (for Tasks or Layouts)
+// 2. UPDATED: Draw a GROUPED BAR CHART (for Tasks or Layouts)
+//    - larger container width
+//    - legend moved to the right (outside plotting area)
+//    - colors: gradients per model (Gemini = blues, Mistral = oranges)
 function drawGroupedBarChart(containerId, chartData, groupKey) {
     d3.select(containerId).select("svg").remove();
     const { data, categories } = chartData;
 
-    const margin = { top: 40, right: 30, bottom: 60, left: 60 };
-    const width = 800 - margin.left - margin.right;
-    const height = 450 - margin.top - margin.bottom;
+    // increase right margin so legend can sit to the right
+    const margin = { top: 40, right: 260, bottom: 60, left: 60 };
+    const width = 1200 - margin.left - margin.right; // wider plotting area
+    const height = 500 - margin.top - margin.bottom;
 
     const svg = d3.select(containerId).append("svg")
         .attr("width", width + margin.left + margin.right)
@@ -299,11 +303,26 @@ function drawGroupedBarChart(containerId, chartData, groupKey) {
     const x1 = d3.scaleBand().domain(categories).range([0, x0.bandwidth()]).padding(0.05);
     const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
     
-    const color = d3.scaleOrdinal()
-        .domain(categories)
-        .range(d3.schemeTableau10); // A nice color scheme for multiple categories
+    // create color map: each model (Gemini / Mistral) gets a set of shades
+    const geminiCats = categories.filter(c => c.startsWith('Gemini'));
+    const mistralCats = categories.filter(c => c.startsWith('Mistral'));
 
-    svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x0));
+    const colorMap = {};
+    // distribute t values evenly between (0,1) but avoid pure extremes (0 or 1)
+    geminiCats.forEach((c, i) => {
+        const t = (i + 1) / (geminiCats.length + 1);
+        colorMap[c] = d3.interpolateBlues(t);
+    });
+    mistralCats.forEach((c, i) => {
+        const t = (i + 1) / (mistralCats.length + 1);
+        colorMap[c] = d3.interpolateOranges(t);
+    });
+
+    // fallback color function (in case other categories appear)
+    const fallbackColor = d3.scaleOrdinal(d3.schemeTableau10);
+
+    svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x0))
+        .selectAll("text").attr("transform", "translate(-10,0)rotate(-45)").style("text-anchor", "end");
     svg.append("g").call(d3.axisLeft(y));
     svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).attr("transform", "rotate(-90)").text("Average Accuracy (%)");
 
@@ -317,7 +336,7 @@ function drawGroupedBarChart(containerId, chartData, groupKey) {
         .attr("y", d => y(d.value))
         .attr("width", x1.bandwidth())
         .attr("height", d => height - y(d.value))
-        .attr("fill", d => color(d.key))
+        .attr("fill", d => colorMap[d.key] || fallbackColor(d.key))
         .on("mouseover", () => tooltip.style("visibility", "visible"))
         .on("mousemove", (event, d) => {
             tooltip.html(`<b>${d.key}</b><br>Accuracy: ${d.value.toFixed(2)}%`)
@@ -325,13 +344,25 @@ function drawGroupedBarChart(containerId, chartData, groupKey) {
         })
         .on("mouseout", () => tooltip.style("visibility", "hidden"));
 
-    // Add Legend
+    // Add Legend to the RIGHT of the plotting area
+    const legendX = width + 20; // position to the right of plotting area (inside SVG)
     const legend = svg.selectAll(".legend").data(categories).join("g")
         .attr("class", "legend")
-        .attr("transform", (d, i) => `translate(0,${i * 20})`);
-    
-    legend.append("rect").attr("x", width - 18).attr("width", 18).attr("height", 18).style("fill", color);
-    legend.append("text").attr("x", width - 24).attr("y", 9).attr("dy", ".35em").style("text-anchor", "end").text(d => d);
+        .attr("transform", (d, i) => `translate(0,${i * 22})`);
+        
+    legend.append("rect")
+        .attr("x", legendX)
+        .attr("y", 0)
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", d => colorMap[d] || fallbackColor(d));
+
+    legend.append("text")
+        .attr("x", legendX + 24)
+        .attr("y", 9)
+        .attr("dy", ".35em")
+        .style("text-anchor", "start")
+        .text(d => d);
 }
 
 

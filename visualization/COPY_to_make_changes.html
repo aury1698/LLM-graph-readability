@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>LLM Results Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="icon.ico">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* --- General Page Styles --- */
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 2rem;
+            background: #fafbfc;
+            color: #222;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        p {
+            text-align: center;
+            max-width: 800px;
+            margin: 1rem auto;
+            color: #555;
+        }
+        a {
+            color: #1a73e8;
+        }
+        .controls-container {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #eee;
+        }
+        .controls {
+            text-align: center;
+        }
+        .controls h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        .controls button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            margin: 0 5px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: #fff;
+            border-radius: 5px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .mode-controls button.active {
+            background: #e8711a;
+            color: white;
+            border-color: #e8711a;
+        }
+        .mode-controls button:not(.active) {
+            background: #80868b;
+            color: white;
+            border-color: #80868b;
+        }
+
+        /* --- Chart Specific Styles --- */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr; /* Single column layout */
+            gap: 2rem;
+        }
+        .chart-wrapper {
+            max-width: 1200px;
+            margin: 1rem auto;
+            padding: 1.5rem;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background: #fff;
+        }
+        .chart-title {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 2rem;
+            color: #333;
+        }
+        .axis-label {
+            font-size: 0.8rem;
+            fill: #555;
+        }
+        .tick text {
+            font-size: 0.75rem;
+        }
+        .legend {
+            font-size: 0.8rem;
+        }
+
+        /* --- Tooltip Style --- */
+        .tooltip {
+            position: absolute;
+            visibility: hidden;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+        /* Specific style for beeswarm points */
+        .beeswarm-point { stroke: #333; stroke-width: 0.5px; }
+        .mean-line { stroke: red; stroke-width: 2px; stroke-dasharray: 4; }
+    </style>
+</head>
+<body>
+    <h1>LLM Results Dashboard</h1>
+    <p>
+        This dashboard provides a high-level summary of model performance.
+        For a detailed, instance-by-instance view, see the <a href="visualization.html">main visualization page</a>.
+    </p>
+
+    <div class="controls-container">
+        <div class="controls mode-controls">
+            <h3>Select Dataset</h3>
+            <button id="btn-aurora">Aurora</button>
+            <button id="btn-bastian">Bastian</button>
+        </div>
+    </div>
+
+    <!-- Container where charts will be rendered -->
+    <div id="charts-container" class="chart-grid">
+        <!-- Charts will be dynamically added here -->
+    </div>
+    
+    <div id="tooltip" class="tooltip"></div>
+
+</body>
+<script>
+
+// ===================================================================================
+// SCRIPT FOR CHARTS VISUALIZATION 
+// ===================================================================================
+
+let currentMode = 'aurora';
+
+// --- DATA LOADING ---
+async function loadAndAggregateResults(basePath, mode) {
+    let allFilePaths = [];
+    const modelsToLoad = ["gemini-2.5-flash", "mistral-small-3.1-24b"];
+    for (const modelName of modelsToLoad) {
+        const shotTypes = ["zero_shot", "few_shot"];
+        const cotTypes = ["cot", "no_cot"];
+        const MAX_ATTEMPTS_TO_CHECK = 20;
+        for (const shot of shotTypes) {
+            for (const cot of cotTypes) {
+                for (let attempt = 1; attempt <= MAX_ATTEMPTS_TO_CHECK; attempt++) {
+                    const fileName = `results_attempt_${attempt}.csv`;
+                    const basePathForModel = (mode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
+                    const filePath = `${basePathForModel}/results/${modelName}/${shot}/${cot}/${fileName}`;
+                    allFilePaths.push(filePath);
+                }
+            }
+        }
+    }
+    const promises = allFilePaths.map(path => d3.csv(path).catch(error => []));
+    const resultsFromAllFiles = await Promise.all(promises);
+    return resultsFromAllFiles.flat();
+}
+
+
+// --- DATA PROCESSING FUNCTIONS ---
+
+// 1. Process data for the OVERALL ACCURACY chart
+function processDataForOverallChart(rawData, humanResults) {
+    const groupedData = d3.group(rawData, d => d["Model Name"], d => d["LLM Mode"], d => d["COT Mode"]);
+    const summary = [];
+    for (const [modelName, modelData] of groupedData) {
+        for (const [llmMode, llmModeData] of modelData) {
+            for (const [cotMode, results] of llmModeData) {
+                if (results.length === 0) continue;
+                const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+                const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+                summary.push({
+                    model: modelName.includes('mistral') ? 'Mistral' : 'Gemini',
+                    category: `${llmMode} (${cotMode})`,
+                    accuracy: accuracy
+                });
+            }
+        }
+    }
+    const humanAccuracy = (1 - d3.mean(Object.values(humanResults.errors))) * 100;
+    summary.push({ model: 'Human', category: 'Human Performance', accuracy: humanAccuracy });
+    return summary;
+}
+
+// 2. NEW: Process data for BEESWARM plots. This is more granular.
+// It calculates accuracy for each test (e.g., FD-FR_task1) for each configuration.
+function processDataForBeeswarm(rawData, modelFilter) {
+    const filteredData = rawData.filter(d => d["Model Name"].includes(modelFilter));
+    
+    // Group by configuration, then by test name (e.g., 'FD-FR_task1')
+    const groupedData = d3.group(filteredData,
+        d => `${d["LLM Mode"]} (${d["COT Mode"]})`, // The 4 configurations 
+        d => d.Layout.split('_').slice(0, 2).join('_') //It takes the name of the layout & the task to construct a test identifier (so different points that share these two end up in the same group) --> e.g., 'FD-FR_task1'
+    );
+
+    const swarmData = [];
+    for (const [config, configData] of groupedData) {
+        for (const [testName, results] of configData) {
+            if (results.length === 0) continue;
+            const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+            const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+            
+            // Each point in the swarm will be an object like this
+            swarmData.push({
+                config: config,
+                test: testName,
+                accuracy: accuracy
+            });
+        }
+    }
+    return swarmData;
+}
+
+// 3. Process data for the ACCURACY BY TASK chart
+function processDataForTaskChart(rawData) {
+    // Group by Task (task1, task2, etc.) and then by configuration
+    const groupedData = d3.group(rawData, 
+        d => d.Task.split('_')[0], // Extracts 'task1', 'task2', etc.
+        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
+    );
+    
+    const summary = [];
+    const categories = new Set(); // To keep track of all unique configurations
+    
+    for (const [task, taskData] of groupedData) {
+        const taskSummary = { task: task };
+        for (const [config, results] of taskData) {
+            if (results.length === 0) continue;
+            const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+            const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+            taskSummary[config] = accuracy;
+            categories.add(config);
+        }
+        summary.push(taskSummary);
+    }
+    return { data: summary, categories: Array.from(categories) };
+}
+
+// 4. Process data for the ACCURACY BY LAYOUT chart
+function processDataForLayoutChart(rawData) {
+    // Group by Layout Type (FD-FR, PG, etc.)
+    const groupedData = d3.group(rawData, 
+        d => d.Layout.split('_')[0], // Extracts 'FD-FR', 'PG', etc.
+        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
+    );
+
+    const summary = [];
+    const categories = new Set();
+    
+    for (const [layout, layoutData] of groupedData) {
+        const layoutSummary = { layout: layout };
+        for (const [config, results] of layoutData) {
+             if (results.length === 0) continue;
+            const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+            const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+            layoutSummary[config] = accuracy;
+            categories.add(config);
+        }
+        summary.push(layoutSummary);
+    }
+    return { data: summary, categories: Array.from(categories).sort() };
+}
+
+
+// --- D3.JS CHART DRAWING FUNCTIONS ---
+
+const tooltip = d3.select("#tooltip");
+
+// Draw the OVERALL ACCURACY bar chart
+function drawOverallAccuracyChart(summaryData) {
+    const containerId = "#overall-accuracy-chart-container";
+    d3.select(containerId).select("svg").remove();
+
+    const margin = { top: 20, right: 30, bottom: 120, left: 60 };
+    const width = 800 - margin.left - margin.right;
+    const height = 450 - margin.top - margin.bottom;
+
+    const svg = d3.select(containerId).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleBand()
+        .domain(summaryData.map(d => `${d.model} ${d.category}`))
+        .range([0, width]).padding(0.2);
+
+    const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
+    const color = d3.scaleOrdinal().domain(['Mistral', 'Gemini', 'Human']).range(['#e8711a ', '#1a73e8', '#34a853']);
+
+    svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x))
+        .selectAll("text").attr("transform", "translate(-10,0)rotate(-45)").style("text-anchor", "end");
+    svg.append("g").call(d3.axisLeft(y));
+    
+    svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).attr("transform", "rotate(-90)").text("Average Accuracy (%)");
+
+    svg.selectAll(".bar").data(summaryData).join("rect")
+        .attr("x", d => x(`${d.model} ${d.category}`)).attr("y", d => y(d.accuracy))
+        .attr("width", x.bandwidth()).attr("height", d => height - y(d.accuracy))
+        .attr("fill", d => color(d.model))
+        .on("mouseover", () => tooltip.style("visibility", "visible"))
+        .on("mousemove", (event, d) => {
+            tooltip.html(`<b>${d.model} ${d.category}</b><br>Accuracy: ${d.accuracy.toFixed(2)}%`)
+                .style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");
+        })
+        .on("mouseout", () => tooltip.style("visibility", "hidden"));
+}
+
+// NEW: Draw the BEESWARM chart
+// If we don't want to use a force simulation, we can use d3.beeswarm plugin: https://github.com/Kcnarf/d3-beeswarm
+function drawBeeswarmChart(containerId, swarmData, modelName, colorScheme) {
+    d3.select(containerId).select("svg").remove();
+    if (swarmData.length === 0) return;
+
+    const margin = { top: 40, right: 30, bottom: 60, left: 60 };
+    const width = 1000 - margin.left - margin.right;
+    const height = 500 - margin.top - margin.bottom;
+
+    const svg = d3.select(containerId).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const configs = [...new Set(swarmData.map(d => d.config))].sort();
+    const x = d3.scaleBand().domain(configs).range([0, width]).padding(0.5);
+    const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
+    const color = d3.scaleOrdinal().domain(configs).range(colorScheme);
+
+    svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x));
+    svg.append("g").call(d3.axisLeft(y));
+    svg.append("text").attr("class", "axis-label").attr("text-anchor", "middle").attr("x", width / 2).attr("y", height + 40).text("Configuration");
+    svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).text("Accuracy per Test (%)");
+
+    //This BeeSwarmChart works with the forceSimulation from d3:
+    // Taking the data and applying a forces to it, the points will move to avoid overlapping while clustering around the timestamp value
+    const simulation = d3.forceSimulation(swarmData)
+        .force("x", d3.forceX(d => x(d.config) + x.bandwidth() / 2).strength(1))
+        .force("y", d3.forceY(d => y(d.accuracy)).strength(1))
+        .force("collide", d3.forceCollide(5)) // Radius of points, prevents overlap
+        .stop();
+
+    // Run the simulation for a fixed number of iterations
+    for (let i = 0; i < 120; ++i) simulation.tick();
+
+    // Draw the points
+    svg.selectAll(".beeswarm-point").data(swarmData).join("circle")
+        .attr("class", "beeswarm-point")
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y)
+        .attr("r", 4)
+        .attr("fill", d => color(d.config))
+        .on("mouseover", () => tooltip.style("visibility", "visible"))
+        .on("mousemove", (event, d) => {
+            tooltip.html(`<b>${d.test}</b><br>${d.config}<br>Accuracy: ${d.accuracy.toFixed(1)}%`)
+                .style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");
+        })
+        .on("mouseout", () => tooltip.style("visibility", "hidden"));
+    
+    // Draw mean line for each category
+    const means = d3.rollup(swarmData, v => d3.mean(v, d => d.accuracy), d => d.config);
+    svg.selectAll(".mean-line").data(configs).join("line")
+        .attr("class", "mean-line")
+        .attr("x1", d => x(d))
+        .attr("x2", d => x(d) + x.bandwidth())
+        .attr("y1", d => y(means.get(d)))
+        .attr("y2", d => y(means.get(d)));
+}
+
+
+// Draw a GROUPED BAR CHART (for Tasks or Layouts)
+function drawGroupedBarChart(containerId, chartData, groupKey) {
+    d3.select(containerId).select("svg").remove();
+    const { data, categories } = chartData;
+
+    // increase right margin so legend can sit to the right
+    const margin = { top: 40, right: 260, bottom: 60, left: 60 };
+    const width = 1200 - margin.left - margin.right; // wider plotting area
+    const height = 500 - margin.top - margin.bottom;
+
+    const svg = d3.select(containerId).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const x0 = d3.scaleBand().domain(data.map(d => d[groupKey])).range([0, width]).padding(0.25);
+    const x1 = d3.scaleBand().domain(categories).range([0, x0.bandwidth()]).padding(0.05);
+    const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
+    
+    // color map: each model (Gemini / Mistral) gets a set of shades
+    const geminiCats = categories.filter(c => c.startsWith('Gemini'));
+    const mistralCats = categories.filter(c => c.startsWith('Mistral'));
+
+    const colorMap = {};
+    // distribute t values evenly between (0,1) but avoid pure extremes (0 or 1)
+    geminiCats.forEach((c, i) => {
+        const t = (i + 1) / (geminiCats.length + 1);
+        colorMap[c] = d3.interpolateBlues(t);
+    });
+    mistralCats.forEach((c, i) => {
+        const t = (i + 1) / (mistralCats.length + 1);
+        colorMap[c] = d3.interpolateOranges(t);
+    });
+
+    // fallback color function (in case other categories appear)
+    const fallbackColor = d3.scaleOrdinal(d3.schemeTableau10);
+
+    svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x0))
+        .selectAll("text").attr("transform", "translate(-10,0)rotate(-45)").style("text-anchor", "end");
+    svg.append("g").call(d3.axisLeft(y));
+    svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).attr("transform", "rotate(-90)").text("Average Accuracy (%)");
+
+    const group = svg.selectAll(".group").data(data).join("g")
+        .attr("class", "group")
+        .attr("transform", d => `translate(${x0(d[groupKey])},0)`);
+
+    group.selectAll("rect").data(d => categories.map(key => ({ key, value: d[key] || 0 })))
+        .join("rect")
+        .attr("x", d => x1(d.key))
+        .attr("y", d => y(d.value))
+        .attr("width", x1.bandwidth())
+        .attr("height", d => height - y(d.value))
+        .attr("fill", d => colorMap[d.key] || fallbackColor(d.key))
+        .on("mouseover", () => tooltip.style("visibility", "visible"))
+        .on("mousemove", (event, d) => {
+            tooltip.html(`<b>${d.key}</b><br>Accuracy: ${d.value.toFixed(2)}%`)
+                .style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");
+        })
+        .on("mouseout", () => tooltip.style("visibility", "hidden"));
+
+    // Legend 
+    const legendX = width + 20; // position to the right 
+    const legend = svg.selectAll(".legend").data(categories).join("g")
+        .attr("class", "legend")
+        .attr("transform", (d, i) => `translate(0,${i * 22})`);
+        
+    legend.append("rect")
+        .attr("x", legendX)
+        .attr("y", 0)
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", d => colorMap[d] || fallbackColor(d));
+
+    legend.append("text")
+        .attr("x", legendX + 24)
+        .attr("y", 9)
+        .attr("dy", ".35em")
+        .style("text-anchor", "start")
+        .text(d => d);
+}
+
+
+// --- MAIN RENDER FUNCTION ---
+async function renderDashboard() {
+    document.getElementById('charts-container').innerHTML = '<h2>Loading and processing results...</h2>';
+    
+    document.getElementById('btn-aurora').classList.toggle('active', currentMode === 'aurora');
+    document.getElementById('btn-bastian').classList.toggle('active', currentMode === 'bastian');
+
+    //Load human results 
+    let human_results_bastian = { "errors": {"b-": 0.53, "b+": 0.24, "c-": 0.80, "c+": 0.29, "m-": 0.38, "m+": 0.36, "o-": 0.36, "o+": 0.36, "s-": 0.31, "s+": 0.29} };
+    let human_results_aurora = { "errors": {"FD-FR": 0.164, "FD-K": 0.109, "PG": 0.291, "PGS": 0.236, "POGBa": 0.236, "POGBb": 0.255, "SEIS": 0.436, "Tu": 0.145} };
+    let human_results = (currentMode === 'bastian') ? human_results_bastian : human_results_aurora;
+    let path = (currentMode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
+
+    const rawData = await loadAndAggregateResults(path, currentMode);
+    
+    if (rawData.length === 0) {
+        document.getElementById('charts-container').innerHTML = `<h1>No result files found for the ${currentMode} dataset.</h1>`;
+        return;
+    }
+
+    // Process data for all charts
+    const overallSummary = processDataForOverallChart(rawData, human_results);
+    const mistralSwarmData = processDataForBeeswarm(rawData, 'mistral');
+    const geminiSwarmData = processDataForBeeswarm(rawData, 'gemini');
+    const taskSummary = processDataForTaskChart(rawData);
+    const layoutSummary = processDataForLayoutChart(rawData);
+
+    // Render the page structure with containers for all charts
+    document.getElementById('charts-container').innerHTML = `
+        <div class="chart-wrapper">
+            <h2 class="chart-title">Overall Accuracy by Configuration</h2>
+            <div id="overall-accuracy-chart-container"></div>
+        </div>
+
+        <div class="chart-wrapper">
+            <h2 class="chart-title">Mistral: Performance Distribution by Configuration</h2>
+            <p>Each dot is the average accuracy for a specific test (e.g. 'FD-FR_task1'), aggregated across all attempts and different target node pairs. This shows the consistency of the model. The red line is the overall average for the configuration.</p>
+            <div id="mistral-beeswarm-container"></div>
+        </div>
+
+        <div class="chart-wrapper">
+            <h2 class="chart-title">Gemini: Performance Distribution by Configuration</h2>
+            <p>Each dot is the average accuracy for a specific test (e.g. 'FD-FR_task1'), aggregated across all attempts and different target node pairs. This shows the consistency of the model. The red line is the overall average for the configuration.</p>
+            <div id="gemini-beeswarm-container"></div>
+        </div>
+
+        <div class="chart-wrapper">
+            <h2 class="chart-title">Accuracy by Task</h2>
+            <div id="task-accuracy-chart-container"></div>
+        </div>
+
+        <div class="chart-wrapper">
+            <h2 class="chart-title">Accuracy by Layout Algorithm</h2>
+            <div id="layout-accuracy-chart-container"></div>
+        </div>
+    `;
+
+    // Draw each all charts
+    drawOverallAccuracyChart(overallSummary);
+    drawBeeswarmChart("#mistral-beeswarm-container", mistralSwarmData, 'Mistral', d3.schemeOranges[9]);
+    drawBeeswarmChart("#gemini-beeswarm-container", geminiSwarmData, 'Gemini', d3.schemeBlues[9]);
+    drawGroupedBarChart("#task-accuracy-chart-container", taskSummary, "task");
+    drawGroupedBarChart("#layout-accuracy-chart-container", layoutSummary, "layout");
+}
+
+// --- Event Listeners ---
+document.getElementById('btn-aurora').addEventListener('click', () => { currentMode = 'aurora'; renderDashboard(); });
+document.getElementById('btn-bastian').addEventListener('click', () => { currentMode = 'bastian'; renderDashboard(); });
+
+// Initial load
+renderDashboard();
+
+</script>
+</html>

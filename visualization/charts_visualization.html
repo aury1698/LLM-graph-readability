@@ -104,6 +104,9 @@
             font-size: 0.8rem;
             pointer-events: none;
         }
+        /* Specific style for beeswarm points */
+        .beeswarm-point { stroke: #333; stroke-width: 0.5px; }
+        .mean-line { stroke: red; stroke-width: 2px; stroke-dasharray: 4; }
     </style>
 </head>
 <body>
@@ -132,12 +135,12 @@
 <script>
 
 // ===================================================================================
-// SCRIPT FOR CHARTS VISUALIZATION (MODIFIED: grouped-chart sizing + color mapping)
+// SCRIPT FOR CHARTS VISUALIZATION 
 // ===================================================================================
 
 let currentMode = 'aurora';
 
-// --- DATA LOADING (No changes needed here) ---
+// --- DATA LOADING ---
 async function loadAndAggregateResults(basePath, mode) {
     let allFilePaths = [];
     const modelsToLoad = ["gemini-2.5-flash", "mistral-small-3.1-24b"];
@@ -187,7 +190,36 @@ function processDataForOverallChart(rawData, humanResults) {
     return summary;
 }
 
-// 2. NEW: Process data for the ACCURACY BY TASK chart
+// 2. NEW: Process data for BEESWARM plots. This is more granular.
+// It calculates accuracy for each test (e.g., FD-FR_task1) for each configuration.
+function processDataForBeeswarm(rawData, modelFilter) {
+    const filteredData = rawData.filter(d => d["Model Name"].includes(modelFilter));
+    
+    // Group by configuration, then by test name (e.g., 'FD-FR_task1')
+    const groupedData = d3.group(filteredData,
+        d => `${d["LLM Mode"]} (${d["COT Mode"]})`, // The 4 configurations 
+        d => d.Layout.split('_').slice(0, 2).join('_') //It takes the name of the layout & the task to construct a test identifier (so different points that share these two end up in the same group) --> e.g., 'FD-FR_task1'
+    );
+
+    const swarmData = [];
+    for (const [config, configData] of groupedData) {
+        for (const [testName, results] of configData) {
+            if (results.length === 0) continue;
+            const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+            const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+            
+            // Each point in the swarm will be an object like this
+            swarmData.push({
+                config: config,
+                test: testName,
+                accuracy: accuracy
+            });
+        }
+    }
+    return swarmData;
+}
+
+// 3. Process data for the ACCURACY BY TASK chart
 function processDataForTaskChart(rawData) {
     // Group by Task (task1, task2, etc.) and then by configuration
     const groupedData = d3.group(rawData, 
@@ -212,7 +244,7 @@ function processDataForTaskChart(rawData) {
     return { data: summary, categories: Array.from(categories) };
 }
 
-// 3. NEW: Process data for the ACCURACY BY LAYOUT chart
+// 4. Process data for the ACCURACY BY LAYOUT chart
 function processDataForLayoutChart(rawData) {
     // Group by Layout Type (FD-FR, PG, etc.)
     const groupedData = d3.group(rawData, 
@@ -242,7 +274,7 @@ function processDataForLayoutChart(rawData) {
 
 const tooltip = d3.select("#tooltip");
 
-// 1. Draw the OVERALL ACCURACY bar chart
+// Draw the OVERALL ACCURACY bar chart
 function drawOverallAccuracyChart(summaryData) {
     const containerId = "#overall-accuracy-chart-container";
     d3.select(containerId).select("svg").remove();
@@ -281,10 +313,68 @@ function drawOverallAccuracyChart(summaryData) {
         .on("mouseout", () => tooltip.style("visibility", "hidden"));
 }
 
-// 2. UPDATED: Draw a GROUPED BAR CHART (for Tasks or Layouts)
-//    - larger container width
-//    - legend moved to the right (outside plotting area)
-//    - colors: gradients per model (Gemini = blues, Mistral = oranges)
+// NEW: Draw the BEESWARM chart
+// If we don't want to use a force simulation, we can use d3.beeswarm plugin: https://github.com/Kcnarf/d3-beeswarm
+function drawBeeswarmChart(containerId, swarmData, modelName, colorScheme) {
+    d3.select(containerId).select("svg").remove();
+    if (swarmData.length === 0) return;
+
+    const margin = { top: 40, right: 30, bottom: 60, left: 60 };
+    const width = 1000 - margin.left - margin.right;
+    const height = 500 - margin.top - margin.bottom;
+
+    const svg = d3.select(containerId).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const configs = [...new Set(swarmData.map(d => d.config))].sort();
+    const x = d3.scaleBand().domain(configs).range([0, width]).padding(0.5);
+    const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
+    const color = d3.scaleOrdinal().domain(configs).range(colorScheme);
+
+    svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x));
+    svg.append("g").call(d3.axisLeft(y));
+    svg.append("text").attr("class", "axis-label").attr("text-anchor", "middle").attr("x", width / 2).attr("y", height + 40).text("Configuration");
+    svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).text("Accuracy per Test (%)");
+
+    //This BeeSwarmChart works with the forceSimulation from d3:
+    // Taking the data and applying a forces to it, the points will move to avoid overlapping while clustering around the timestamp value
+    const simulation = d3.forceSimulation(swarmData)
+        .force("x", d3.forceX(d => x(d.config) + x.bandwidth() / 2).strength(1))
+        .force("y", d3.forceY(d => y(d.accuracy)).strength(1))
+        .force("collide", d3.forceCollide(5)) // Radius of points, prevents overlap
+        .stop();
+
+    // Run the simulation for a fixed number of iterations
+    for (let i = 0; i < 120; ++i) simulation.tick();
+
+    // Draw the points
+    svg.selectAll(".beeswarm-point").data(swarmData).join("circle")
+        .attr("class", "beeswarm-point")
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y)
+        .attr("r", 4)
+        .attr("fill", d => color(d.config))
+        .on("mouseover", () => tooltip.style("visibility", "visible"))
+        .on("mousemove", (event, d) => {
+            tooltip.html(`<b>${d.test}</b><br>${d.config}<br>Accuracy: ${d.accuracy.toFixed(1)}%`)
+                .style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");
+        })
+        .on("mouseout", () => tooltip.style("visibility", "hidden"));
+    
+    // Draw mean line for each category
+    const means = d3.rollup(swarmData, v => d3.mean(v, d => d.accuracy), d => d.config);
+    svg.selectAll(".mean-line").data(configs).join("line")
+        .attr("class", "mean-line")
+        .attr("x1", d => x(d))
+        .attr("x2", d => x(d) + x.bandwidth())
+        .attr("y1", d => y(means.get(d)))
+        .attr("y2", d => y(means.get(d)));
+}
+
+
+// Draw a GROUPED BAR CHART (for Tasks or Layouts)
 function drawGroupedBarChart(containerId, chartData, groupKey) {
     d3.select(containerId).select("svg").remove();
     const { data, categories } = chartData;
@@ -303,7 +393,7 @@ function drawGroupedBarChart(containerId, chartData, groupKey) {
     const x1 = d3.scaleBand().domain(categories).range([0, x0.bandwidth()]).padding(0.05);
     const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
     
-    // create color map: each model (Gemini / Mistral) gets a set of shades
+    // color map: each model (Gemini / Mistral) gets a set of shades
     const geminiCats = categories.filter(c => c.startsWith('Gemini'));
     const mistralCats = categories.filter(c => c.startsWith('Mistral'));
 
@@ -344,8 +434,8 @@ function drawGroupedBarChart(containerId, chartData, groupKey) {
         })
         .on("mouseout", () => tooltip.style("visibility", "hidden"));
 
-    // Add Legend to the RIGHT of the plotting area
-    const legendX = width + 20; // position to the right of plotting area (inside SVG)
+    // Legend 
+    const legendX = width + 20; // position to the right 
     const legend = svg.selectAll(".legend").data(categories).join("g")
         .attr("class", "legend")
         .attr("transform", (d, i) => `translate(0,${i * 22})`);
@@ -373,6 +463,7 @@ async function renderDashboard() {
     document.getElementById('btn-aurora').classList.toggle('active', currentMode === 'aurora');
     document.getElementById('btn-bastian').classList.toggle('active', currentMode === 'bastian');
 
+    //Load human results 
     let human_results_bastian = { "errors": {"b-": 0.53, "b+": 0.24, "c-": 0.80, "c+": 0.29, "m-": 0.38, "m+": 0.36, "o-": 0.36, "o+": 0.36, "s-": 0.31, "s+": 0.29} };
     let human_results_aurora = { "errors": {"FD-FR": 0.164, "FD-K": 0.109, "PG": 0.291, "PGS": 0.236, "POGBa": 0.236, "POGBb": 0.255, "SEIS": 0.436, "Tu": 0.145} };
     let human_results = (currentMode === 'bastian') ? human_results_bastian : human_results_aurora;
@@ -385,29 +476,47 @@ async function renderDashboard() {
         return;
     }
 
-    // 1. Process data for each chart type
+    // Process data for all charts
     const overallSummary = processDataForOverallChart(rawData, human_results);
+    const mistralSwarmData = processDataForBeeswarm(rawData, 'mistral');
+    const geminiSwarmData = processDataForBeeswarm(rawData, 'gemini');
     const taskSummary = processDataForTaskChart(rawData);
     const layoutSummary = processDataForLayoutChart(rawData);
 
-    // 2. Render the page structure with containers for all charts
+    // Render the page structure with containers for all charts
     document.getElementById('charts-container').innerHTML = `
         <div class="chart-wrapper">
             <h2 class="chart-title">Overall Accuracy by Configuration</h2>
             <div id="overall-accuracy-chart-container"></div>
         </div>
+
+        <div class="chart-wrapper">
+            <h2 class="chart-title">Mistral: Performance Distribution by Configuration</h2>
+            <p>Each dot is the average accuracy for a specific test (e.g. 'FD-FR_task1'), aggregated across all attempts and different target node pairs. This shows the consistency of the model. The red line is the overall average for the configuration.</p>
+            <div id="mistral-beeswarm-container"></div>
+        </div>
+
+        <div class="chart-wrapper">
+            <h2 class="chart-title">Gemini: Performance Distribution by Configuration</h2>
+            <p>Each dot is the average accuracy for a specific test (e.g. 'FD-FR_task1'), aggregated across all attempts and different target node pairs. This shows the consistency of the model. The red line is the overall average for the configuration.</p>
+            <div id="gemini-beeswarm-container"></div>
+        </div>
+
         <div class="chart-wrapper">
             <h2 class="chart-title">Accuracy by Task</h2>
             <div id="task-accuracy-chart-container"></div>
         </div>
+
         <div class="chart-wrapper">
             <h2 class="chart-title">Accuracy by Layout Algorithm</h2>
             <div id="layout-accuracy-chart-container"></div>
         </div>
     `;
 
-    // 3. Draw each chart in its respective container
+    // Draw each all charts
     drawOverallAccuracyChart(overallSummary);
+    drawBeeswarmChart("#mistral-beeswarm-container", mistralSwarmData, 'Mistral', d3.schemeOranges[9]);
+    drawBeeswarmChart("#gemini-beeswarm-container", geminiSwarmData, 'Gemini', d3.schemeBlues[9]);
     drawGroupedBarChart("#task-accuracy-chart-container", taskSummary, "task");
     drawGroupedBarChart("#layout-accuracy-chart-container", layoutSummary, "layout");
 }

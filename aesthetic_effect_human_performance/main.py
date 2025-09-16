@@ -441,7 +441,7 @@ def main(
     print(ground_truth)
 
     # compute all metrics
-    metrics = compute_metrics(task, response, ground_truth, base_metrics)
+    metrics = compute_metrics(task, response, ground_truth, base_metrics)  # noqa: F841
     
     # Parse the response
     parsed_response = parse_model_response(response, task)

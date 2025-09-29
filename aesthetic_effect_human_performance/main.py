@@ -29,7 +29,12 @@ def initialize_model(model_name):
         return ChatOpenAI(
             model=model_name,
             temperature=0.1,
-            reasoning_effort="minimal")
+            # reasoning_effort="minimal",
+            reasoning = {
+                "effort": "minimal",
+                "summary": "detailed",  # 'detailed', 'auto', or None
+            },
+            output_version="responses/v1")
     elif model_name.startswith("gemini"):
         api_key = os.getenv("GEMINI_API_KEY_SECONDARY")
         if not api_key:
@@ -412,6 +417,20 @@ def main(
     # Invoke the model and get the response
     try:
         response, base_metrics = invoke_model(model_name, model, prompt, config=config)
+        
+        # convert reasoning responses to a string
+        if isinstance(response, list):
+            reasoning = ""
+            answer = ""
+            for block in response:
+                if block["type"] == "reasoning":
+                    for summary in block["summary"]:
+                        reasoning += summary["text"]
+                elif block["type"] == "text":
+                    answer = block["text"]
+                
+            response = f"{reasoning}{answer}"
+            
         print("\n--- Model Response ---")
         print(response)
         

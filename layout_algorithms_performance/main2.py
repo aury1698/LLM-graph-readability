@@ -537,10 +537,10 @@ def main(
 if __name__ == "__main__":
     # Parameters
     test_images_dir = "dataset/test"
-    mode = "few_shot"  # "zero_shot" or "few_shot"
-    cot_mode = "no_cot"  # "no_cot" or "cot"
+    mode = "zero_shot"  # "zero_shot" or "few_shot"
+    cot_mode = "cot"  # "no_cot" or "cot"
     model_name = "gpt-5"
-    attempt = 12
+    attempt = 18   #DISPARI!
     max_images_per_run = 280
 
     ### MODIFIED ###

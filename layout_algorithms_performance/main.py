@@ -540,7 +540,7 @@ if __name__ == "__main__":
     mode = "few_shot"  # "zero_shot" or "few_shot"
     cot_mode = "cot"  # "no_cot" or "cot"
     model_name = "gpt-5"
-    attempt = 7
+    attempt = 16
     max_images_per_run = 280
 
     ### MODIFIED ###

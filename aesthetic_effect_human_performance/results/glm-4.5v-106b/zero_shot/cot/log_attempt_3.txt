@@ -6858,3 +6858,75 @@ Mode: zero_shot, COT: cot, Attempt: 3
 {'length': 3, 'cut_set': [[['I', 'J'], ['I', 'P'], ['I', 'Q']], [['I', 'J'], ['P', 'Q'], ['I', 'Q']]]}
 Progress: 447/450 images processed.
 ============================================================
+
+============================================================
+Image name: b+_task3_gt2_PAIR2
+Task: task3_min_edges_removal
+Model: glm-4.5v-106b
+Mode: zero_shot, COT: cot, Attempt: 3
+--- Model Response ---
+
+<|begin_of_box|>Edges to remove: 2, Cut Set: [(R, O), (R, Q)]<|end_of_box|>
+--- Ground Truth ---
+{'length': 2, 'cut_set': [[['J', 'R'], ['Q', 'R']], [['P', 'I'], ['P', 'Q']]]}
+Progress: 448/450 images processed.
+============================================================
+
+============================================================
+Image name: s-_task2_gt1_PAIR3
+Task: task2_min_nodes_removal
+Model: glm-4.5v-106b
+Mode: zero_shot, COT: cot, Attempt: 3
+--- Model Response ---
+
+To determine the minimum number of nodes to remove so that the two black nodes (Q and N) are completely disconnected, we first identify all paths between Q and N. The paths are:  
+1. Q → P → B → N  
+2. Q → A → B → N  
+3. Q → I → H → N  
+4. Q → J → R → F → C → N  
+5. Q → P → A → S → E → F → C → N  
+6. Q → P → B → T → O → N  
+
+Next, we analyze which nodes are critical to these paths. Removing a single node (e.g., B, I, or C) does not disconnect all paths. For example, removing B eliminates paths 1, 2, and 6 but leaves paths 3, 4, and 5 intact. Removing I eliminates path 3 but leaves others. Removing C eliminates paths 4 and 5 but leaves others.  
+
+To disconnect all paths, we need a set of nodes that covers all paths. The set **[B, I, C]** works:  
+- Removing B eliminates paths 1, 2, and 6.  
+- Removing I eliminates path 3.  
+- Removing C eliminates paths 4 and 5.  
+
+No smaller set (e.g., two nodes) can disconnect all paths, as each pair of nodes leaves at least one path intact.  
+
+<|begin_of_box|>Nodes to remove: 3, Cut Set: [B, I, C]<|end_of_box|>
+--- Ground Truth ---
+{'length': 1, 'cut_set': [['H'], ['I']]}
+Progress: 449/450 images processed.
+============================================================
+
+============================================================
+Image name: b+_task2_gt1_PAIR4
+Task: task2_min_nodes_removal
+Model: glm-4.5v-106b
+Mode: zero_shot, COT: cot, Attempt: 3
+--- Model Response ---
+
+To determine the minimum number of nodes to remove so that the two black nodes (S and R) are completely disconnected, we analyze the paths between them. 
+
+First, we identify all possible paths from S to R:  
+1. \( S \rightarrow B \rightarrow C \rightarrow G \rightarrow H \rightarrow I \rightarrow J \rightarrow O \rightarrow R \)  
+2. \( S \rightarrow B \rightarrow T \rightarrow H \rightarrow I \rightarrow J \rightarrow O \rightarrow R \)  
+3. \( S \rightarrow B \rightarrow G \rightarrow H \rightarrow I \rightarrow J \rightarrow O \rightarrow R \)  
+4. \( S \rightarrow E \rightarrow F \rightarrow T \rightarrow H \rightarrow I \rightarrow J \rightarrow O \rightarrow R \)  
+
+Next, we check for nodes common to all paths. Node \( H \) appears in every path:  
+- Path 1 includes \( H \),  
+- Path 2 includes \( H \),  
+- Path 3 includes \( H \),  
+- Path 4 includes \( H \).  
+
+Removing \( H \) breaks all paths between S and R, as no alternative paths exist without \( H \). Thus, the minimum number of nodes to remove is 1, with the cut set being \( [H] \).  
+
+<|begin_of_box|>Nodes to remove: 1, Cut Set: [H]<|end_of_box|>
+--- Ground Truth ---
+{'length': 1, 'cut_set': [['H'], ['I']]}
+Progress: 450/450 images processed.
+============================================================

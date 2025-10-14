@@ -54,7 +54,7 @@ def initialize_model(model_name):
             temperature=0.1,
             base_url="https://aqueduct.ai.datalab.tuwien.ac.at",
             api_key=SecretStr(api_key),
-            timeout=250.0
+            timeout=295.0
         )
     else:
         raise ValueError(f"Unsupported model: {model_name}")

@@ -69,16 +69,12 @@
             gap: 2rem;
         }
         .chart-wrapper {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 1rem auto;
             padding: 1.5rem;
             border: 1px solid #eee;
             border-radius: 8px;
             background: #fff;
-        }
-        .chart-wrapper.beeswarm-chart {
-            max-width: 600px;
-            padding: 1rem;
         }
         .chart-title {
             text-align: center;
@@ -86,19 +82,15 @@
             margin-bottom: 2rem;
             color: #333;
         }
-        
         .axis-label {
-            font-size: 1rem;
-            fill: #000000;  
-            font-weight: bold;
-
+            font-size: 0.8rem;
+            fill: #555;
         }
         .tick text {
-            font-size: 0.95rem;
+            font-size: 0.75rem;
         }
         .legend {
-            font-size: 0.85rem;
-            font-weight: bold;
+            font-size: 0.8rem;
         }
 
         /* --- Tooltip Style --- */
@@ -151,7 +143,7 @@ let currentMode = 'aurora';
 // --- DATA LOADING ---
 async function loadAndAggregateResults(basePath, mode) {
     let allFilePaths = [];
-    const modelsToLoad = ["gemini-2.5-flash", "mistral-small-3.1-24b", "gpt-5"];
+    const modelsToLoad = ["gemini-2.5-flash", "mistral-small-3.1-24b"];
     for (const modelName of modelsToLoad) {
         const shotTypes = ["zero_shot", "few_shot"];
         const cotTypes = ["cot", "no_cot"];
@@ -160,17 +152,8 @@ async function loadAndAggregateResults(basePath, mode) {
             for (const cot of cotTypes) {
                 for (let attempt = 1; attempt <= MAX_ATTEMPTS_TO_CHECK; attempt++) {
                     const fileName = `results_attempt_${attempt}.csv`;
-                    let basePathForModel;
-                    if (modelName === "gpt-5") {
-                        basePathForModel = (mode === 'bastian')
-                            ? '../aesthetic_effect_human_performance/results/gpt-5-2025-08-07'
-                            : '../layout_algorithms_performance/results/gpt-5';
-                    } else {
-                        basePathForModel = (mode === 'bastian')
-                            ? '../aesthetic_effect_human_performance/results/' + modelName
-                            : '../layout_algorithms_performance/results/' + modelName;
-                    }
-                    const filePath = `${basePathForModel}/${shot}/${cot}/${fileName}`;
+                    const basePathForModel = (mode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
+                    const filePath = `${basePathForModel}/results/${modelName}/${shot}/${cot}/${fileName}`;
                     allFilePaths.push(filePath);
                 }
             }
@@ -180,6 +163,7 @@ async function loadAndAggregateResults(basePath, mode) {
     const resultsFromAllFiles = await Promise.all(promises);
     return resultsFromAllFiles.flat();
 }
+
 
 // --- DATA PROCESSING FUNCTIONS ---
 
@@ -193,20 +177,8 @@ function processDataForOverallChart(rawData, humanResults) {
                 if (results.length === 0) continue;
                 const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
                 const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
-                
-                let displayModelName;
-                if (modelName.includes('mistral')) {
-                    displayModelName = 'Mistral';
-                } else if (modelName.includes('gemini')) {
-                    displayModelName = 'Gemini';
-                } else if (modelName.includes('gpt-5')) { 
-                    displayModelName = 'GPT-5';
-                } else {
-                    displayModelName = modelName; // Fallback, should not happen
-                }
-
                 summary.push({
-                    model: displayModelName,
+                    model: modelName.includes('mistral') ? 'Mistral' : 'Gemini',
                     category: `${llmMode} (${cotMode})`,
                     accuracy: accuracy
                 });
@@ -214,7 +186,7 @@ function processDataForOverallChart(rawData, humanResults) {
         }
     }
     const humanAccuracy = (1 - d3.mean(Object.values(humanResults.errors))) * 100;
-    summary.push({ model: 'Human', category: 'Performance', accuracy: humanAccuracy });
+    summary.push({ model: 'Human', category: 'Human Performance', accuracy: humanAccuracy });
     return summary;
 }
 
@@ -252,8 +224,7 @@ function processDataForTaskChart(rawData) {
     // Group by Task (task1, task2, etc.) and then by configuration
     const groupedData = d3.group(rawData, 
         d => d.Task.split('_')[0], // Extracts 'task1', 'task2', etc.
-        //Add gpt-5 results
-        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : d["Model Name"].includes('gpt-5') ? 'GPT-5' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
+        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
     );
     
     const summary = [];
@@ -278,7 +249,7 @@ function processDataForLayoutChart(rawData) {
     // Group by Layout Type (FD-FR, PG, etc.)
     const groupedData = d3.group(rawData, 
         d => d.Layout.split('_')[0], // Extracts 'FD-FR', 'PG', etc.
-        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : d["Model Name"].includes('gpt-5') ? 'GPT-5' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
+        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
     );
 
     const summary = [];
@@ -360,31 +331,19 @@ function processDataForMatrix(rawData) {
     return { tasks, layouts, models, cells };
 }
 
-//PROVA funzione label
-function shortLabel(label) {
-    return label.replace("Few-Shot", "FS\n")
-                .replace("Zero-Shot", "ZS\n");
-}
-
 
 // --- D3.JS CHART DRAWING FUNCTIONS ---
 
 const tooltip = d3.select("#tooltip");
-
 
 // Draw the OVERALL ACCURACY bar chart
 function drawOverallAccuracyChart(summaryData) {
     const containerId = "#overall-accuracy-chart-container";
     d3.select(containerId).select("svg").remove();
 
-    const margin = { top: 20, right: 10, bottom: 120, left: 60 };
-    const width = 520 - margin.left - margin.right;
-    const height = 650 - margin.top - margin.bottom;
-    
-    //DIM FISSATE, VEDI SE E' IL CASO
-    // const margin = { top: 40, right: 40, bottom: 180, left: 80 };
-    // const width = 400; // Larghezza fissa dell'area di disegno
-    // const height = 600; // Altezza fissa dell'area di disegno
+    const margin = { top: 20, right: 30, bottom: 120, left: 60 };
+    const width = 800 - margin.left - margin.right;
+    const height = 450 - margin.top - margin.bottom;
 
     const svg = d3.select(containerId).append("svg")
         .attr("width", width + margin.left + margin.right)
@@ -396,29 +355,11 @@ function drawOverallAccuracyChart(summaryData) {
         .range([0, width]).padding(0.2);
 
     const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
+    const color = d3.scaleOrdinal().domain(['Mistral', 'Gemini', 'Human']).range([d3.interpolateOranges(0.6), d3.interpolateBlues(0.6), d3.interpolateGreens(0.6)]);
     
-    // Aggiungi 'GPT-5' al dominio e un nuovo colore al range
-    const color = d3.scaleOrdinal()
-        .domain(['Mistral', 'Gemini', 'GPT-5', 'Human']) // Aggiunto 'GPT-5'
-        .range([d3.interpolateOranges(0.6), d3.interpolateBlues(0.6), d3.interpolatePurples(0.6), d3.interpolateGreens(0.6)]);
-
-    //CHANGE THE LABEL ON X AXIS HERE
-    svg.append("g")
-        .attr("transform", `translate(5, ${height})`)
-        .call(d3.axisBottom(x).tickFormat(shortLabel))
-        .selectAll("text")
-        .attr("transform", "rotate(-25)")
-        .style("text-anchor", "end")
-        .attr("font-weight", "bold")
-        .style("font-size", "0.85rem");
+    svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x))
+        .selectAll("text").attr("transform", "translate(-10,0)rotate(-45)").style("text-anchor", "end");
     svg.append("g").call(d3.axisLeft(y));
-
-    svg.append("text")
-    .attr("class", "axis-label")
-    .attr("text-anchor", "middle")
-    .attr("x", width / 2)
-    .attr("y", height + 110) // change the distance from the graph
-    .text("Configuration");
     
     svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).attr("transform", "rotate(-90)").text("Average Accuracy (%)");
 
@@ -623,8 +564,11 @@ function drawBeeswarmMatrix(containerId, cellData) {
     
 }
 
-function drawBeeswarmMatrix(containerId, cellData) {
+// NEW: Draw the BEESWARM chart
+// If we don't want to use a force simulation, we can use d3.beeswarm plugin: https://github.com/Kcnarf/d3-beeswarm
+function drawBeeswarmChart(containerId, swarmData, modelName, colorScheme) {
     d3.select(containerId).select("svg").remove();
+    if (swarmData.length === 0) return;
 
     const margin = { top: 40, right: 30, bottom: 60, left: 60 };
     const width = 1000 - margin.left - margin.right;
@@ -640,16 +584,7 @@ function drawBeeswarmMatrix(containerId, cellData) {
     const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
     const color = d3.scaleOrdinal().domain(configs).range(colorScheme);
 
-    svg.append("g")
-        .attr("transform", `translate(20, ${height})`)
-        .call(d3.axisBottom(x).tickFormat(shortLabel))
-        .selectAll("text")
-        .attr("transform", "rotate(0)")
-        .attr("font-weight", "bold")
-        //make the text smaller 
-        .style("font-size", "0.85rem")
-        //.attr("y", 10)
-        .style("text-anchor", "end");
+    svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x));
     svg.append("g").call(d3.axisLeft(y));
     svg.append("text").attr("class", "axis-label").attr("text-anchor", "middle").attr("x", width / 2).attr("y", height + 40).text("Configuration");
     svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).text("Accuracy per Test (%)");
@@ -697,8 +632,8 @@ function drawGroupedBarChart(containerId, chartData, groupKey) {
 
     // increase right margin so legend can sit to the right
     const margin = { top: 40, right: 260, bottom: 60, left: 60 };
-    const width = 700 - margin.left - margin.right; // wider plotting area
-    const height = 700 - margin.top - margin.bottom;
+    const width = 1200 - margin.left - margin.right; // wider plotting area
+    const height = 500 - margin.top - margin.bottom;
 
     const svg = d3.select(containerId).append("svg")
         .attr("width", width + margin.left + margin.right)
@@ -712,7 +647,6 @@ function drawGroupedBarChart(containerId, chartData, groupKey) {
     // color map: each model (Gemini / Mistral) gets a set of shades
     const geminiCats = categories.filter(c => c.startsWith('Gemini'));
     const mistralCats = categories.filter(c => c.startsWith('Mistral'));
-    const gpt5Cats = categories.filter(c => c.startsWith('GPT-5'));
 
     const colorMap = {};
     // distribute t values evenly between (0,1) but avoid pure extremes (0 or 1)
@@ -723,11 +657,6 @@ function drawGroupedBarChart(containerId, chartData, groupKey) {
     mistralCats.forEach((c, i) => {
         const t = (i + 1) / (mistralCats.length + 1);
         colorMap[c] = d3.interpolateOranges(t);
-    });
-
-    gpt5Cats.forEach((c, i) => {
-        const t = (i + 1) / (gpt5Cats.length + 1);
-        colorMap[c] = d3.interpolatePurples(t);
     });
 
     // fallback color function (in case other categories appear)
@@ -819,13 +748,13 @@ async function renderDashboard() {
             <div id="overall-accuracy-chart-container"></div>
         </div>
 
-        <div class="chart-wrapper beeswarm-chart">
+        <div class="chart-wrapper">
             <h2 class="chart-title">Mistral: Performance Distribution by Configuration</h2>
             <p>Each dot is the average accuracy for a specific test (e.g. 'FD-FR_task1'), aggregated across all attempts and different target node pairs. This shows the consistency of the model. The red line is the overall average for the configuration.</p>
             <div id="mistral-beeswarm-container"></div>
         </div>
 
-        <div class="chart-wrapper beeswarm-chart">
+        <div class="chart-wrapper">
             <h2 class="chart-title">Gemini: Performance Distribution by Configuration</h2>
             <p>Each dot is the average accuracy for a specific test (e.g. 'FD-FR_task1'), aggregated across all attempts and different target node pairs. This shows the consistency of the model. The red line is the overall average for the configuration.</p>
             <div id="gemini-beeswarm-container"></div>

@@ -54,6 +54,7 @@ def initialize_model(model_name):
             temperature=0.1,
             base_url="https://aqueduct.ai.datalab.tuwien.ac.at",
             api_key=SecretStr(api_key),
+            timeout=295.0
         )
     else:
         raise ValueError(f"Unsupported model: {model_name}")
@@ -538,9 +539,9 @@ if __name__ == "__main__":
     # Parameters
     test_images_dir = "dataset/test"
     mode = "few_shot"  # "zero_shot" or "few_shot"
-    cot_mode = "cot"  # "no_cot" or "cot"
-    model_name = "gpt-5"
-    attempt = 19
+    cot_mode = "no_cot"  # "no_cot" or "cot"
+    model_name = "glm-4.5v-106b"
+    attempt = 1
     max_images_per_run = 280
 
     ### MODIFIED ###

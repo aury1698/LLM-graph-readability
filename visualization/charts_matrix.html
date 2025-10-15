@@ -340,7 +340,6 @@
             .attr("width", cellWidth)
             .attr("height", cellHeight)
             .attr("fill", "transparent")
-            .attr("stroke", "#eee");
 
         // For each cell, plot beeswarms for all models
         cellGroup.each(function (cellInfo) {
@@ -409,7 +408,6 @@
             const means = d3.rollup(pts, v => d3.mean(v, d => d.accuracy), d => d.modelKey);
             const meanGroup = g.append("g").attr("class", "means");
             Array.from(means.entries()).forEach(([m, meanVal]) => {
-                const colorDummy = { "rawModelName": m, "cotMode": "COT" }
 
                 const mi = models.indexOf(m);
                 const xCenter = slotX(mi);
@@ -435,8 +433,6 @@
                 .attr("cy", d => d.y)
                 .attr("r", d => d.r)
                 .attr("fill", d => colorPicker(d))
-                .attr("stroke", "#333")
-                .attr("stroke-width", 0.2)
                 .on("mouseover", () => tooltip.style("visibility", "visible"))
                 .on("mousemove", (event, d) => {
                     tooltip.html(
@@ -447,24 +443,26 @@
                 })
                 .on("mouseout", () => tooltip.style("visibility", "hidden"));
 
-            // small x-axis ticks for model slots (labels inside cell)
-            const labelGroup = g.append("g").attr("class", "cell-model-labels");
-            models.forEach((m, mi) => {
-                const colorDummy = { "rawModelName": m, "cotMode": "COT" }
-                labelGroup.append("text")
-                    .attr("x", slotX(mi))
-                    .attr("y", innerY + innerH - 2)
-                    .attr("text-anchor", "middle")
-                    .attr("dominant-baseline", "alphabetic")
-                    .style("font-size", "9px")
-                    .style("fill", "#444")
-                    .text(m.replace(/.*?(gemini|mistral|Gemini|Mistral).*/i, (s) => {
-                        // shorten common model labels if possible
-                        if (/mistral/i.test(s)) return "Mistral";
-                        if (/gemini/i.test(s)) return "Gemini";
-                        return s;
-                    }));
-            });
+            // Add model labels only in the very last row of the matrix
+            if (cellInfo.r === tasks.length - 1) {
+                const labelGroup = g.append("g").attr("class", "cell-model-labels");
+                models.forEach((m, mi) => {
+                    labelGroup.append("text")
+                        .attr("x", slotX(mi))
+                        .attr("y", innerY + innerH + 20)
+                        .attr("text-anchor", "middle")
+                        .attr("dominant-baseline", "alphabetic")
+                        .style("font-size", "11px")
+                        .style("fill", "#444")
+                        .text(m.replace(/.*?(gemini|mistral|Gemini|Mistral|gpt-5).*/i, (s) => {
+                            // shorten common model labels if possible
+                            if (/mistral/i.test(s)) return "Mistral";
+                            if (/gemini/i.test(s)) return "Gemini";
+                            if (/gpt-5/i.test(s)) return "gpt-5";
+                            return s;
+                        }));
+                });
+            }
 
         });
 

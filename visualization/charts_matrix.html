@@ -82,7 +82,7 @@
         }
 
         .chart-wrapper {
-            max-width: 1200px;
+            max-width: 1800px;
             margin: 1rem auto;
             padding: 1.5rem;
             border: 1px solid #eee;
@@ -261,7 +261,7 @@
         d3.select(containerId).select("svg").remove();
 
         const margin = { top: 40, right: 30, bottom: 60, left: 60 };
-        const width = 1000 - margin.left - margin.right;
+        const width = 1600 - margin.left - margin.right;
         const height = 500 - margin.top - margin.bottom;
 
         const svg = d3.select(containerId).append("svg")
@@ -285,6 +285,7 @@
 
             switch (d.rawModelName) {
                 case "gpt-5":
+                case "gpt-5-2025-08-07":
                     return colorOpenAI[i];
                 case "mistral-small-3.1-24b":
                     return colorMistral[i];
@@ -302,9 +303,6 @@
         const cellWidth = width / Math.max(1, cols);
         const cellHeight = height / Math.max(1, rows);
 
-        // color scale for models
-        const color = d3.scaleOrdinal().domain(models).range(d3.schemeTableau10);
-
         // Top column labels (layouts)
         svg.selectAll(".col-label").data(layouts).join("text")
             .attr("class", "col-label")
@@ -312,6 +310,7 @@
             .attr("y", -10)
             .attr("text-anchor", "middle")
             .style("font-weight", "600")
+            .style("fill", "#444")
             .text(d => d);
 
         // Left row labels (tasks)
@@ -322,6 +321,7 @@
             .attr("text-anchor", "end")
             .attr("dominant-baseline", "middle")
             .style("font-weight", "600")
+            .style("fill", "#444")
             .text(d => d);
 
         // Create a group for each cell
@@ -409,6 +409,8 @@
             const means = d3.rollup(pts, v => d3.mean(v, d => d.accuracy), d => d.modelKey);
             const meanGroup = g.append("g").attr("class", "means");
             Array.from(means.entries()).forEach(([m, meanVal]) => {
+                const colorDummy = { "rawModelName": m, "cotMode": "COT" }
+
                 const mi = models.indexOf(m);
                 const xCenter = slotX(mi);
                 const yPos = innerY + yScale(meanVal);
@@ -418,7 +420,7 @@
                     .attr("x2", xCenter + lineW / 2)
                     .attr("y1", yPos)
                     .attr("y2", yPos)
-                    .attr("stroke", color(m))
+                    .attr("stroke", "#ccc")
                     .attr("stroke-width", 2)
                     .attr("stroke-dasharray", "4 2")
                     .attr("opacity", 0.9);
@@ -434,7 +436,7 @@
                 .attr("r", d => d.r)
                 .attr("fill", d => colorPicker(d))
                 .attr("stroke", "#333")
-                .attr("stroke-width", 0.3)
+                .attr("stroke-width", 0.2)
                 .on("mouseover", () => tooltip.style("visibility", "visible"))
                 .on("mousemove", (event, d) => {
                     tooltip.html(
@@ -448,13 +450,14 @@
             // small x-axis ticks for model slots (labels inside cell)
             const labelGroup = g.append("g").attr("class", "cell-model-labels");
             models.forEach((m, mi) => {
+                const colorDummy = { "rawModelName": m, "cotMode": "COT" }
                 labelGroup.append("text")
                     .attr("x", slotX(mi))
                     .attr("y", innerY + innerH - 2)
                     .attr("text-anchor", "middle")
                     .attr("dominant-baseline", "alphabetic")
                     .style("font-size", "9px")
-                    .style("fill", color(m))
+                    .style("fill", "#444")
                     .text(m.replace(/.*?(gemini|mistral|Gemini|Mistral).*/i, (s) => {
                         // shorten common model labels if possible
                         if (/mistral/i.test(s)) return "Mistral";

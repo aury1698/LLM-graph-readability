@@ -170,7 +170,7 @@
     // --- DATA LOADING ---
     async function loadAndAggregateResults(basePath, mode) {
         let allFilePaths = [];
-        const modelsToLoad = ["gemini-2.5-flash", "mistral-small-3.1-24b", "gpt-5"];
+        const modelsToLoad = ["gemini-2.5-flash", "mistral-small-3.1-24b", "gpt-5", "glm-4.5v-106b"];
         for (const modelName of modelsToLoad) {
             const shotTypes = ["zero_shot", "few_shot"];
             const cotTypes = ["cot", "no_cot"];
@@ -273,11 +273,12 @@
         const { tasks, layouts, models, cells } = cellData;
 
         const colorPicker = d => {
-            // Cot is darker, No-Cot lighter
+            // No-Cot is lighter, Cot is darker, 
             // In order: Zero-Shot No-Cot, Zero-Shot Cot, Few-Shot No-Cot, Few-Shot Cot
             const colorOpenAI = ["#61bcf9", "#0c2bc9", "#e8b5fc", "#9d0cd6"];
             const colorMistral = ["#f3f99a", "#fce307", "#fca73f", "#fc742a"];
             const colorGemini = ["#f785cd", "#e21478", "#ed5a5a", "#e00808"]
+            const colorGLM = ["#3ed652", "#2e8b57", "#d1f963", "#b2c107"]
 
             let i = 0;
             i = d.cotMode === "COT" ? i + 1 : i;
@@ -291,6 +292,8 @@
                     return colorMistral[i];
                 case "gemini-2.5-flash":
                     return colorGemini[i];
+                case "glm-4.5v-106b":
+                    return colorGLM[i];
             }
         }
 
@@ -340,6 +343,33 @@
             .attr("width", cellWidth)
             .attr("height", cellHeight)
             .attr("fill", "transparent")
+
+        // draw internal grid lines between cells, but not on the outer edges of the matrix
+        cellGroup.each(function (cellInfo) {
+            const g = d3.select(this);
+
+            // Draw horizontal line (except for the last row)
+            if (cellInfo.r < tasks.length - 1) {
+            g.append("line")
+                .attr("x1", 0)
+                .attr("x2", cellWidth)
+                .attr("y1", cellHeight)
+                .attr("y2", cellHeight)
+                .attr("stroke", "#ccc")
+                .attr("stroke-width", 0.5);
+            }
+
+            // Draw vertical line (except for the last column)
+            if (cellInfo.c < layouts.length - 1) {
+            g.append("line")
+                .attr("x1", cellWidth)
+                .attr("x2", cellWidth)
+                .attr("y1", 0)
+                .attr("y2", cellHeight)
+                .attr("stroke", "#ccc")
+                .attr("stroke-width", 0.5);
+            }
+        });
 
         // For each cell, plot beeswarms for all models
         cellGroup.each(function (cellInfo) {
@@ -454,11 +484,12 @@
                         .attr("dominant-baseline", "alphabetic")
                         .style("font-size", "11px")
                         .style("fill", "#444")
-                        .text(m.replace(/.*?(gemini|mistral|Gemini|Mistral|gpt-5).*/i, (s) => {
+                        .text(m.replace(/.*?(gemini|mistral|Gemini|Mistral|gpt-5|glm).*/i, (s) => {
                             // shorten common model labels if possible
                             if (/mistral/i.test(s)) return "Mistral";
                             if (/gemini/i.test(s)) return "Gemini";
                             if (/gpt-5/i.test(s)) return "gpt-5";
+                            if (/glm/i.test(s)) return "GLM4.5";
                             return s;
                         }));
                 });

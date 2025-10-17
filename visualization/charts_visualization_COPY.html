@@ -200,7 +200,7 @@ function getGlobalColor(modelName, llmMode, cotMode) {
     const colorMistral = ["#f3f99a", "#fce307", "#fca73f", "#fc742a"];
     const colorGemini = ["#f785cd", "#e21478", "#ed5a5a", "#e00808"];
     const colorGLM = ["#3ed652", "#2e8b57", "#d1f963", "#b2c107"];
-    const colorHuman = "#663628"; // Brown color for humans (???) to differentiate from models
+    const colorHuman = "#888888"; // Dark grey color for humans to differentiate from models
     const colorDefault = "#cccccc";
 
     let i = 0;
@@ -331,6 +331,90 @@ function processDataForLayoutChart(rawData) {
     return { data: summary, categories: Array.from(categories).sort() };
 }
 
+
+// NEW: Process data for layout charts, but separated by model
+function processDataForLayoutChartByModel(rawData) {
+    const modelsData = {}; // { 'GPT-5': { data: [], categories: [] }, 'Mistral': ... }
+
+    // First, group all raw data by a simplified model name
+    const getModelName = (d) => {
+        const modelName = d["Model Name"];
+        if (modelName.includes('mistral')) return 'Mistral';
+        if (modelName.includes('gemini')) return 'Gemini';
+        if (modelName.includes('gpt-5')) return 'GPT-5';
+        if (modelName.includes('glm')) return 'GLM4.5';
+        return modelName; // fallback
+    };
+    
+    const groupedByModel = d3.group(rawData, getModelName);
+
+    // Now, process each model's data individually
+    for (const [modelName, modelRawData] of groupedByModel) {
+        // Group by Layout Type and then by configuration
+        const groupedData = d3.group(modelRawData,
+            d => d.Layout.split('_')[0], // 'FD-FR', 'PG', etc.
+            d => `${d["LLM Mode"]} (${d["COT Mode"]})` // 'zero_shot (cot)', etc.
+        );
+
+        const summary = [];
+        const categories = new Set();
+
+        for (const [layout, layoutData] of groupedData) {
+            const layoutSummary = { layout: layout };
+            for (const [config, results] of layoutData) {
+                if (results.length === 0) continue;
+                const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+                const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+                layoutSummary[config] = accuracy;
+                categories.add(config);
+            }
+            summary.push(layoutSummary);
+        }
+
+        modelsData[modelName] = {
+            data: summary,
+            categories: Array.from(categories).sort()
+        };
+    }
+    return modelsData;
+}
+
+
+// 3.5 Re-order layout categories for "bastian mode" (i.e. "m+" next to "m-")
+function reorderLayoutData(layoutSummary) {
+    const data = layoutSummary.data || [];
+    // Map baseName -> items
+    const baseMap = new Map();
+    const baseOrder = [];
+    data.forEach(item => {
+        const name = item.layout;
+        const m = name.match(/^(.+?)([-\+])?$/);
+        const base = m ? m[1] : name;
+        if (!baseMap.has(base)) {
+            baseMap.set(base, []);
+            baseOrder.push(base);
+        }
+        baseMap.get(base).push(item);
+    });
+
+    const ordered = [];
+    baseOrder.forEach(base => {
+        const entries = baseMap.get(base);
+        // Prefer to add '-' then '+' (so pair appears adjacent). If only one exists, keep it.
+        const minus = entries.find(e => /-$/.test(e.layout));
+        const plus = entries.find(e => /\+$/.test(e.layout));
+        
+        if (minus) ordered.push(minus);
+        if (plus) ordered.push(plus);
+        // Add any other variants (no +/-) afterwards
+        entries.forEach(e => {
+            if (!/\+$/.test(e.layout) && !/-$/.test(e.layout)) ordered.push(e);
+        });
+    });
+
+    return { data: ordered, categories: layoutSummary.categories };
+}
+
 // 4. Process data for the ACCURACY MATRIX chart
 function processDataForMatrix(rawData) {
     const tasks = ['task1', 'task2', 'task3'];
@@ -397,7 +481,7 @@ function processDataForMatrix(rawData) {
 // To shorten labels for X-axis (useful for Overall Accuracy chart to avoid label clutter)
 function shortLabel(label) {
     return label.replace("Few-Shot", "FS\n")
-                 .replace("Zero-Shot", "ZS\n");
+              .replace("Zero-Shot", "ZS\n");
 }
 
 
@@ -769,7 +853,8 @@ function drawGroupedBarChartLegend(containerId, categories, getColorMap) {
 
 
 // Draw a GROUPED BAR CHART (both for Tasks or Layouts)
-function drawGroupedBarChart(containerId, chartData, groupKey) {
+// MODIFIED to accept an optional model name for correct color mapping in model-specific charts
+function drawGroupedBarChart(containerId, chartData, groupKey, modelNameForColoring = null) {
     d3.select(containerId).select("svg").remove();
     const { data, categories } = chartData;
 
@@ -789,19 +874,21 @@ function drawGroupedBarChart(containerId, chartData, groupKey) {
     
     const getColorMap = (categories) => {
         const colorMap = {};
-        // changed logic to match the new color scheme
         categories.forEach(category => {
             const key = category.toLowerCase();
             
-            let modelName = 'unknown';
-            if (key.startsWith('mistral')) modelName = 'mistral';
-            else if (key.startsWith('gemini')) modelName = 'gemini';
-            else if (key.startsWith('gpt-5')) modelName = 'gpt-5';
-            else if (key.startsWith('glm')) modelName = 'glm';
+            // Use the passed-in model name for specific charts, or parse it from the category for the combined chart
+            let modelName = modelNameForColoring; 
+            if (!modelName) {
+                if (key.startsWith('mistral')) modelName = 'mistral';
+                else if (key.startsWith('gemini')) modelName = 'gemini';
+                else if (key.startsWith('gpt-5')) modelName = 'gpt-5';
+                else if (key.startsWith('glm')) modelName = 'glm';
+                else modelName = 'unknown';
+            }
 
             const cotMode = key.includes('(cot)') ? 'cot' : 'no_cot';
             
-            // new logic for colors
             let llmMode = 'zero_shot'; 
             if (key.includes('few_shot') || key.includes('few-shot')) {
                 llmMode = 'few_shot';
@@ -869,8 +956,14 @@ async function renderDashboard() {
     // Process data for all charts
     const overallSummary = processDataForOverallChart(rawData, human_results);
     const taskSummary = processDataForTaskChart(rawData);
-    const layoutSummary = processDataForLayoutChart(rawData);
+    let layoutSummary = processDataForLayoutChart(rawData);
     const matrixData = processDataForMatrix(rawData);
+    const modelSpecificLayoutData = processDataForLayoutChartByModel(rawData); // NEW: Data for specific charts
+
+    // Re-order layout data for "bastian mode"
+    if (currentMode === 'bastian') {
+        layoutSummary = reorderLayoutData(layoutSummary);
+    }
 
     // Render the page structure with containers for all charts
     document.getElementById('charts-container').innerHTML = `
@@ -906,6 +999,8 @@ async function renderDashboard() {
                 <div id="layout-legend-container"></div>
             </div>
         </div>
+
+        <div id="model-specific-charts-container"></div>
         `;
 
     // Draw each all charts
@@ -919,6 +1014,43 @@ async function renderDashboard() {
     // Draw Layout chart and get legend data
     const layoutLegendData = drawGroupedBarChart("#layout-accuracy-chart-container", layoutSummary, "layout");
     drawGroupedBarChartLegend("#layout-legend-container", layoutLegendData.categories, layoutLegendData.getColorMap);
+
+    // --- NEW: Draw the model-specific layout charts ---
+    const modelChartsContainer = document.getElementById('model-specific-charts-container');
+    const modelNames = Object.keys(modelSpecificLayoutData).sort(); // Sort for consistent order
+
+    for (const modelName of modelNames) {
+        const chartData = modelSpecificLayoutData[modelName];
+
+        // Create wrapper for this model's chart
+        const chartWrapper = document.createElement('div');
+        chartWrapper.className = 'chart-and-legend-wrapper';
+        
+        const chartId = `layout-accuracy-chart-${modelName.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        const legendId = `layout-legend-${modelName.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+
+        chartWrapper.innerHTML = `
+            <div class="chart-container-inner">
+                <h2 class="chart-title">Accuracy by Layout for ${modelName}</h2>
+                <div id="${chartId}"></div>
+            </div>
+            <div class="legend-container">
+                <h3>Configuration Legend</h3>
+                <div id="${legendId}"></div>
+            </div>
+        `;
+        modelChartsContainer.appendChild(chartWrapper);
+
+        // Re-order if bastian mode
+        let finalChartData = chartData;
+        if (currentMode === 'bastian') {
+            finalChartData = reorderLayoutData(chartData);
+        }
+
+        // Draw the chart and legend, passing the modelName for correct coloring
+        const legendData = drawGroupedBarChart(`#${chartId}`, finalChartData, "layout", modelName);
+        drawGroupedBarChartLegend(`#${legendId}`, legendData.categories, legendData.getColorMap);
+    }
 }
 
 // --- Event Listeners ---

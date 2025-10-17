@@ -68,6 +68,7 @@
             grid-template-columns: 1fr; /* Single column layout */
             gap: 2rem;
         }
+        /* Main wrapper for all charts (e.g., Matrix, Overall Accuracy) */
         .chart-wrapper {
             max-width: 1800px;
             margin: 1rem auto;
@@ -76,10 +77,33 @@
             border-radius: 8px;
             background: #fff;
         }
-        /* .chart-wrapper.beeswarm-chart {
-            max-width: 600px;
-            padding: 1rem;
-        } */
+        
+        /* NEW LAYOUT: to split Grouped Charts from Legend */
+        .chart-and-legend-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px; /* space between chart and legend */
+            max-width: 1200px; /* max overall width for the entire block */
+            margin: 1rem auto;
+            padding: 1.5rem;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background: #fff;
+        }
+        /* N.B. inner container hosting the CHART's SVG */
+        .chart-container-inner {
+            /* width is controlled by JS, but this keeps them organized */
+            flex-shrink: 0;
+        }
+        /* separate legend container (outside the main SVG dimensions) */
+        .legend-container {
+            flex-shrink: 0;
+            width: 300px; 
+            padding-top: 50px; /* vertically align legend with chart start */
+        }
+        /* ------------------------------------------------ */
+
         .chart-title {
             text-align: center;
             margin-top: 0;
@@ -91,7 +115,7 @@
             font-weight: bold;
         }
         .axis-label, .col-label, .row-label, .tick text {
-            fill: #696969; 
+            fill: #696969; /* Dark gray for labels */
             color: #696969; 
         }
         .legend {
@@ -149,10 +173,8 @@
         </div>
     </div>
 
-    <!-- Container where charts will be rendered -->
     <div id="charts-container" class="chart-grid">
-        <!-- Charts will be dynamically added here -->
-    </div>
+        </div>
     
     <div id="tooltip" class="tooltip"></div>
 
@@ -165,29 +187,60 @@
 
 let currentMode = 'aurora';
 
+
+function getGlobalColor(modelName, llmMode, cotMode) {
+    const name = modelName.toLowerCase();
+    const llm = (llmMode || '').toLowerCase();
+    const cot = (cotMode || '').toLowerCase();
+
+    // New: color scheme definition based on model and shot/cot
+    // No-Cot is lighter, Cot is darker, 
+    // In order: Zero-Shot No-Cot, Zero-Shot Cot, Few-Shot No-Cot, Few-Shot Cot
+    const colorOpenAI = ["#61bcf9", "#0c2bc9", "#e8b5fc", "#9d0cd6"]; 
+    const colorMistral = ["#f3f99a", "#fce307", "#fca73f", "#fc742a"];
+    const colorGemini = ["#f785cd", "#e21478", "#ed5a5a", "#e00808"];
+    const colorGLM = ["#3ed652", "#2e8b57", "#d1f963", "#b2c107"];
+    const colorHuman = "#663628"; // Brown color for humans (???) to differentiate from models
+    const colorDefault = "#cccccc";
+
+    let i = 0;
+    if (cot === 'cot') i += 1;
+    if (llm.includes('few')) i += 2;
+
+    if (name.includes('gpt-5')) return colorOpenAI[i];
+    if (name.includes('mistral')) return colorMistral[i];
+    if (name.includes('gemini')) return colorGemini[i];
+    if (name.includes('glm')) return colorGLM[i];
+    if (name.includes('human')) return colorHuman;
+    
+    return colorDefault; // Fallback for any unknown model
+}
+
 // --- DATA LOADING ---
 async function loadAndAggregateResults(basePath, mode) {
-        let allFilePaths = [];
-        const modelsToLoad = ["gemini-2.5-flash", "mistral-small-3.1-24b", "gpt-5", "glm-4.5v-106b"];
-        for (const modelName of modelsToLoad) {
-            const shotTypes = ["zero_shot", "few_shot"];
-            const cotTypes = ["cot", "no_cot"];
-            const MAX_ATTEMPTS_TO_CHECK = 20;
-            for (const shot of shotTypes) {
-                for (const cot of cotTypes) {
-                    for (let attempt = 1; attempt <= MAX_ATTEMPTS_TO_CHECK; attempt++) {
-                        const fileName = `results_attempt_${attempt}.csv`;
-                        const basePathForModel = (mode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
-                        const filePath = `${basePathForModel}/results/${modelName}/${shot}/${cot}/${fileName}`;
-                        allFilePaths.push(filePath);
-                    }
+    let allFilePaths = [];
+    // Modify here to handle the gpt-5 path
+    const modelsToLoad = ["gemini-2.5-flash", "mistral-small-3.1-24b", "gpt-5", "glm-4.5v-106b"];
+    for (const modelName of modelsToLoad) {
+        const shotTypes = ["zero_shot", "few_shot"];
+        const cotTypes = ["cot", "no_cot"];
+        const MAX_ATTEMPTS_TO_CHECK = 20;
+        for (const shot of shotTypes) {
+            for (const cot of cotTypes) {
+                for (let attempt = 1; attempt <= MAX_ATTEMPTS_TO_CHECK; attempt++) {
+                    const fileName = `results_attempt_${attempt}.csv`;
+                    // Note: Path depends on the final file structure. Using current structure:
+                    let basePathForModel = (mode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
+                    const filePath = `${basePathForModel}/results/${modelName}/${shot}/${cot}/${fileName}`;
+                    allFilePaths.push(filePath);
                 }
             }
         }
-        const promises = allFilePaths.map(path => d3.csv(path).catch(error => []));
-        const resultsFromAllFiles = await Promise.all(promises);
-        return resultsFromAllFiles.flat();
     }
+    const promises = allFilePaths.map(path => d3.csv(path).catch(error => []));
+    const resultsFromAllFiles = await Promise.all(promises);
+    return resultsFromAllFiles.flat();
+}
 
 // --- DATA PROCESSING FUNCTIONS ---
 
@@ -207,10 +260,12 @@ function processDataForOverallChart(rawData, humanResults) {
                     displayModelName = 'Mistral';
                 } else if (modelName.includes('gemini')) {
                     displayModelName = 'Gemini';
-                } else if (modelName.includes('gpt-5')) { // Aggiungi questa condizione per GPT-5
+                } else if (modelName.includes('gpt-5')) {
                     displayModelName = 'GPT-5';
+                } else if (modelName.includes('glm')) {
+                    displayModelName = 'GLM4.5';
                 } else {
-                    displayModelName = modelName; // Fallback per altri modelli
+                    displayModelName = modelName;
                 }
 
                 summary.push({
@@ -226,41 +281,12 @@ function processDataForOverallChart(rawData, humanResults) {
     return summary;
 }
 
-// It calculates accuracy for each test (e.g., FD-FR_task1) for each configuration.
-// function processDataForBeeswarm(rawData, modelFilter) {
-//     const filteredData = rawData.filter(d => d["Model Name"].includes(modelFilter));
-    
-//     // Group by configuration, then by test name (e.g., 'FD-FR_task1')
-//     const groupedData = d3.group(filteredData,
-//         d => `${d["LLM Mode"]} (${d["COT Mode"]})`, // The 4 configurations 
-//         d => d.Layout.split('_').slice(0, 2).join('_') //It takes the name of the layout & the task to construct a test identifier (so different points that share these two end up in the same group) --> e.g., 'FD-FR_task1'
-//     );
-
-//     const swarmData = [];
-//     for (const [config, configData] of groupedData) {
-//         for (const [testName, results] of configData) {
-//             if (results.length === 0) continue;
-//             const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
-//             const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
-            
-//             // Each point in the swarm will be an object like this
-//             swarmData.push({
-//                 config: config,
-//                 test: testName,
-//                 accuracy: accuracy
-//             });
-//         }
-//     }
-//     return swarmData;
-// }
-
-// 3. Process data for the ACCURACY BY TASK chart
+// 2. Process data for the ACCURACY BY TASK chart
 function processDataForTaskChart(rawData) {
     // Group by Task (task1, task2, etc.) and then by configuration
     const groupedData = d3.group(rawData, 
         d => d.Task.split('_')[0], // Extracts 'task1', 'task2', etc.
-        //Add gpt-5 results
-        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : d["Model Name"].includes('gpt-5') ? 'GPT-5' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
+        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : d["Model Name"].includes('gpt-5') ? 'GPT-5' : d["Model Name"].includes('glm') ? 'GLM4.5' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
     );
     
     const summary = [];
@@ -280,12 +306,12 @@ function processDataForTaskChart(rawData) {
     return { data: summary, categories: Array.from(categories) };
 }
 
-// 4. Process data for the ACCURACY BY LAYOUT chart
+// 3. Process data for the ACCURACY BY LAYOUT chart
 function processDataForLayoutChart(rawData) {
     // Group by Layout Type (FD-FR, PG, etc.)
     const groupedData = d3.group(rawData, 
         d => d.Layout.split('_')[0], // Extracts 'FD-FR', 'PG', etc.
-        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : d["Model Name"].includes('gpt-5') ? 'GPT-5' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
+        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : d["Model Name"].includes('gpt-5') ? 'GPT-5' : d["Model Name"].includes('glm') ? 'GLM4.5' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
     );
 
     const summary = [];
@@ -305,73 +331,75 @@ function processDataForLayoutChart(rawData) {
     return { data: summary, categories: Array.from(categories).sort() };
 }
 
-//PROVA funzione label
-function shortLabel(label) {
-    return label.replace("Few-Shot", "FS\n")
-                .replace("Zero-Shot", "ZS\n");
+// 4. Process data for the ACCURACY MATRIX chart
+function processDataForMatrix(rawData) {
+    const tasks = ['task1', 'task2', 'task3'];
+    const layouts = Array.from(new Set(rawData.map(d => (d.Layout || '').split('_')[0]))).filter(Boolean).sort();
+    const models = Array.from(new Set(rawData.map(d => d["Model Name"]))).sort();
+
+    const cells = {};
+    for (const t of tasks) {
+        cells[t] = {};
+        for (const l of layouts) {
+            cells[t][l] = {};
+            for (const m of models) cells[t][l][m] = [];
+        }
+    }
+
+    const splitLayout = d => (d.Layout || '').split('_').slice(0, 3).join('_'); // e.g., 'FD-FR_task1_gt2'
+    const grouped = d3.group(rawData, d => splitLayout(d), d => d["Model Name"]);
+
+    for (const [testId, modelMap] of grouped) {
+        const parts = testId.split('_');
+        const layout = parts[0];
+        const taskToken = parts.slice(1).find(p => p.toLowerCase().startsWith('task')) || parts.slice(1).join('_');
+        const task = (taskToken || '').toLowerCase();
+
+        // skip unknown tasks/layouts
+        if (!cells[task] || !cells[task][layout]) continue;
+
+        for (const modelLabel of models) {
+            const results = modelMap.get(modelLabel) || [];
+            if (results.length === 0) continue;
+
+            // group results by the triple: LLM Mode x COT Mode x gtN
+            const tripleGroups = d3.group(results, r => {
+                const llm = (r["LLM Mode"] || '').trim();
+                const cot = (r["COT Mode"] || '').trim();
+                const m = (r.Layout || '').match(/_gt(\d+)/i);
+                const gt = m ? `gt${m[1]}` : 'gt_unknown';
+                return `${llm}||${cot}||${gt}`;
+            });
+
+            // compute average
+            for (const [key, arr] of tripleGroups) {
+                if (arr.length === 0) continue;
+                const [llmMode, cotMode, gtToken] = key.split('||');
+                const correct = arr.filter(r => r["Correct Prediction (True/False)"] === 'True').length;
+                const accuracy = (arr.length > 0) ? (correct / arr.length) * 100 : 0;
+                const point = {
+                    test: testId,
+                    llmMode,
+                    cotMode,
+                    accuracy,
+                    count: arr.length,
+                    rawModelName: arr[0]["Model Name"],
+                    gt: gtToken
+                };
+                cells[task][layout][modelLabel].push(point);
+            }
+        }
+    }
+    return { tasks, layouts, models, cells };
 }
 
-//NEW: 5. Process data for the ACCURACY MATRIX chart
-function processDataForMatrix(rawData) {
-        const tasks = ['task1', 'task2', 'task3'];
-        const layouts = Array.from(new Set(rawData.map(d => (d.Layout || '').split('_')[0]))).filter(Boolean).sort();
-        const models = Array.from(new Set(rawData.map(d => d["Model Name"]))).sort();
 
-        const cells = {};
-        for (const t of tasks) {
-            cells[t] = {};
-            for (const l of layouts) {
-                cells[t][l] = {};
-                for (const m of models) cells[t][l][m] = [];
-            }
-        }
+// To shorten labels for X-axis (useful for Overall Accuracy chart to avoid label clutter)
+function shortLabel(label) {
+    return label.replace("Few-Shot", "FS\n")
+                 .replace("Zero-Shot", "ZS\n");
+}
 
-        const splitLayout = d => (d.Layout || '').split('_').slice(0, 3).join('_'); // e.g., 'FD-FR_task1_gt2'
-        const grouped = d3.group(rawData, d => splitLayout(d), d => d["Model Name"]);
-
-        for (const [testId, modelMap] of grouped) {
-            const parts = testId.split('_');
-            const layout = parts[0];
-            const taskToken = parts.slice(1).find(p => p.toLowerCase().startsWith('task')) || parts.slice(1).join('_');
-            const task = (taskToken || '').toLowerCase();
-
-            // skip unknown tasks/layouts
-            if (!cells[task] || !cells[task][layout]) continue;
-
-            for (const modelLabel of models) {
-                const results = modelMap.get(modelLabel) || [];
-                if (results.length === 0) continue;
-
-                // group results by the triple: LLM Mode x COT Mode x gtN
-                const tripleGroups = d3.group(results, r => {
-                    const llm = (r["LLM Mode"] || '').trim();
-                    const cot = (r["COT Mode"] || '').trim();
-                    const m = (r.Layout || '').match(/_gt(\d+)/i);
-                    const gt = m ? `gt${m[1]}` : 'gt_unknown';
-                    return `${llm}||${cot}||${gt}`;
-                });
-
-                // compute average
-                for (const [key, arr] of tripleGroups) {
-                    if (arr.length === 0) continue;
-                    const [llmMode, cotMode, gtToken] = key.split('||');
-                    const correct = arr.filter(r => r["Correct Prediction (True/False)"] === 'True').length;
-                    const accuracy = (arr.length > 0) ? (correct / arr.length) * 100 : 0;
-                    const point = {
-                        test: testId,
-                        llmMode,
-                        cotMode,
-                        accuracy,
-                        count: arr.length,
-                        rawModelName: arr[0]["Model Name"],
-                        gt: gtToken
-                    };
-                    cells[task][layout][modelLabel].push(point);
-                }
-            }
-        }
-        return { tasks, layouts, models, cells };
-    }
 
 // --- D3.JS CHART DRAWING FUNCTIONS ---
 
@@ -387,11 +415,6 @@ function drawOverallAccuracyChart(summaryData) {
     const width = 520 - margin.left - margin.right;
     const height = 650 - margin.top - margin.bottom;
     
-    //DIM FISSATE, VEDI SE E' IL CASO
-    // const margin = { top: 40, right: 40, bottom: 180, left: 80 };
-    // const width = 400; // Larghezza fissa dell'area di disegno
-    // const height = 600; // Altezza fissa dell'area di disegno
-
     const svg = d3.select(containerId).append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
@@ -402,13 +425,9 @@ function drawOverallAccuracyChart(summaryData) {
         .range([0, width]).padding(0.2);
 
     const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
-    
-    // Aggiungi 'GPT-5' al dominio e un nuovo colore al range
-    const color = d3.scaleOrdinal()
-        .domain(['Mistral', 'Gemini', 'GPT-5', 'Human']) // Aggiunto 'GPT-5'
-        .range([d3.interpolateOranges(0.6), d3.interpolateBlues(0.6), d3.interpolatePurples(0.6), d3.interpolateGreens(0.6)]);
 
-    //CHANGE THE LABEL ON X AXIS HERE
+
+    // Draw X Axis
     svg.append("g")
         .attr("transform", `translate(5, ${height})`)
         .call(d3.axisBottom(x).tickFormat(shortLabel))
@@ -419,19 +438,33 @@ function drawOverallAccuracyChart(summaryData) {
         .style("font-size", "0.85rem");
     svg.append("g").call(d3.axisLeft(y));
 
+    // Draw X Axis Label
     svg.append("text")
     .attr("class", "axis-label")
     .attr("text-anchor", "middle")
     .attr("x", width / 2)
-    .attr("y", height + 110) // change the distance from the graph
+    .attr("y", height + 110)
     .text("Configuration");
     
+    // Draw Y Axis Label
     svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).attr("transform", "rotate(-90)").text("Average Accuracy (%)");
 
+    // Draw Bars
     svg.selectAll(".bar").data(summaryData).join("rect")
         .attr("x", d => x(`${d.model} ${d.category}`)).attr("y", d => y(d.accuracy))
         .attr("width", x.bandwidth()).attr("height", d => height - y(d.accuracy))
-        .attr("fill", d => color(d.model))
+        .attr("fill", d => {
+            const category = d.category.toLowerCase();
+            const cotMode = category.includes('(cot)') ? 'cot' : 'no_cot';
+            
+            // new logic for colors to match new color scheme
+            let llmMode = 'zero_shot'; 
+            if (category.includes('few_shot') || category.includes('few-shot')) {
+                llmMode = 'few_shot';
+            }
+            
+            return getGlobalColor(d.model, llmMode, cotMode);
+        })
         .on("mouseover", () => tooltip.style("visibility", "visible"))
         .on("mousemove", (event, d) => {
             tooltip.html(`<b>${d.model} ${d.category}</b><br>Accuracy: ${d.accuracy.toFixed(2)}%`)
@@ -442,222 +475,223 @@ function drawOverallAccuracyChart(summaryData) {
 
 // NEW: Draw the ACCURACY MATRIX chart
 function drawBeeswarmMatrix(containerId, cellData) {
-        d3.select(containerId).select("svg").remove();
+    d3.select(containerId).select("svg").remove();
 
-        const margin = { top: 40, right: 30, bottom: 60, left: 60 };
-        const width = 1600 - margin.left - margin.right;
-        const height = 500 - margin.top - margin.bottom;
+    const margin = { top: 40, right: 30, bottom: 60, left: 60 };
+    const width = 1600 - margin.left - margin.right;
+    const height = 500 - margin.top - margin.bottom;
 
-        const svg = d3.select(containerId).append("svg")
-            .attr("width", width + margin.left + margin.right)
-            .attr("height", height + margin.top + margin.bottom)
-            .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    const svg = d3.select(containerId).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-        // build matrix data
-        const { tasks, layouts, models, cells } = cellData;
+    // build matrix data
+    const { tasks, layouts, models, cells } = cellData;
 
-        const colorPicker = d => {
-            // No-Cot is lighter, Cot is darker, 
-            // In order: Zero-Shot No-Cot, Zero-Shot Cot, Few-Shot No-Cot, Few-Shot Cot
-            const colorOpenAI = ["#61bcf9", "#0c2bc9", "#e8b5fc", "#9d0cd6"];
-            const colorMistral = ["#f3f99a", "#fce307", "#fca73f", "#fc742a"];
-            const colorGemini = ["#f785cd", "#e21478", "#ed5a5a", "#e00808"]
-            const colorGLM = ["#3ed652", "#2e8b57", "#d1f963", "#b2c107"]
+    const colorPicker = d => {
+        // Color scheme definition based on model and shot/cot
+        const colorOpenAI = ["#61bcf9", "#0c2bc9", "#e8b5fc", "#9d0cd6"];
+        const colorMistral = ["#f3f99a", "#fce307", "#fca73f", "#fc742a"];
+        const colorGemini = ["#f785cd", "#e21478", "#ed5a5a", "#e00808"]
+        const colorGLM = ["#3ed652", "#2e8b57", "#d1f963", "#b2c107"]
 
-            let i = 0;
-            i = d.cotMode === "COT" ? i + 1 : i;
-            i = d.llmMode === "Few-Shot" ? i + 2 : i;
+        let i = 0;
+        i = d.cotMode === "COT" ? i + 1 : i;
+        i = d.llmMode === "Few-Shot" ? i + 2 : i;
 
-            switch (d.rawModelName) {
-                case "gpt-5":
-                case "gpt-5-2025-08-07":
-                    return colorOpenAI[i];
-                case "mistral-small-3.1-24b":
-                    return colorMistral[i];
-                case "gemini-2.5-flash":
-                    return colorGemini[i];
-                case "glm-4.5v-106b":
-                    return colorGLM[i];
-            }
+        switch (d.rawModelName) {
+            case "gpt-5":
+            case "gpt-5-2025-08-07":
+                return colorOpenAI[i];
+            case "mistral-small-3.1-24b":
+                return colorMistral[i];
+            case "gemini-2.5-flash":
+                return colorGemini[i];
+            case "glm-4.5v-106b":
+                return colorGLM[i];
+        }
+    }
+
+    // layout settings for the matrix
+    const cols = layouts.length;
+    const rows = tasks.length;
+    const cellPadding = 8;
+    const cellInnerPadding = 6;
+
+    const cellWidth = width / Math.max(1, cols);
+    const cellHeight = height / Math.max(1, rows);
+
+    // Top column labels (layouts)
+    svg.selectAll(".col-label").data(layouts).join("text")
+        .attr("class", "col-label")
+        .attr("x", (_, i) => i * cellWidth + cellWidth / 2)
+        .attr("y", -10)
+        .attr("text-anchor", "middle")
+        .style("font-weight", "600")
+        .text(d => d);
+
+    // Left row labels (tasks)
+    svg.selectAll(".row-label").data(tasks).join("text")
+        .attr("class", "row-label")
+        .attr("x", -10)
+        .attr("y", (_, i) => i * cellHeight + cellHeight / 2)
+        .attr("text-anchor", "end")
+        .attr("dominant-baseline", "middle")
+        .style("font-weight", "600")
+        .text(d => d);
+
+    // Create a group for each cell
+    const cellGroup = svg.selectAll(".matrix-cell")
+        .data(
+            tasks.flatMap((t, r) => layouts.map((l, c) => ({ task: t, layout: l, r, c })))
+        )
+        .join("g")
+        .attr("class", "matrix-cell")
+        .attr("fill", "transparent")
+        .attr("fill", "#ffffff")
+        .attr("transform", d => `translate(${d.c * cellWidth}, ${d.r * cellHeight})`);
+
+    // draw cell backgrounds / borders
+    cellGroup.append("rect")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", cellWidth)
+        .attr("height", cellHeight)
+        .attr("fill", "transparent")
+
+    // draw internal grid lines between cells, but not on the outer edges of the matrix
+    cellGroup.each(function (cellInfo) {
+        const g = d3.select(this);
+
+        // Draw horizontal line (except for the last row)
+        if (cellInfo.r < tasks.length - 1) {
+        g.append("line")
+            .attr("x1", 0)
+            .attr("x2", cellWidth)
+            .attr("y1", cellHeight)
+            .attr("y2", cellHeight)
+            .attr("stroke", "#ccc")
+            .attr("stroke-width", 0.5);
         }
 
-        // layout settings for the matrix
-        const cols = layouts.length;
-        const rows = tasks.length;
-        const cellPadding = 8;
-        const cellInnerPadding = 6;
+        // Draw vertical line (except for the last column)
+        if (cellInfo.c < layouts.length - 1) {
+        g.append("line")
+            .attr("x1", cellWidth)
+            .attr("x2", cellWidth)
+            .attr("y1", 0)
+            .attr("y2", cellHeight)
+            .attr("stroke", "#ccc")
+            .attr("stroke-width", 0.5);
+        }
+    });
 
-        const cellWidth = width / Math.max(1, cols);
-        const cellHeight = height / Math.max(1, rows);
+    // For each cell, plot beeswarms for all models
+    cellGroup.each(function (cellInfo) {
+        const g = d3.select(this);
 
-        // Top column labels (layouts)
-        svg.selectAll(".col-label").data(layouts).join("text")
-            .attr("class", "col-label")
-            .attr("x", (_, i) => i * cellWidth + cellWidth / 2)
-            .attr("y", -10)
-            .attr("text-anchor", "middle")
-            .style("font-weight", "600")
-            .style("fill", "#444")
-            .text(d => d);
+        // inner plotting area
+        const innerX = cellPadding;
+        const innerY = cellPadding;
+        const innerW = cellWidth - cellPadding * 2;
+        const innerH = cellHeight - cellPadding * 2;
 
-        // Left row labels (tasks)
-        svg.selectAll(".row-label").data(tasks).join("text")
-            .attr("class", "row-label")
-            .attr("x", -10)
-            .attr("y", (_, i) => i * cellHeight + cellHeight / 2)
-            .attr("text-anchor", "end")
-            .attr("dominant-baseline", "middle")
-            .style("font-weight", "600")
-            .style("fill", "#444")
-            .text(d => d);
+        // y-scale maps accuracy to vertical position within the cell (same 0-100% for every cell)
+        const yScale = d3.scaleLinear().domain([0, 100]).range([innerH - cellInnerPadding, cellInnerPadding]);
 
-        // Create a group for each cell
-        const cellGroup = svg.selectAll(".matrix-cell")
-            .data(
-                tasks.flatMap((t, r) => layouts.map((l, c) => ({ task: t, layout: l, r, c })))
-            )
-            .join("g")
-            .attr("class", "matrix-cell")
-            .attr("transform", d => `translate(${d.c * cellWidth}, ${d.r * cellHeight})`);
+        // Hide the default left axis (it is created later) so it doesn't consume horizontal space
+        if (!document.getElementById('hide-cell-y-axis-style')) {
+            d3.select("head").append("style")
+                .attr("id", "hide-cell-y-axis-style")
+                .text(".cell-y-axis { display: none !important; }");
+        }
 
-        // draw cell backgrounds / borders
-        cellGroup.append("rect")
-            .attr("x", 0)
-            .attr("y", 0)
-            .attr("width", cellWidth)
-            .attr("height", cellHeight)
-            .attr("fill", "transparent")
 
-        // draw internal grid lines between cells, but not on the outer edges of the matrix
-        cellGroup.each(function (cellInfo) {
-            const g = d3.select(this);
+        // Model slot x positions inside the cell (shift right a bit so axis doesn't overlap)
+        const slotX = i => innerX + (i + 0.5) * (innerW / models.length) + 6;
 
-            // Draw horizontal line (except for the last row)
-            if (cellInfo.r < tasks.length - 1) {
-            g.append("line")
-                .attr("x1", 0)
-                .attr("x2", cellWidth)
-                .attr("y1", cellHeight)
-                .attr("y2", cellHeight)
-                .attr("stroke", "#ccc")
-                .attr("stroke-width", 0.5);
-            }
-
-            // Draw vertical line (except for the last column)
-            if (cellInfo.c < layouts.length - 1) {
-            g.append("line")
-                .attr("x1", cellWidth)
-                .attr("x2", cellWidth)
-                .attr("y1", 0)
-                .attr("y2", cellHeight)
-                .attr("stroke", "#ccc")
-                .attr("stroke-width", 0.5);
-            }
+        // Collect points for this cell from cells[task][layout][model]
+        const pts = [];
+        models.forEach((m, mi) => {
+            const arr = (cells[cellInfo.task] && cells[cellInfo.task][cellInfo.layout] && cells[cellInfo.task][cellInfo.layout][m]) || [];
+            arr.forEach(d => {
+                pts.push(Object.assign({}, d, {
+                    modelKey: m,
+                    modelIndex: mi,
+                    // initial anchor target for simulation
+                    targetX: slotX(mi),
+                    // initial approximate y (add innerY because axis transform moved origin)
+                    targetY: innerY + yScale(d.accuracy),
+                    r: 3.5
+                }));
+            });
         });
 
-        // For each cell, plot beeswarms for all models
-        cellGroup.each(function (cellInfo) {
-            const g = d3.select(this);
+        if (pts.length === 0) {
+            // small hint when no points
+            g.append("text")
+                .attr("x", innerX + innerW / 2)
+                .attr("y", innerY + innerH / 2)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "middle")
+                .attr("fill", "#999")
+                .style("font-size", "10px")
+                .text("no data");
+            return;
+        }
 
-            // inner plotting area
-            const innerX = cellPadding;
-            const innerY = cellPadding;
-            const innerW = cellWidth - cellPadding * 2;
-            const innerH = cellHeight - cellPadding * 2;
+        // run a local force simulation to avoid overlap, grouping points around each model slot
+        const sim = d3.forceSimulation(pts)
+            .force("x", d3.forceX(d => d.targetX).strength(1))
+            .force("y", d3.forceY(d => d.targetY).strength(1))
+            .force("collide", d3.forceCollide(d => d.r + 0.5))
+            .stop();
 
-            // y-scale maps accuracy to vertical position within the cell (same 0-100% for every cell)
-            const yScale = d3.scaleLinear().domain([0, 100]).range([innerH - cellInnerPadding, cellInnerPadding]);
+        for (let i = 0; i < 80; ++i) sim.tick();
 
-            // Hide the default left axis (it is created later) so it doesn't consume horizontal space
-            if (!document.getElementById('hide-cell-y-axis-style')) {
-                d3.select("head").append("style")
-                    .attr("id", "hide-cell-y-axis-style")
-                    .text(".cell-y-axis { display: none !important; }");
-            }
+        // draw mean lines per model within this cell
+        const means = d3.rollup(pts, v => d3.mean(v, d => d.accuracy), d => d.modelKey);
+        const meanGroup = g.append("g").attr("class", "means");
+        Array.from(means.entries()).forEach(([m, meanVal]) => {
 
+            const mi = models.indexOf(m);
+            const xCenter = slotX(mi);
+            const yPos = innerY + yScale(meanVal);
+            const lineW = Math.min(innerW / models.length * 0.7, 40);
+            meanGroup.append("line")
+                .attr("x1", xCenter - lineW / 2)
+                .attr("x2", xCenter + lineW / 2)
+                .attr("y1", yPos)
+                .attr("y2", yPos)
+                .attr("stroke", "#ccc")
+                .attr("stroke-width", 3.5)
+                .attr("stroke-dasharray", "4 2")
+                //make the line in dark grey or black
+                .style("stroke", "#333")
+                .attr("opacity", 0.9);
+        });
 
-            // Model slot x positions inside the cell (shift right a bit so axis doesn't overlap)
-            const slotX = i => innerX + (i + 0.5) * (innerW / models.length) + 6;
+        // draw points
+        const points = g.append("g").attr("class", "points")
+            .selectAll("circle")
+            .data(pts)
+            .join("circle")
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y)
+            .attr("r", d => d.r)
+            .attr("fill", d => colorPicker(d))
+            .on("mouseover", () => tooltip.style("visibility", "visible"))
+            .on("mousemove", (event, d) => {
+                tooltip.html(
+                    `<b>${d.rawModelName}</b><br>${d.llmMode} / ${d.cotMode}<br>Accuracy: ${d.accuracy.toFixed(1)}%<br>Count: ${d.count}<br>${d.test}`
+                )
+                    .style("top", (event.pageY - 10) + "px")
+                    .style("left", (event.pageX + 10) + "px");
+            })
+            .on("mouseout", () => tooltip.style("visibility", "hidden"));
 
-            // Collect points for this cell from cells[task][layout][model]
-            const pts = [];
-            models.forEach((m, mi) => {
-                const arr = (cells[cellInfo.task] && cells[cellInfo.task][cellInfo.layout] && cells[cellInfo.task][cellInfo.layout][m]) || [];
-                arr.forEach(d => {
-                    pts.push(Object.assign({}, d, {
-                        modelKey: m,
-                        modelIndex: mi,
-                        // initial anchor target for simulation
-                        targetX: slotX(mi),
-                        // initial approximate y (add innerY because axis transform moved origin)
-                        targetY: innerY + yScale(d.accuracy),
-                        r: 3.5
-                    }));
-                });
-            });
-
-            if (pts.length === 0) {
-                // small hint when no points
-                g.append("text")
-                    .attr("x", innerX + innerW / 2)
-                    .attr("y", innerY + innerH / 2)
-                    .attr("text-anchor", "middle")
-                    .attr("dominant-baseline", "middle")
-                    .attr("fill", "#999")
-                    .style("font-size", "10px")
-                    .text("no data");
-                return;
-            }
-
-            // run a local force simulation to avoid overlap, grouping points around each model slot
-            const sim = d3.forceSimulation(pts)
-                .force("x", d3.forceX(d => d.targetX).strength(1))
-                .force("y", d3.forceY(d => d.targetY).strength(1))
-                .force("collide", d3.forceCollide(d => d.r + 0.5))
-                .stop();
-
-            for (let i = 0; i < 80; ++i) sim.tick();
-
-            // draw mean lines per model within this cell
-            const means = d3.rollup(pts, v => d3.mean(v, d => d.accuracy), d => d.modelKey);
-            const meanGroup = g.append("g").attr("class", "means");
-            Array.from(means.entries()).forEach(([m, meanVal]) => {
-
-                const mi = models.indexOf(m);
-                const xCenter = slotX(mi);
-                const yPos = innerY + yScale(meanVal);
-                const lineW = Math.min(innerW / models.length * 0.7, 40);
-                meanGroup.append("line")
-                    .attr("x1", xCenter - lineW / 2)
-                    .attr("x2", xCenter + lineW / 2)
-                    .attr("y1", yPos)
-                    .attr("y2", yPos)
-                    .attr("stroke", "#ccc")
-                    .attr("stroke-width", 2)
-                    .attr("stroke-dasharray", "4 2")
-                    .attr("opacity", 0.9);
-            });
-
-            // draw points
-            const points = g.append("g").attr("class", "points")
-                .selectAll("circle")
-                .data(pts)
-                .join("circle")
-                .attr("cx", d => d.x)
-                .attr("cy", d => d.y)
-                .attr("r", d => d.r)
-                .attr("fill", d => colorPicker(d))
-                .on("mouseover", () => tooltip.style("visibility", "visible"))
-                .on("mousemove", (event, d) => {
-                    tooltip.html(
-                        `<b>${d.rawModelName}</b><br>${d.llmMode} / ${d.cotMode}<br>Accuracy: ${d.accuracy.toFixed(1)}%<br>Count: ${d.count}<br>${d.test}`
-                    )
-                        .style("top", (event.pageY - 10) + "px")
-                        .style("left", (event.pageX + 10) + "px");
-                })
-                .on("mouseout", () => tooltip.style("visibility", "hidden"));
-
-            // Add model labels only in the very last row of the matrix
+        // Add model labels only in the very last row of the matrix
             if (cellInfo.r === tasks.length - 1) {
                 const labelGroup = g.append("g").attr("class", "cell-model-labels");
                 models.forEach((m, mi) => {
@@ -678,125 +712,113 @@ function drawBeeswarmMatrix(containerId, cellData) {
                         }));
                 });
             }
+        
+        // Add Y-axis to the left of the first column of cells (first row only)
+        if (cellInfo.c === 0 && cellInfo.r === 0) {
+            const axisG = g.append("g")
+                .attr("class", "cell-y-axis")
+                .attr("transform", `translate(${innerX}, ${innerY})`)
+                .call(d3.axisLeft(yScale).ticks(3).tickSizeOuter(0));
+            // Add Y-axis label to the first row only
+            if (cellInfo.r === 0) {
+                svg.append("text")
+                    .attr("class", "axis-label")
+                    .attr("text-anchor", "end")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", -margin.left + 20)
+                    .attr("x", -height / 2 + 50);
+            }
+        }
+    });
 
-        });
+}
 
-    }
+/* Draws the legend separately outside the main chart SVG.*/
+function drawGroupedBarChartLegend(containerId, categories, getColorMap) {
+    d3.select(containerId).select("svg").remove();
 
-// //Beeswarm chart for a specific model: HAS TO BE REMOVED
-// // If we don't want to use a force simulation, we can use d3.beeswarm plugin: https://github.com/Kcnarf/d3-beeswarm
-// function drawBeeswarmChart(containerId, swarmData, modelName, colorScheme) {
-//     d3.select(containerId).select("svg").remove();
-//     if (swarmData.length === 0) return;
+    const colorMap = getColorMap(categories);
+    const fallbackColor = d3.scaleOrdinal(d3.schemeTableau10);
+    const legendWidth = 300; 
+    const legendHeight = categories.length * 25;
 
-//     const margin = { top: 20, right: 10, bottom: 70, left: 70 };
-//     const width = 340; // larghezza totale (puoi aumentare/diminuire)
-//     const height = 320;
-
-
-//     const svg = d3.select(containerId).append("svg")
-//         .attr("width", width + margin.left + margin.right)
-//         .attr("height", height + margin.top + margin.bottom)
-//         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-//     const configs = [...new Set(swarmData.map(d => d.config))].sort();
-//     const x = d3.scaleBand().domain(configs).range([0, width]).padding(0.5);
-//     const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
-//     const color = d3.scaleOrdinal().domain(configs).range(colorScheme);
-
-//     svg.append("g")
-//         .attr("transform", `translate(20, ${height})`)
-//         .call(d3.axisBottom(x).tickFormat(shortLabel))
-//         .selectAll("text")
-//         .attr("transform", "rotate(0)")
-//         .attr("font-weight", "bold")
-//         //make the text smaller 
-//         .style("font-size", "0.85rem")
-//         //.attr("y", 10)
-//         .style("text-anchor", "end");
-//     svg.append("g").call(d3.axisLeft(y));
-//     svg.append("text").attr("class", "axis-label").attr("text-anchor", "middle").attr("x", width / 2).attr("y", height + 40).text("Configuration");
-//     svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).text("Accuracy per Test (%)");
-
-//     //This BeeSwarmChart works with the forceSimulation from d3:
-//     // Taking the data and applying a forces to it, the points will move to avoid overlapping while clustering around the timestamp value
-//     const simulation = d3.forceSimulation(swarmData)
-//         .force("x", d3.forceX(d => x(d.config) + x.bandwidth() / 2).strength(1))
-//         .force("y", d3.forceY(d => y(d.accuracy)).strength(1))
-//         .force("collide", d3.forceCollide(5)) // Radius of points, prevents overlap
-//         .stop();
-
-//     // Run the simulation for a fixed number of iterations
-//     for (let i = 0; i < 120; ++i) simulation.tick();
-
-//     // Draw the points
-//     svg.selectAll(".beeswarm-point").data(swarmData).join("circle")
-//         .attr("class", "beeswarm-point")
-//         .attr("cx", d => d.x)
-//         .attr("cy", d => d.y)
-//         .attr("r", 4)
-//         .attr("fill", d => color(d.config))
-//         .on("mouseover", () => tooltip.style("visibility", "visible"))
-//         .on("mousemove", (event, d) => {
-//             tooltip.html(`<b>${d.test}</b><br>${d.config}<br>Accuracy: ${d.accuracy.toFixed(1)}%`)
-//                 .style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");
-//         })
-//         .on("mouseout", () => tooltip.style("visibility", "hidden"));
+    const svg = d3.select(containerId).append("svg")
+        .attr("width", legendWidth)
+        .attr("height", legendHeight)
+        .append("g").attr("transform", `translate(10, 10)`);
     
-//     // Draw mean line for each category
-//     const means = d3.rollup(swarmData, v => d3.mean(v, d => d.accuracy), d => d.config);
-//     svg.selectAll(".mean-line").data(configs).join("line")
-//         .attr("class", "mean-line")
-//         .attr("x1", d => x(d))
-//         .attr("x2", d => x(d) + x.bandwidth())
-//         .attr("y1", d => y(means.get(d)))
-//         .attr("y2", d => y(means.get(d)));
-// }
+    // Legend 
+    const legend = svg.selectAll(".legend").data(categories).join("g")
+        .attr("class", "legend")
+        .attr("transform", (d, i) => `translate(0,${i * 22})`);
+        
+    legend.append("rect")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", d => colorMap[d] || fallbackColor(d));
+
+    legend.append("text")
+        .attr("x", 24)
+        .attr("y", 9)
+        .attr("dy", ".35em")
+        .style("text-anchor", "start")
+        .text(d => d);
+}
 
 
-// // Draw a GROUPED BAR CHART (for Tasks or Layouts)
+// Draw a GROUPED BAR CHART (both for Tasks or Layouts)
 function drawGroupedBarChart(containerId, chartData, groupKey) {
     d3.select(containerId).select("svg").remove();
     const { data, categories } = chartData;
 
-    // increase right margin so legend can sit to the right
-    const margin = { top: 40, right: 260, bottom: 60, left: 60 };
-    const width = 700 - margin.left - margin.right; // wider plotting area
-    const height = 700 - margin.top - margin.bottom;
+    // N.B. MARGINS AND DIMENSIONS for the PLOTTING AREA (this time is independent from legend)
+    const margin = { top: 40, right: 40, bottom: 60, left: 60 }; 
+    const chartTotalWidth = 550; 
+    const width = chartTotalWidth - margin.left - margin.right; 
+    const height = 750 - margin.top - margin.bottom; 
+
 
     const svg = d3.select(containerId).append("svg")
-        .attr("width", width + margin.left + margin.right)
+        .attr("width", width + margin.left + margin.right) 
         .attr("height", height + margin.top + margin.bottom)
         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    
+    // --- COLOUR MAP (needed for the legend) ---
+    
+    const getColorMap = (categories) => {
+        const colorMap = {};
+        // changed logic to match the new color scheme
+        categories.forEach(category => {
+            const key = category.toLowerCase();
+            
+            let modelName = 'unknown';
+            if (key.startsWith('mistral')) modelName = 'mistral';
+            else if (key.startsWith('gemini')) modelName = 'gemini';
+            else if (key.startsWith('gpt-5')) modelName = 'gpt-5';
+            else if (key.startsWith('glm')) modelName = 'glm';
+
+            const cotMode = key.includes('(cot)') ? 'cot' : 'no_cot';
+            
+            // new logic for colors
+            let llmMode = 'zero_shot'; 
+            if (key.includes('few_shot') || key.includes('few-shot')) {
+                llmMode = 'few_shot';
+            }
+            
+            colorMap[category] = getGlobalColor(modelName, llmMode, cotMode);
+        });
+        return colorMap;
+    }
+
+    const colorMap = getColorMap(categories);
+    const fallbackColor = d3.scaleOrdinal(d3.schemeTableau10);
 
     const x0 = d3.scaleBand().domain(data.map(d => d[groupKey])).range([0, width]).padding(0.25);
     const x1 = d3.scaleBand().domain(categories).range([0, x0.bandwidth()]).padding(0.05);
     const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
     
-    // color map: each model (Gemini / Mistral) gets a set of shades
-    const geminiCats = categories.filter(c => c.startsWith('Gemini'));
-    const mistralCats = categories.filter(c => c.startsWith('Mistral'));
-    const gpt5Cats = categories.filter(c => c.startsWith('GPT-5'));
-
-    const colorMap = {};
-    // distribute t values evenly between (0,1) but avoid pure extremes (0 or 1)
-    geminiCats.forEach((c, i) => {
-        const t = (i + 1) / (geminiCats.length + 1);
-        colorMap[c] = d3.interpolateBlues(t);
-    });
-    mistralCats.forEach((c, i) => {
-        const t = (i + 1) / (mistralCats.length + 1);
-        colorMap[c] = d3.interpolateOranges(t);
-    });
-
-    gpt5Cats.forEach((c, i) => {
-        const t = (i + 1) / (gpt5Cats.length + 1);
-        colorMap[c] = d3.interpolatePurples(t);
-    });
-
-    // fallback color function (in case other categories appear)
-    const fallbackColor = d3.scaleOrdinal(d3.schemeTableau10);
-
     svg.append("g").attr("transform", `translate(0, ${height})`).call(d3.axisBottom(x0))
         .selectAll("text").attr("transform", "translate(-10,0)rotate(-45)").style("text-anchor", "end");
     svg.append("g").call(d3.axisLeft(y));
@@ -819,26 +841,8 @@ function drawGroupedBarChart(containerId, chartData, groupKey) {
                 .style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");
         })
         .on("mouseout", () => tooltip.style("visibility", "hidden"));
-
-    // Legend 
-    const legendX = width + 20; // position to the right 
-    const legend = svg.selectAll(".legend").data(categories).join("g")
-        .attr("class", "legend")
-        .attr("transform", (d, i) => `translate(0,${i * 22})`);
         
-    legend.append("rect")
-        .attr("x", legendX)
-        .attr("y", 0)
-        .attr("width", 18)
-        .attr("height", 18)
-        .style("fill", d => colorMap[d] || fallbackColor(d));
-
-    legend.append("text")
-        .attr("x", legendX + 24)
-        .attr("y", 9)
-        .attr("dy", ".35em")
-        .style("text-anchor", "start")
-        .text(d => d);
+    return { categories, getColorMap };
 }
 
 
@@ -864,11 +868,8 @@ async function renderDashboard() {
 
     // Process data for all charts
     const overallSummary = processDataForOverallChart(rawData, human_results);
-    //const mistralSwarmData = processDataForBeeswarm(rawData, 'mistral');
-    //const geminiSwarmData = processDataForBeeswarm(rawData, 'gemini');
     const taskSummary = processDataForTaskChart(rawData);
     const layoutSummary = processDataForLayoutChart(rawData);
-
     const matrixData = processDataForMatrix(rawData);
 
     // Render the page structure with containers for all charts
@@ -884,24 +885,40 @@ async function renderDashboard() {
             <div id="overall-accuracy-chart-container"></div>
         </div>
 
-        <div class="chart-wrapper">
-            <h2 class="chart-title">Accuracy by Task</h2>
-            <div id="task-accuracy-chart-container"></div>
+        <div class="chart-and-legend-wrapper">
+            <div class="chart-container-inner">
+                <h2 class="chart-title">Accuracy by Task</h2>
+                <div id="task-accuracy-chart-container"></div>
+            </div>
+            <div class="legend-container">
+                <h3>Configuration Legend</h3>
+                <div id="task-legend-container"></div>
+            </div>
         </div>
 
-        <div class="chart-wrapper">
-            <h2 class="chart-title">Accuracy by Layout Algorithm</h2>
-            <div id="layout-accuracy-chart-container"></div>
+        <div class="chart-and-legend-wrapper">
+            <div class="chart-container-inner">
+                <h2 class="chart-title">Accuracy by Layout Algorithm</h2>
+                <div id="layout-accuracy-chart-container"></div>
+            </div>
+            <div class="legend-container">
+                <h3>Configuration Legend</h3>
+                <div id="layout-legend-container"></div>
+            </div>
         </div>
-    `;
+        `;
 
     // Draw each all charts
     drawOverallAccuracyChart(overallSummary);
-    // drawBeeswarmChart("#mistral-beeswarm-container", mistralSwarmData, 'Mistral', d3.schemeOranges[4]);
-    // drawBeeswarmChart("#gemini-beeswarm-container", geminiSwarmData, 'Gemini', d3.schemeBlues[4]);
-    drawGroupedBarChart("#task-accuracy-chart-container", taskSummary, "task");
-    drawGroupedBarChart("#layout-accuracy-chart-container", layoutSummary, "layout");
     drawBeeswarmMatrix("#beeswarm-matrix", matrixData);
+    
+    // Draw Task chart and get legend data
+    const taskLegendData = drawGroupedBarChart("#task-accuracy-chart-container", taskSummary, "task");
+    drawGroupedBarChartLegend("#task-legend-container", taskLegendData.categories, taskLegendData.getColorMap);
+
+    // Draw Layout chart and get legend data
+    const layoutLegendData = drawGroupedBarChart("#layout-accuracy-chart-container", layoutSummary, "layout");
+    drawGroupedBarChartLegend("#layout-legend-container", layoutLegendData.categories, layoutLegendData.getColorMap);
 }
 
 // --- Event Listeners ---

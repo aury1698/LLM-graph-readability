@@ -692,26 +692,26 @@ function drawBeeswarmMatrix(containerId, cellData) {
             .on("mouseout", () => tooltip.style("visibility", "hidden"));
 
         // Add model labels only in the very last row of the matrix
-        if (cellInfo.r === tasks.length - 1) {
-            const labelGroup = g.append("g").attr("class", "cell-model-labels");
-            models.forEach((m, mi) => {
-                labelGroup.append("text")
-                    .attr("x", slotX(mi))
-                    .attr("y", innerY + innerH + 20)
-                    .attr("text-anchor", "middle")
-                    .attr("dominant-baseline", "alphabetic")
-                    .style("font-size", "11px")
-                    // Removed .style("fill", "#444") to rely on CSS
-                    .text(m.replace(/.*?(gemini|mistral|Gemini|Mistral|gpt-5|glm).*/i, (s) => {
-                        // shorten common model labels if possible
-                        if (/mistral/i.test(s)) return "Mistral";
-                        if (/gemini/i.test(s)) return "Gemini";
-                        if (/gpt-5/i.test(s)) return "gpt-5";
-                        if (/glm/i.test(s)) return "GLM4.5";
-                        return s;
-                    }));
-            });
-        }
+            if (cellInfo.r === tasks.length - 1) {
+                const labelGroup = g.append("g").attr("class", "cell-model-labels");
+                models.forEach((m, mi) => {
+                    labelGroup.append("text")
+                        .attr("x", slotX(mi))
+                        .attr("y", innerY + innerH + 20)
+                        .attr("text-anchor", "middle")
+                        .attr("dominant-baseline", "alphabetic")
+                        .style("font-size", "11px")
+                        .style("fill", "#444")
+                        .text(m.replace(/.*?(gemini|mistral|Gemini|Mistral|gpt-5|glm).*/i, (s) => {
+                            // shorten common model labels if possible
+                            if (/mistral/i.test(s)) return "Mistral";
+                            if (/gemini/i.test(s)) return "Gemini";
+                            if (/gpt-5/i.test(s)) return "gpt-5";
+                            if (/glm/i.test(s)) return "GLM4.5";
+                            return s;
+                        }));
+                });
+            }
         
         // Add Y-axis to the left of the first column of cells (first row only)
         if (cellInfo.c === 0 && cellInfo.r === 0) {

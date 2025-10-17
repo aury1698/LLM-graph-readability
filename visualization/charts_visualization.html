@@ -200,7 +200,7 @@ function getGlobalColor(modelName, llmMode, cotMode) {
     const colorMistral = ["#f3f99a", "#fce307", "#fca73f", "#fc742a"];
     const colorGemini = ["#f785cd", "#e21478", "#ed5a5a", "#e00808"];
     const colorGLM = ["#3ed652", "#2e8b57", "#d1f963", "#b2c107"];
-    const colorHuman = "#663628"; // Brown color for humans (???) to differentiate from models
+    const colorHuman = "#888888"; // Dark grey color for humans to differentiate from models
     const colorDefault = "#cccccc";
 
     let i = 0;
@@ -329,6 +329,41 @@ function processDataForLayoutChart(rawData) {
         summary.push(layoutSummary);
     }
     return { data: summary, categories: Array.from(categories).sort() };
+}
+
+// 3.5 Re-order layout categories for "bastian mode" (i.e. "m+" next to "m-")
+function reorderLayoutData(layoutSummary) {
+    const data = layoutSummary.data || [];
+    // Map baseName -> items
+    const baseMap = new Map();
+    const baseOrder = [];
+    data.forEach(item => {
+        const name = item.layout;
+        const m = name.match(/^(.+?)([-\+])?$/);
+        const base = m ? m[1] : name;
+        if (!baseMap.has(base)) {
+            baseMap.set(base, []);
+            baseOrder.push(base);
+        }
+        baseMap.get(base).push(item);
+    });
+
+    const ordered = [];
+    baseOrder.forEach(base => {
+        const entries = baseMap.get(base);
+        // Prefer to add '-' then '+' (so pair appears adjacent). If only one exists, keep it.
+        const minus = entries.find(e => /-$/.test(e.layout));
+        const plus = entries.find(e => /\+$/.test(e.layout));
+        
+        if (minus) ordered.push(minus);
+        if (plus) ordered.push(plus);
+        // Add any other variants (no +/-) afterwards
+        entries.forEach(e => {
+            if (!/\+$/.test(e.layout) && !/-$/.test(e.layout)) ordered.push(e);
+        });
+    });
+
+    return { data: ordered, categories: layoutSummary.categories };
 }
 
 // 4. Process data for the ACCURACY MATRIX chart
@@ -869,8 +904,13 @@ async function renderDashboard() {
     // Process data for all charts
     const overallSummary = processDataForOverallChart(rawData, human_results);
     const taskSummary = processDataForTaskChart(rawData);
-    const layoutSummary = processDataForLayoutChart(rawData);
+    let layoutSummary = processDataForLayoutChart(rawData);
     const matrixData = processDataForMatrix(rawData);
+
+    // Re-order layout data for "bastian mode"
+    if (currentMode === 'bastian') {
+        layoutSummary = reorderLayoutData(layoutSummary);
+    }
 
     // Render the page structure with containers for all charts
     document.getElementById('charts-container').innerHTML = `

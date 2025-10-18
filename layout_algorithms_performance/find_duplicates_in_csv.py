@@ -7,7 +7,7 @@ import glob
 # It checks for duplicate entries in a specified CSV file based on a key column ('Layout').
 
 # # --- INSERT HERE THE PATH OF THE CSV FILES YOU WANT TO CHECK ---
-results_folder = 'results/gpt-5/few_shot'
+results_folder = 'results/glm-4.5v-106b/few_shot'  
 
 # The column name that should be unique for each experiment
 key_column = 'Layout'

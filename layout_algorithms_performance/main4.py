@@ -541,8 +541,8 @@ if __name__ == "__main__":
     mode = "few_shot"  # "zero_shot" or "few_shot"
     cot_mode = "cot"  # "no_cot" or "cot"
     model_name = "glm-4.5v-106b"
-    attempt = 1
-    max_images_per_run = 280
+    attempt = 6  #PARI
+    max_images_per_run = 280 
 
     ### MODIFIED ###
     # Dynamically generate paths for the results and log files

@@ -541,7 +541,7 @@ if __name__ == "__main__":
     mode = "zero_shot"  # "zero_shot" or "few_shot"
     cot_mode = "no_cot"  # "no_cot" or "cot"
     model_name = "glm-4.5v-106b"
-    attempt = 1
+    attempt = 3
     max_images_per_run = 280
 
     ### MODIFIED ###

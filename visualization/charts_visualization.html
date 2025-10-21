@@ -513,8 +513,10 @@ function drawBeeswarmMatrix(containerId, cellData) {
     d3.select(containerId).select("svg").remove();
 
     const margin = { top: 40, right: 30, bottom: 60, left: 60 };
-    const width = 1600 - margin.left - margin.right;
+    let width = 1600 - margin.left - margin.right;
     const height = 500 - margin.top - margin.bottom;
+
+    if (currentMode === "bastian") width = (width/8)*10;
 
     const svg = d3.select(containerId).append("svg")
         .attr("width", width + margin.left + margin.right)
@@ -525,14 +527,14 @@ function drawBeeswarmMatrix(containerId, cellData) {
     const { tasks, layouts, models, cells } = cellData;
 
         const colorPicker = d => {
-            const colorOpenAI = ["#caf0f8", "#90e0ef", "#00b4d8", "#0077b6", "#090ca0"];
+            const colorOpenAI = ["#b2dde6", "#90e0ef", "#00b4d8", "#0077b6", "#090ca0"];
             const colorMistral = ["#ffd700", "#ffaf01", "#ff8204", "#fa500f", "#e00500"];
             const colorGemini = ["#fb8cad", "#e75c9d", "#c80d9b", "#bf1a3b", "#910824"]
             const colorGLM = ["#91f79f", "#53efb6", "#37c18e", "#118e60", "#056355"]
 
             let i = 0;
 
-            // choose colors by difficulty
+            // choose colors by "difficulty"
             if (d.test.includes("task1")) {
                 i = parseInt(d.gt.replace('gt', ''), 10) - 1;
             } else if (d.test.includes("task2")) {
@@ -571,8 +573,8 @@ function drawBeeswarmMatrix(containerId, cellData) {
     // layout settings for the matrix
     const cols = layouts.length;
     const rows = tasks.length;
-    const cellPadding = 8;
-    const cellInnerPadding = 6;
+    const cellPadding = 4;
+    const cellInnerPadding = 8;
 
     const cellWidth = width / Math.max(1, cols);
     const cellHeight = height / Math.max(1, rows);
@@ -602,6 +604,7 @@ function drawBeeswarmMatrix(containerId, cellData) {
             tasks.flatMap((t, r) => layouts.map((l, c) => ({ task: t, layout: l, r, c })))
         )
         .join("g")
+        .attr("id", d => `cell-${(d.layout||'').replace(/\s+/g,'_')}-${(d.task||'').replace(/\s+/g,'_')}`)
         .attr("class", "matrix-cell")
         .attr("fill", "transparent")
         .attr("fill", "#ffffff")
@@ -617,6 +620,9 @@ function drawBeeswarmMatrix(containerId, cellData) {
 
     // draw internal grid lines between cells, but not on the outer edges of the matrix
     cellGroup.each(function (cellInfo) {
+        // TODO: renable/remove early return, for border between cells
+        return;
+
         const g = d3.select(this);
 
         // Draw horizontal line (except for the last row)
@@ -705,27 +711,39 @@ function drawBeeswarmMatrix(containerId, cellData) {
 
         for (let i = 0; i < 80; ++i) sim.tick();
 
-        // draw mean lines per model within this cell
-        const means = d3.rollup(pts, v => d3.mean(v, d => d.accuracy), d => d.modelKey);
-        const meanGroup = g.append("g").attr("class", "means");
-        Array.from(means.entries()).forEach(([m, meanVal]) => {
+        /* constrain simulation results inside the inner plotting area */
+        // for (const p of pts) {
+            // p.x = Math.max(innerX + p.r, Math.min(innerX + innerW - p.r, p.x));
+            // p.y = Math.max(innerY + cellInnerPadding + p.r, Math.min(innerY + innerH - cellInnerPadding - p.r, p.y));
+        // }
 
-            const mi = models.indexOf(m);
-            const xCenter = slotX(mi);
-            const yPos = innerY + yScale(meanVal);
-            const lineW = Math.min(innerW / models.length * 0.7, 40);
-            meanGroup.append("line")
-                .attr("x1", xCenter - lineW / 2)
-                .attr("x2", xCenter + lineW / 2)
-                .attr("y1", yPos)
-                .attr("y2", yPos)
-                .attr("stroke", "#ccc")
-                .attr("stroke-width", 3.5)
-                .attr("stroke-dasharray", "4 2")
-                //make the line in dark grey or black
-                .style("stroke", "#333")
-                .attr("opacity", 0.9);
-        });
+        /* draw faint dashed threshold lines at 25%, 50% and 75% */
+        const thresholds = [25, 50, 75];
+        g.selectAll(".threshold-line").data(thresholds).join("line")
+            .attr("class", "threshold-line")
+            .attr("x1", innerX)
+            .attr("x2", innerX + innerW)
+            .attr("y1", d => innerY + yScale(d))
+            .attr("y2", d => innerY + yScale(d))
+            .attr("stroke", "#bbbbbb")
+            .attr("stroke-width", 1)
+            .attr("stroke-dasharray", "4 4")
+            .attr("opacity", 0.55);
+
+        // small labels for each threshold on the right side of the cell,
+        // but only render in the right-most column to reduce clutter
+        if (cellInfo.c === layouts.length - 1) {
+            g.selectAll(".threshold-label").data(thresholds).join("text")
+            .attr("class", "threshold-label")
+            .attr("x", innerX + innerW + 6)
+            .attr("y", d => innerY + yScale(d))
+            .attr("text-anchor", "start")
+            .attr("dominant-baseline", "middle")
+            .attr("fill", "#444")
+            .style("font-size", "10px")
+            .text(d => d + "%");
+        }
+
 
         // draw points
         const points = g.append("g").attr("class", "points")
@@ -745,6 +763,28 @@ function drawBeeswarmMatrix(containerId, cellData) {
                     .style("left", (event.pageX + 10) + "px");
             })
             .on("mouseout", () => tooltip.style("visibility", "hidden"));
+
+        // draw mean lines per model within this cell
+        const means = d3.rollup(pts, v => d3.mean(v, d => d.accuracy), d => d.modelKey);
+        const meanGroup = g.append("g").attr("class", "means");
+        Array.from(means.entries()).forEach(([m, meanVal]) => {
+
+            const mi = models.indexOf(m);
+            const xCenter = slotX(mi);
+            const yPos = innerY + yScale(meanVal);
+            const lineW = Math.min(innerW / models.length * 0.7, 40);
+            meanGroup.append("line")
+                .attr("x1", xCenter - lineW / 2)
+                .attr("x2", xCenter + lineW / 2)
+                .attr("y1", yPos)
+                .attr("y2", yPos)
+                .attr("stroke", "#ccc")
+                .attr("stroke-width", 3)
+                .attr("stroke-dasharray", "3 6")
+                .style("stroke-linecap", "round")
+                //make the line in dark grey or black
+                .style("stroke", "#333");
+        });
 
         // Add model labels only in the very last row of the matrix
             if (cellInfo.r === tasks.length - 1) {

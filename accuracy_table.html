@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>LLM Results Table</title>
+    <link rel="icon" type="image/x-icon" href="icon.ico">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* --- General Page Styles (COPIED FROM YOUR DASHBOARD) --- */
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 2rem;
+            background: #fafbfc;
+            color: #222;
+        }
+        h1 { text-align: center; }
+        p {
+            text-align: center;
+            max-width: 800px;
+            margin: 1rem auto;
+            color: #555;
+        }
+        .controls-container {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #eee;
+        }
+        .controls { text-align: center; }
+        .controls h3 { margin-top: 0; color: #555; }
+        .controls button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            margin: 0 5px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: #fff;
+            border-radius: 5px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .mode-controls button.active {
+            background: #e8711a;
+            color: white;
+            border-color: #e8711a;
+        }
+        .mode-controls button:not(.active) {
+            background: #80868b;
+            color: white;
+            border-color: #80868b;
+        }
+
+        /* --- NEW STYLES FOR THE TABLE --- */
+        #table-container {
+            max-width: 1600px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background: #fff;
+            overflow-x: auto; /* For responsiveness on small screens */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px 12px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        thead {
+            background-color: #f8f9fa;
+        }
+        th {
+            font-weight: 600;
+            position: sticky; /* Keep header visible on scroll */
+            top: 0;
+            background: #f1f3f4;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f8f9fa; /* Zebra striping for readability */
+        }
+        tbody tr:hover {
+            background-color: #e9ecef;
+        }
+        #loading-message {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #777;
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>LLM Results - Detailed Accuracy Table</h1>
+    <p>This page displays the detailed accuracy results, grouped by model, configuration, task, layout, and difficulty (ground truth).</p>
+
+    <div class="controls-container">
+        <div class="controls mode-controls">
+            <h3>Select Dataset</h3>
+            <button id="btn-aurora">Aurora</button>
+            <button id="btn-bastian">Bastian</button>
+        </div>
+    </div>
+
+    <div id="table-container">
+        <div id="loading-message">Select a dataset to view the results...</div>
+        <table id="results-table"></table>
+    </div>
+
+<script>
+// ===================================================================================
+// SCRIPT TO LOAD CSV AND BUILD THE HTML TABLE
+// ===================================================================================
+
+let currentMode = ''; // Start with no mode selected
+
+// --- Main function to render the table ---
+async function renderTable() {
+    // Update button active state
+    document.getElementById('btn-aurora').classList.toggle('active', currentMode === 'aurora');
+    document.getElementById('btn-bastian').classList.toggle('active', currentMode === 'bastian');
+
+    const tableContainer = document.getElementById('results-table');
+    const loadingMessage = document.getElementById('loading-message');
+    
+    // Clear previous table and show loading message
+    tableContainer.innerHTML = '';
+    loadingMessage.style.display = 'block';
+    loadingMessage.textContent = `Loading results for ${currentMode}...`;
+    
+    // Define the CSV file path based on the current mode
+    const filePath = `average_accuracies_${currentMode}_by_difficulty.csv`;
+
+    try {
+        // Use D3.js to load and parse the CSV file
+        const data = await d3.csv(filePath);
+
+        if (data.length === 0) {
+            loadingMessage.textContent = `No data found in ${filePath}.`;
+            return;
+        }
+
+        // Hide loading message once data is loaded
+        loadingMessage.style.display = 'none';
+
+        // --- Build the table dynamically ---
+
+        // 1. Create table header
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        const headers = Object.keys(data[0]); // Get headers from the first data object
+
+        headers.forEach(headerText => {
+            const th = document.createElement('th');
+            th.textContent = headerText;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        tableContainer.appendChild(thead);
+
+        // 2. Create table body
+        const tbody = document.createElement('tbody');
+        data.forEach(rowData => {
+            const row = document.createElement('tr');
+            headers.forEach(header => {
+                const td = document.createElement('td');
+                
+                // Format the 'Accuracy' column to 2 decimal places
+                if (header.toLowerCase() === 'accuracy') {
+                    td.textContent = parseFloat(rowData[header]).toFixed(2);
+                } else {
+                    td.textContent = rowData[header];
+                }
+                row.appendChild(td);
+            });
+            tbody.appendChild(row);
+        });
+        tableContainer.appendChild(tbody);
+
+    } catch (error) {
+        console.error("Error loading or parsing CSV file:", error);
+        loadingMessage.textContent = `Error: Could not load the file '${filePath}'. Make sure it exists and the server is running.`;
+    }
+}
+
+// --- Event Listeners ---
+document.getElementById('btn-aurora').addEventListener('click', () => {
+    currentMode = 'aurora';
+    renderTable();
+});
+
+document.getElementById('btn-bastian').addEventListener('click', () => {
+    currentMode = 'bastian';
+    renderTable();
+});
+
+</script>
+</body>
+</html>

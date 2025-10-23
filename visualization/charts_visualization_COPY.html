@@ -576,18 +576,49 @@ function drawBeeswarmMatrix(containerId, cellData) {
     // build matrix data
     const { tasks, layouts, models, cells } = cellData;
 
-    const colorPicker = d => {
-        // Normalize model / modes and delegate to getGlobalColor
-        const modelKey = d.rawModelName || d.modelKey || '';
-        const llmRaw = (d.llmMode || d.llm || '').toString().toLowerCase();
-        const cotRaw = (d.cotMode || d.cot || '').toString().toLowerCase();
+        const colorPicker = d => {
+            const colorOpenAI = ["#b2dde6", "#90e0ef", "#00b4d8", "#0077b6", "#090ca0"];
+            const colorMistral = ["#ffd700", "#ffaf01", "#ff8204", "#fa500f", "#e00500"];
+            const colorGemini = ["#fb8cad", "#e75c9d", "#c80d9b", "#bf1a3b", "#910824"]
+            const colorGLM = ["#91f79f", "#53efb6", "#37c18e", "#118e60", "#056355"]
 
-        const llmMode = llmRaw.includes('few') ? 'few_shot' : 'zero_shot';
-        const cotMode = cotRaw.includes('cot') ? 'cot' : 'no_cot';
+            let i = 0;
 
-        return getGlobalColor(modelKey, llmMode, cotMode);
-    }
+            // choose colors by "difficulty"
+            if (d.test.includes("task1")) {
+                i = parseInt(d.gt.replace('gt', ''), 10) - 1;
+            } else if (d.test.includes("task2")) {
+                // hacky ahh global
+                if ((currentMode === "aurora" && d.gt === "gt3") || (currentMode === "bastian" && d.gt === "gt2")) {
+                    i = 4;
+                }
+            } else if (d.test.includes("task3")) {
+                diff = parseInt(d.gt.replace('gt', ''), 10);
+                if (currentMode === "bastian") {
+                    if (diff === 3) {
+                        i = 4;
+                    } else if (diff === 2) {
+                        i = 2;
+                    }
+                } else if (diff === 3) {
+                    i = 4;
+                }
+
+            }
         
+
+        switch (d.rawModelName) {
+            case "gpt-5":
+            case "gpt-5-2025-08-07":
+                return colorOpenAI[i];
+            case "mistral-small-3.1-24b":
+                return colorMistral[i];
+            case "gemini-2.5-flash":
+                return colorGemini[i];
+            case "glm-4.5v-106b":
+                return colorGLM[i];
+        }
+    }
 
     // layout settings for the matrix
     const cols = layouts.length;

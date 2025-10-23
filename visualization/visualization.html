@@ -128,6 +128,8 @@
             <h3>Select Model</h3>
             <button id="btn-mistral">Mistral</button>
             <button id="btn-gemini">Gemini</button>
+            <button id="btn-gpt5">GPT‑5</button>
+            <button id="btn-glm">GLM-4.5</button>
         </div>
     </div>
     
@@ -164,29 +166,18 @@ let currentMode = 'aurora';
 async function loadAndAggregateResults(basePath, modelName, mode) {
     let allFilePaths = [];
 
-    // CHANGED: Unified logic for both Mistral and Gemini.
-    // This block now handles any model that uses the subfolder structure.
-    if (modelName === "gemini-2.5-flash" || modelName === "mistral-small-3.1-24b") {
-        console.log(`Loading results for ${modelName} with the new folder structure...`);
-        
-        const shotTypes = ["zero_shot", "few_shot"];
-        const cotTypes = ["cot", "no_cot"];
-        
-        // NEW: Dynamic attempts.
-        // Instead of a fixed array, we will try to load files up to a maximum number.
-        // If a file doesn't exist, the .catch() block will handle it gracefully.
-        // You can increase this number if you ever have more than 20 attempts.
-        const MAX_ATTEMPTS_TO_CHECK = 20;
+    // Unified logic for all models that follow the folder structure
+    const shotTypes = ["zero_shot", "few_shot"];
+    const cotTypes = ["cot", "no_cot"];
+    const MAX_ATTEMPTS_TO_CHECK = 20;
 
-        for (const shot of shotTypes) {
-            for (const cot of cotTypes) {
-                // CHANGED: Loop from 1 to MAX_ATTEMPTS_TO_CHECK instead of using a fixed array.
-                for (let attempt = 1; attempt <= MAX_ATTEMPTS_TO_CHECK; attempt++) {
-                    const fileName = `results_attempt_${attempt}.csv`;
-                    const basePathForModel = (mode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
-                    const filePath = `${basePathForModel}/results/${modelName}/${shot}/${cot}/${fileName}`;
-                    allFilePaths.push(filePath);
-                }
+    for (const shot of shotTypes) {
+        for (const cot of cotTypes) {
+            for (let attempt = 1; attempt <= MAX_ATTEMPTS_TO_CHECK; attempt++) {
+                const fileName = `results_attempt_${attempt}.csv`;
+                const basePathForModel = (mode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
+                const filePath = `${basePathForModel}/results/${modelName}/${shot}/${cot}/${fileName}`;
+                allFilePaths.push(filePath);
             }
         }
     }
@@ -198,15 +189,13 @@ async function loadAndAggregateResults(basePath, modelName, mode) {
                 return rows;
             })
             .catch(error => {
-                // This .catch() is now essential. It ignores requests for files that don't exist.
-                // You will see warnings in the console for non-existent attempts, which is normal.
-                // console.warn(`Could not load file (optional): ${path}`);
                 return [];
             })
     );
 
     const resultsFromAllFiles = await Promise.all(promises);
     return resultsFromAllFiles.flat();
+
 }
 
 // The renderResults function remains mostly the same, as the logic inside is already robust.
@@ -216,6 +205,8 @@ async function renderResults() {
 
     document.getElementById('btn-mistral').classList.toggle('active', currentModel === 'mistral-small-3.1-24b');
     document.getElementById('btn-gemini').classList.toggle('active', currentModel === 'gemini-2.5-flash');
+    document.getElementById('btn-gpt5').classList.toggle('active', currentModel === 'gpt-5');
+    document.getElementById('btn-glm').classList.toggle('active', currentModel === 'glm-4.5v-106b');
     document.getElementById('btn-aurora').classList.toggle('active', currentMode === 'aurora');
     document.getElementById('btn-bastian').classList.toggle('active', currentMode === 'bastian');
 
@@ -251,8 +242,12 @@ async function renderResults() {
     }
     
     const titleElement = document.createElement('h2');
-    let modelDisplayName = currentModel.includes('mistral') ? 'Mistral' : 'Gemini';
-    let modeDisplayName = currentMode.charAt(0).toUpperCase() + currentMode.slice(1); 
+    if (currentModel.includes('mistral')) modelDisplayName = 'Mistral';
+    else if (currentModel.includes('gemini')) modelDisplayName = 'Gemini';
+    else if (currentModel.includes('gpt-5')) modelDisplayName = 'GPT-5';
+    else if (currentModel.includes('glm')) modelDisplayName = 'GLM4.5';
+    
+    const modeDisplayName = currentMode.charAt(0).toUpperCase() + currentMode.slice(1);
     titleElement.textContent = `${modeDisplayName} Dataset Results: ${modelDisplayName}`;
     titleElement.style.textAlign = 'center';
     titleElement.style.marginBottom = '1.5rem';
@@ -410,6 +405,17 @@ document.getElementById('btn-gemini').addEventListener('click', () => {
     currentModel = 'gemini-2.5-flash';
     renderResults();
 });
+
+document.getElementById('btn-gpt5').addEventListener('click', () => {
+    currentModel = 'gpt-5';
+    renderResults();
+});
+
+document.getElementById('btn-glm').addEventListener('click', () => {
+    currentModel = 'glm-4.5v-106b';
+    renderResults();
+});
+
 document.getElementById('btn-aurora').addEventListener('click', () => {
     currentMode = 'aurora';
     renderResults();

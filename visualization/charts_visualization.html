@@ -78,7 +78,7 @@
             background: #fff;
         }
         
-        /* NEW LAYOUT: to split Grouped Charts from Legend */
+        /* to split Grouped Charts from Legend */
         .chart-and-legend-wrapper {
             display: flex;
             justify-content: center;
@@ -91,7 +91,7 @@
             border-radius: 8px;
             background: #fff;
         }
-        /* N.B. inner container hosting the CHART's SVG */
+        /* N.B. inner container hosting ONLY the CHART's SVG */
         .chart-container-inner {
             /* width is controlled by JS, but this keeps them organized */
             flex-shrink: 0;
@@ -174,7 +174,7 @@
     </div>
 
     <div id="charts-container" class="chart-grid">
-        </div>
+    </div>
     
     <div id="tooltip" class="tooltip"></div>
 
@@ -186,6 +186,7 @@
 // ===================================================================================
 
 let currentMode = 'aurora';
+let layoutOrder = 'alphabetical'; // or 'avg_accuracy'
 
 
 function getGlobalColor(modelName, llmMode, cotMode) {
@@ -220,7 +221,6 @@ function getGlobalColor(modelName, llmMode, cotMode) {
 // --- DATA LOADING ---
 async function loadAndAggregateResults(basePath, mode) {
     let allFilePaths = [];
-    // Modify here to handle the gpt-5 path
     const modelsToLoad = ["gemini-2.5-flash", "mistral-small-3.1-24b", "gpt-5", "glm-4.5v-106b"];
     for (const modelName of modelsToLoad) {
         const shotTypes = ["zero_shot", "few_shot"];
@@ -389,7 +389,7 @@ function reorderLayoutData(layoutSummary) {
     const baseOrder = [];
     data.forEach(item => {
         const name = item.layout;
-        const m = name.match(/^(.+?)([-\+])?$/);
+        const m = name.match(/^(.+?)([+\-])?$/);
         const base = m ? m[1] : name;
         if (!baseMap.has(base)) {
             baseMap.set(base, []);
@@ -405,8 +405,8 @@ function reorderLayoutData(layoutSummary) {
         const minus = entries.find(e => /-$/.test(e.layout));
         const plus = entries.find(e => /\+$/.test(e.layout));
         
-        if (minus) ordered.push(minus);
         if (plus) ordered.push(plus);
+        if (minus) ordered.push(minus);
         // Add any other variants (no +/-) afterwards
         entries.forEach(e => {
             if (!/\+$/.test(e.layout) && !/-$/.test(e.layout)) ordered.push(e);
@@ -419,7 +419,8 @@ function reorderLayoutData(layoutSummary) {
 // 4. Process data for the ACCURACY MATRIX chart
 function processDataForMatrix(rawData) {
     const tasks = ['task1', 'task2', 'task3'];
-    const layouts = Array.from(new Set(rawData.map(d => (d.Layout || '').split('_')[0]))).filter(Boolean).sort();
+    // Remove .sort() here. The sorting is now handled dynamically in drawBeeswarmMatrix.
+    const layouts = Array.from(new Set(rawData.map(d => (d.Layout || '').split('_')[0]))).filter(Boolean);
     const models = Array.from(new Set(rawData.map(d => d["Model Name"]))).sort();
 
     const cells = {};
@@ -479,7 +480,52 @@ function processDataForMatrix(rawData) {
 }
 
 
-// To shorten labels for X-axis (useful for Overall Accuracy chart to avoid label clutter)
+// 5. Process data for ACCURACY BY LAYOUT (Aggregated by Model Family)
+function processDataForLayoutChartByModelFamily(rawData) {
+    
+    // Helper function to get simplified model name
+    const getModelName = (d) => {
+        const modelName = d["Model Name"];
+        if (modelName.includes('mistral')) return 'Mistral';
+        if (modelName.includes('gemini')) return 'Gemini';
+        if (modelName.includes('gpt-5')) return 'GPT-5';
+        if (modelName.includes('glm')) return 'GLM4.5';
+        return modelName; // fallback
+    };
+
+    // Group by Layout Type (FD-FR, PG, etc.) and then by Model Family
+    const groupedData = d3.group(rawData, 
+        d => d.Layout.split('_')[0], // Extracts 'FD-FR', 'PG', etc.
+        d => getModelName(d) // Extracts 'Mistral', 'GPT-5', etc.
+    );
+
+    const summary = [];
+    const categories = new Set(); // To keep track of all unique model families
+    
+    for (const [layout, layoutData] of groupedData) {
+        const layoutSummary = { layout: layout };
+        
+        for (const [modelFamily, results] of layoutData) {
+            // 'results' now contains ALL configs for that model (zero, few, cot, no_cot)
+            if (results.length === 0) continue;
+            
+            const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+            // The accuracy is the average over all configurations for this model family
+            const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+            
+            layoutSummary[modelFamily] = accuracy;
+            categories.add(modelFamily);
+        }
+        summary.push(layoutSummary);
+    }
+    
+    // Sort categories (model families) alphabetically
+    return { data: summary, categories: Array.from(categories).sort() };
+}
+
+
+
+//Helper: To shorten labels for X-axis (useful for Overall Accuracy chart to avoid label clutter)
 function shortLabel(label) {
     return label.replace("Few-Shot", "FS\n")
               .replace("Zero-Shot", "ZS\n");
@@ -558,55 +604,76 @@ function drawOverallAccuracyChart(summaryData) {
         .on("mouseout", () => tooltip.style("visibility", "hidden"));
 }
 
-// NEW: Draw the ACCURACY MATRIX chart
-function drawBeeswarmMatrix(containerId, cellData) {
+// NEW: Besides the alphabetical order, layouts can now sorted by their Average Accuracy calculated across all tasks and models for that specific layout.
+// Order: From BEST average accuracy (leftmost) to WORST average accuracy (rightmost).
+function drawBeeswarmMatrix(containerId, cellData, layoutOrder = 'avg_accuracy') {
+    
+    // Draw the BEESWARM MATRIX
     d3.select(containerId).select("svg").remove();
 
+    // Define margins and dimensions
     const margin = { top: 40, right: 30, bottom: 60, left: 60 };
     let width = 1600 - margin.left - margin.right;
     const height = 500 - margin.top - margin.bottom;
 
-    if (currentMode === "bastian") width = (width/8)*10;
+    // Adjust width if in "bastian" mode
+    if (currentMode === "bastian") width = (width / 8) * 10;
 
+    // Create the main SVG canvas
     const svg = d3.select(containerId).append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // build matrix data
-    const { tasks, layouts, models, cells } = cellData;
+    // Deconstruct data
+    let { tasks, layouts, models, cells } = cellData;
 
-        const colorPicker = d => {
-            const colorOpenAI = ["#b2dde6", "#90e0ef", "#00b4d8", "#0077b6", "#090ca0"];
-            const colorMistral = ["#ffd700", "#ffaf01", "#ff8204", "#fa500f", "#e00500"];
-            const colorGemini = ["#fb8cad", "#e75c9d", "#c80d9b", "#bf1a3b", "#910824"]
-            const colorGLM = ["#91f79f", "#53efb6", "#37c18e", "#118e60", "#056355"]
+    // --- DYNAMIC COLUMN (LAYOUT) REORDERING LOGIC ---
+    if (layoutOrder === 'avg_accuracy') {
+        // Calculate the average accuracy across all tasks/models for each layout
+        const layoutAvgMap = {};
+        layouts.forEach(layout => {
+            const vals = [];
+            tasks.forEach(t => {
+                models.forEach(m => {
+                    const arr = (cells[t] && cells[t][layout] && cells[t][layout][m]) || [];
+                    arr.forEach(p => vals.push(p.accuracy));
+                });
+            });
+            layoutAvgMap[layout] = vals.length ? d3.mean(vals) : 0;
+        });
 
-            let i = 0;
+        // Sort layouts by descending average accuracy (Best to Worst, Left to Right)
+        layouts = layouts.slice().sort((a, b) => (layoutAvgMap[b] || 0) - (layoutAvgMap[a] || 0));
 
-            // choose colors by "difficulty"
-            if (d.test.includes("task1")) {
-                i = parseInt(d.gt.replace('gt', ''), 10) - 1;
-            } else if (d.test.includes("task2")) {
-                // hacky ahh global
-                if ((currentMode === "aurora" && d.gt === "gt3") || (currentMode === "bastian" && d.gt === "gt2")) {
-                    i = 4;
-                }
-            } else if (d.test.includes("task3")) {
-                diff = parseInt(d.gt.replace('gt', ''), 10);
-                if (currentMode === "bastian") {
-                    if (diff === 3) {
-                        i = 4;
-                    } else if (diff === 2) {
-                        i = 2;
-                    }
-                } else if (diff === 3) {
-                    i = 4;
-                }
+    } else if (layoutOrder === 'alphabetical') {
+        // Sort layouts alphabetically by their name
+        layouts = layouts.slice().sort((a, b) => a.localeCompare(b));
+    }
+    // --- END DYNAMIC COLUMN REORDERING ---
 
-            }
-        
+    // Function to determine point color based on model and ground truth (gt)
+    const colorPicker = d => {
+        // Define color palettes
+        const colorOpenAI = ["#b2dde6", "#90e0ef", "#00b4d8", "#0077b6", "#090ca0"];
+        const colorMistral = ["#ffd700", "#ffaf01", "#ff8204", "#fa500f", "#e00500"];
+        const colorGemini = ["#fb8cad", "#e75c9d", "#c80d9b", "#bf1a3b", "#910824"];
+        const colorGLM = ["#91f79f", "#53efb6", "#37c18e", "#118e60", "#056355"];
 
+        let i = 0; // Color index based on gt or task specific logic
+        if (d.test.includes("task1")) {
+            i = parseInt(d.gt.replace('gt', ''), 10) - 1;
+        } else if (d.test.includes("task2")) {
+            if ((currentMode === "aurora" && d.gt === "gt3") || (currentMode === "bastian" && d.gt === "gt2")) i = 4;
+        } else if (d.test.includes("task3")) {
+            const diff = parseInt(d.gt.replace('gt', ''), 10);
+            if (currentMode === "bastian") {
+                if (diff === 3) i = 4;
+                else if (diff === 2) i = 2;
+            } else if (diff === 3) i = 4;
+        }
+
+        // Apply color based on model name
         switch (d.rawModelName) {
             case "gpt-5":
             case "gpt-5-2025-08-07":
@@ -617,10 +684,12 @@ function drawBeeswarmMatrix(containerId, cellData) {
                 return colorGemini[i];
             case "glm-4.5v-106b":
                 return colorGLM[i];
+            default:
+                return "#ccc";
         }
-    }
+    };
 
-    // layout settings for the matrix
+    // Layout settings for the matrix
     const cols = layouts.length;
     const rows = tasks.length;
     const cellPadding = 4;
@@ -629,7 +698,7 @@ function drawBeeswarmMatrix(containerId, cellData) {
     const cellWidth = width / Math.max(1, cols);
     const cellHeight = height / Math.max(1, rows);
 
-    // Top column labels (layouts)
+    // Top column labels (layouts) - now in the chosen order
     svg.selectAll(".col-label").data(layouts).join("text")
         .attr("class", "col-label")
         .attr("x", (_, i) => i * cellWidth + cellWidth / 2)
@@ -651,22 +720,20 @@ function drawBeeswarmMatrix(containerId, cellData) {
     // Create a group for each cell
     const cellGroup = svg.selectAll(".matrix-cell")
         .data(
+            // Flatten the task x layout structure into an array of cell objects
             tasks.flatMap((t, r) => layouts.map((l, c) => ({ task: t, layout: l, r, c })))
         )
         .join("g")
-        .attr("id", d => `cell-${(d.layout||'').replace(/\s+/g,'_')}-${(d.task||'').replace(/\s+/g,'_')}`)
+        .attr("id", d => `cell-${(d.layout || '').replace(/\s+/g, '_')}-${(d.task || '').replace(/\s+/g, '_')}`)
         .attr("class", "matrix-cell")
-        .attr("fill", "transparent")
-        .attr("fill", "#ffffff")
         .attr("transform", d => `translate(${d.c * cellWidth}, ${d.r * cellHeight})`);
 
-    // draw cell backgrounds / borders
+    // Draw cell backgrounds / borders
     cellGroup.append("rect")
-        .attr("x", 0)
-        .attr("y", 0)
-        .attr("width", cellWidth)
-        .attr("height", cellHeight)
-        .attr("fill", "transparent")
+        .attr("x", 0).attr("y", 0)
+        .attr("width", cellWidth).attr("height", cellHeight)
+        .attr("fill", "transparent");
+
 
     // draw internal grid lines between cells, but not on the outer edges of the matrix
     cellGroup.each(function (cellInfo) {
@@ -702,45 +769,66 @@ function drawBeeswarmMatrix(containerId, cellData) {
     cellGroup.each(function (cellInfo) {
         const g = d3.select(this);
 
-        // inner plotting area
         const innerX = cellPadding;
         const innerY = cellPadding;
         const innerW = cellWidth - cellPadding * 2;
         const innerH = cellHeight - cellPadding * 2;
 
-        // y-scale maps accuracy to vertical position within the cell (same 0-100% for every cell)
+        // Y-scale for accuracy (0-100)
         const yScale = d3.scaleLinear().domain([0, 100]).range([innerH - cellInnerPadding, cellInnerPadding]);
 
-        // Hide the default left axis (it is created later) so it doesn't consume horizontal space
+        // Add a style tag to hide the cell Y-axis, only showing it for the first cell
         if (!document.getElementById('hide-cell-y-axis-style')) {
             d3.select("head").append("style")
                 .attr("id", "hide-cell-y-axis-style")
                 .text(".cell-y-axis { display: none !important; }");
         }
 
+        // =================================================================
+        // --- DYNAMIC MODEL REORDERING (INSIDE CELL) LOGIC ---
+        // Now the order of models within each cell can also be dynamic based on layoutOrder
+        
+        let modelsOrder; 
 
-        // Model slot x positions inside the cell (shift right a bit so axis doesn't overlap)
-        const slotX = i => innerX + (i + 0.5) * (innerW / models.length) + 6;
+        if (layoutOrder === 'avg_accuracy') {
+            // If average accuracy, compute per-model means for this cell
+            const perModelMeans = new Map();
+            models.forEach(m => {
+                const arr = (cells[cellInfo.task] && cells[cellInfo.task][cellInfo.layout] && cells[cellInfo.task][cellInfo.layout][m]) || [];
+                perModelMeans.set(m, arr.length ? d3.mean(arr, d => d.accuracy) : -Infinity);
+            });
+            // avg_accuracy: sort models by descending mean accuracy
+            modelsOrder = models.slice().sort((a, b) => (perModelMeans.get(b) || 0) - (perModelMeans.get(a) || 0));
+        
+        } else { // 'alphabetical'
+            // If alphabetical, keep original order
+            modelsOrder = models.slice(); 
+        }
 
-        // Collect points for this cell from cells[task][layout][model]
+        // Local X slot function that uses this cell's model ordering
+        const slotXLocal = i => innerX + (i + 0.5) * (innerW / Math.max(1, modelsOrder.length)) + 6;
+        //
+        // --- END OF NEW PART ---
+        // =================================================================
+
+
+        // Collect points for this cell using modelsOrder
         const pts = [];
-        models.forEach((m, mi) => {
+        modelsOrder.forEach((m, mi) => {
             const arr = (cells[cellInfo.task] && cells[cellInfo.task][cellInfo.layout] && cells[cellInfo.task][cellInfo.layout][m]) || [];
             arr.forEach(d => {
                 pts.push(Object.assign({}, d, {
                     modelKey: m,
                     modelIndex: mi,
-                    // initial anchor target for simulation
-                    targetX: slotX(mi),
-                    // initial approximate y (add innerY because axis transform moved origin)
-                    targetY: innerY + yScale(d.accuracy),
-                    r: 3.5
+                    targetX: slotXLocal(mi), // Final X position before collision detection
+                    targetY: innerY + yScale(d.accuracy), // Final Y position
+                    r: 3.5 // Radius for force simulation
                 }));
             });
         });
 
+        // Handle case with no data
         if (pts.length === 0) {
-            // small hint when no points
             g.append("text")
                 .attr("x", innerX + innerW / 2)
                 .attr("y", innerY + innerH / 2)
@@ -752,13 +840,14 @@ function drawBeeswarmMatrix(containerId, cellData) {
             return;
         }
 
-        // run a local force simulation to avoid overlap, grouping points around each model slot
+        // Run D3 force simulation for beeswarm effect
         const sim = d3.forceSimulation(pts)
-            .force("x", d3.forceX(d => d.targetX).strength(1))
-            .force("y", d3.forceY(d => d.targetY).strength(1))
-            .force("collide", d3.forceCollide(d => d.r + 0.5))
+            .force("x", d3.forceX(d => d.targetX).strength(1)) // Stick to target X slot
+            .force("y", d3.forceY(d => d.targetY).strength(1)) // Stick to target Y accuracy
+            .force("collide", d3.forceCollide(d => d.r + 0.5)) // Prevent overlap
             .stop();
 
+        // Run simulation for fixed number of ticks (80 is typical for quick convergence)
         for (let i = 0; i < 80; ++i) sim.tick();
 
         /* constrain simulation results inside the inner plotting area */
@@ -767,97 +856,76 @@ function drawBeeswarmMatrix(containerId, cellData) {
             // p.y = Math.max(innerY + cellInnerPadding + p.r, Math.min(innerY + innerH - cellInnerPadding - p.r, p.y));
         // }
 
-        /* draw faint dashed threshold lines at 25%, 50% and 75% */
+
+        // Draw accuracy threshold lines
         const thresholds = [25, 50, 75];
         g.selectAll(".threshold-line").data(thresholds).join("line")
             .attr("class", "threshold-line")
-            .attr("x1", innerX)
-            .attr("x2", innerX + innerW)
-            .attr("y1", d => innerY + yScale(d))
-            .attr("y2", d => innerY + yScale(d))
-            .attr("stroke", "#bbbbbb")
-            .attr("stroke-width", 1)
-            .attr("stroke-dasharray", "4 4")
-            .attr("opacity", 0.55);
+            .attr("x1", innerX).attr("x2", innerX + innerW)
+            .attr("y1", d => innerY + yScale(d)).attr("y2", d => innerY + yScale(d))
+            .attr("stroke", "#bbbbbb").attr("stroke-width", 1).attr("stroke-dasharray", "4 4").attr("opacity", 0.55);
 
-        // small labels for each threshold on the right side of the cell,
-        // but only render in the right-most column to reduce clutter
+        // Add threshold labels (only on the rightmost column)
         if (cellInfo.c === layouts.length - 1) {
             g.selectAll(".threshold-label").data(thresholds).join("text")
-            .attr("class", "threshold-label")
-            .attr("x", innerX + innerW + 6)
-            .attr("y", d => innerY + yScale(d))
-            .attr("text-anchor", "start")
-            .attr("dominant-baseline", "middle")
-            .attr("fill", "#444")
-            .style("font-size", "10px")
-            .text(d => d + "%");
+                .attr("class", "threshold-label")
+                .attr("x", innerX + innerW + 6)
+                .attr("y", d => innerY + yScale(d))
+                .attr("text-anchor", "start")
+                .attr("dominant-baseline", "middle")
+                .attr("fill", "#444")
+                .style("font-size", "10px")
+                .text(d => d + "%");
         }
 
-
-        // draw points
+        // Draw points (circles)
         const points = g.append("g").attr("class", "points")
-            .selectAll("circle")
-            .data(pts)
-            .join("circle")
-            .attr("cx", d => d.x)
-            .attr("cy", d => d.y)
-            .attr("r", d => d.r)
+            .selectAll("circle").data(pts).join("circle")
+            .attr("cx", d => d.x).attr("cy", d => d.y).attr("r", d => d.r)
             .attr("fill", d => colorPicker(d))
+            // Add tooltip handlers (assuming 'tooltip' element is defined elsewhere)
             .on("mouseover", () => tooltip.style("visibility", "visible"))
             .on("mousemove", (event, d) => {
-                tooltip.html(
-                    `<b>${d.rawModelName}</b><br>${d.llmMode} / ${d.cotMode}<br>Accuracy: ${d.accuracy.toFixed(1)}%<br>Count: ${d.count}<br>${d.test}`
-                )
-                    .style("top", (event.pageY - 10) + "px")
-                    .style("left", (event.pageX + 10) + "px");
+                tooltip.html(`<b>${d.rawModelName}</b><br>${d.llmMode} / ${d.cotMode}<br>Accuracy: ${d.accuracy.toFixed(1)}%<br>Count: ${d.count}<br>${d.test}`)
+                    .style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");
             })
             .on("mouseout", () => tooltip.style("visibility", "hidden"));
 
-        // draw mean lines per model within this cell
+        // Draw mean lines per-model
         const means = d3.rollup(pts, v => d3.mean(v, d => d.accuracy), d => d.modelKey);
         const meanGroup = g.append("g").attr("class", "means");
         Array.from(means.entries()).forEach(([m, meanVal]) => {
-
-            const mi = models.indexOf(m);
-            const xCenter = slotX(mi);
+            const mi = modelsOrder.indexOf(m); // Use model's index in the local order
+            const xCenter = slotXLocal(mi);
             const yPos = innerY + yScale(meanVal);
             const lineW = Math.min(innerW / models.length * 0.7, 40);
             meanGroup.append("line")
-                .attr("x1", xCenter - lineW / 2)
-                .attr("x2", xCenter + lineW / 2)
-                .attr("y1", yPos)
-                .attr("y2", yPos)
-                .attr("stroke", "#ccc")
-                .attr("stroke-width", 3)
-                .attr("stroke-dasharray", "3 6")
-                .style("stroke-linecap", "round")
-                //make the line in dark grey or black
-                .style("stroke", "#333");
+                .attr("x1", xCenter - lineW / 2).attr("x2", xCenter + lineW / 2)
+                .attr("y1", yPos).attr("y2", yPos)
+                .attr("stroke", "#333").attr("stroke-width", 3).attr("stroke-dasharray", "3 6").style("stroke-linecap", "round");
         });
 
-        // Add model labels only in the very last row of the matrix
-            if (cellInfo.r === tasks.length - 1) {
-                const labelGroup = g.append("g").attr("class", "cell-model-labels");
-                models.forEach((m, mi) => {
-                    labelGroup.append("text")
-                        .attr("x", slotX(mi))
-                        .attr("y", innerY + innerH + 20)
-                        .attr("text-anchor", "middle")
-                        .attr("dominant-baseline", "alphabetic")
-                        .style("font-size", "11px")
-                        .style("fill", "#444")
-                        .text(m.replace(/.*?(gemini|mistral|Gemini|Mistral|gpt-5|glm).*/i, (s) => {
-                            // shorten common model labels if possible
-                            if (/mistral/i.test(s)) return "Mistral";
-                            if (/gemini/i.test(s)) return "Gemini";
-                            if (/gpt-5/i.test(s)) return "gpt-5";
-                            if (/glm/i.test(s)) return "GLM4.5";
-                            return s;
-                        }));
-                });
-            }
-        
+        // Add model labels (only on the bottom row)
+        if (cellInfo.r === tasks.length - 1) {
+            const labelGroup = g.append("g").attr("class", "cell-model-labels");
+            modelsOrder.forEach((m, mi) => {
+                labelGroup.append("text")
+                    .attr("x", slotXLocal(mi))
+                    .attr("y", innerY + innerH + 20)
+                    .attr("text-anchor", "middle")
+                    .attr("dominant-baseline", "alphabetic")
+                    .style("font-size", "11px")
+                    .style("fill", "#444")
+                    .text(m.replace(/.*?(gemini|mistral|gpt-5|glm).*/i, s => {
+                        if (/mistral/i.test(s)) return "Mistral";
+                        if (/gemini/i.test(s)) return "Gemini";
+                        if (/gpt-5/i.test(s)) return "gpt-5";
+                        if (/glm/i.test(s)) return "GLM4.5";
+                        return s;
+                    }));
+            });
+        }
+
         // Add Y-axis to the left of the first column of cells (first row only)
         if (cellInfo.c === 0 && cellInfo.r === 0) {
             const axisG = g.append("g")
@@ -875,8 +943,9 @@ function drawBeeswarmMatrix(containerId, cellData) {
             }
         }
     });
-
 }
+
+
 
 /* Draws the legend separately outside the main chart SVG.*/
 function drawGroupedBarChartLegend(containerId, categories, getColorMap) {
@@ -912,7 +981,6 @@ function drawGroupedBarChartLegend(containerId, categories, getColorMap) {
         .text(d => d);
 }
 
-
 // Draw a GROUPED BAR CHART (both for Tasks or Layouts)
 // MODIFIED to accept an optional model name for correct color mapping in model-specific charts
 function drawGroupedBarChart(containerId, chartData, groupKey, modelNameForColoring = null) {
@@ -931,7 +999,7 @@ function drawGroupedBarChart(containerId, chartData, groupKey, modelNameForColor
         .attr("height", height + margin.top + margin.bottom)
         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
     
-    // --- COLOUR MAP (needed for the legend) ---
+    // --- COLOUR MAP (needed for the legend if we keep it) ---
     
     const getColorMap = (categories) => {
         const colorMap = {};
@@ -948,12 +1016,24 @@ function drawGroupedBarChart(containerId, chartData, groupKey, modelNameForColor
                 else modelName = 'unknown';
             }
 
-            const cotMode = key.includes('(cot)') ? 'cot' : 'no_cot';
-            
-            let llmMode = 'zero_shot'; 
-            if (key.includes('few_shot') || key.includes('few-shot')) {
-                llmMode = 'few_shot';
+            // --- NEW PART STARTS HERE ---
+            let llmMode = 'zero_shot';
+            let cotMode = 'no_cot';
+
+            // Check if it's a detailed config or an aggregated model name
+            if (key.includes('(')) { 
+                // It's a detailed config like "zero_shot (cot)"
+                cotMode = key.includes('(cot)') ? 'cot' : 'no_cot';
+                if (key.includes('few_shot') || key.includes('few-shot')) {
+                    llmMode = 'few_shot';
+                }
+            } else {
+                // It's an aggregated key like "Mistral" or "GPT-5".
+                // Let's use a "base" color, e.g., few_shot no_cot (index 2)
+                llmMode = 'few_shot'; 
+                cotMode = 'no_cot';
             }
+            // --- END NEW PART ---
             
             colorMap[category] = getGlobalColor(modelName, llmMode, cotMode);
         });
@@ -1021,9 +1101,12 @@ async function renderDashboard() {
     const matrixData = processDataForMatrix(rawData);
     const modelSpecificLayoutData = processDataForLayoutChartByModel(rawData); // NEW: Data for specific charts
 
+    let layoutSummaryByFamily = processDataForLayoutChartByModelFamily(rawData);
+
     // Re-order layout data for "bastian mode"
     if (currentMode === 'bastian') {
         layoutSummary = reorderLayoutData(layoutSummary);
+        layoutSummaryByFamily = reorderLayoutData(layoutSummaryByFamily);
     }
 
     // Render the page structure with containers for all charts
@@ -1032,8 +1115,15 @@ async function renderDashboard() {
         <div class="chart-wrapper">
             <h2 class="chart-title">Matrix</h2>
             <div id="beeswarm-matrix"></div>
+            <div class="controls order-controls matrix-order-control">
+                <h3>Order Layouts by:</h3>
+                <select id="layout-order-select">
+                    <option value="alphabetical" ${layoutOrder === 'alphabetical' ? 'selected' : ''}>Alphabetical</option>
+                    <option value="avg_accuracy" ${layoutOrder === 'avg_accuracy' ? 'selected' : ''}>Average Accuracy (Best Left)</option>
+                </select>
+            </div>
         </div>
-
+        
         <div class="chart-wrapper">
             <h2 class="chart-title">Overall Accuracy by Configuration</h2>
             <div id="overall-accuracy-chart-container"></div>
@@ -1050,6 +1140,8 @@ async function renderDashboard() {
             </div>
         </div>
 
+
+
         <div class="chart-and-legend-wrapper">
             <div class="chart-container-inner">
                 <h2 class="chart-title">Accuracy by Layout Algorithm</h2>
@@ -1061,12 +1153,25 @@ async function renderDashboard() {
             </div>
         </div>
 
+        <div class="chart-and-legend-wrapper">
+            <div class="chart-container-inner">
+                <h2 class="chart-title">Accuracy by Layout (Aggregated by Model)</h2>
+                <div id="layout-accuracy-family-chart-container"></div>
+            </div>
+            <div class="legend-container">
+                <h3>Model Legend</h3>
+                <div id="layout-family-legend-container"></div>
+            </div>
+        </div>
+        <div id="model-specific-charts-container">
+        </div>
+
         <div id="model-specific-charts-container"></div>
         `;
 
     // Draw each all charts
     drawOverallAccuracyChart(overallSummary);
-    drawBeeswarmMatrix("#beeswarm-matrix", matrixData);
+    drawBeeswarmMatrix("#beeswarm-matrix", matrixData, layoutOrder);
     
     // Draw Task chart and get legend data
     const taskLegendData = drawGroupedBarChart("#task-accuracy-chart-container", taskSummary, "task");
@@ -1076,9 +1181,14 @@ async function renderDashboard() {
     const layoutLegendData = drawGroupedBarChart("#layout-accuracy-chart-container", layoutSummary, "layout");
     drawGroupedBarChartLegend("#layout-legend-container", layoutLegendData.categories, layoutLegendData.getColorMap);
 
-    // --- NEW: Draw the model-specific layout charts ---
+    // Draw the model-specific layout charts 
     const modelChartsContainer = document.getElementById('model-specific-charts-container');
     const modelNames = Object.keys(modelSpecificLayoutData).sort(); // Sort for consistent order
+
+    // NEW: Draw Layout by Model Family chart and legend
+    const layoutFamilyLegendData = drawGroupedBarChart("#layout-accuracy-family-chart-container", layoutSummaryByFamily, "layout");
+    drawGroupedBarChartLegend("#layout-family-legend-container", layoutFamilyLegendData.categories, layoutFamilyLegendData.getColorMap);
+
 
     for (const modelName of modelNames) {
         const chartData = modelSpecificLayoutData[modelName];
@@ -1117,6 +1227,14 @@ async function renderDashboard() {
 // --- Event Listeners ---
 document.getElementById('btn-aurora').addEventListener('click', () => { currentMode = 'aurora'; renderDashboard(); });
 document.getElementById('btn-bastian').addEventListener('click', () => { currentMode = 'bastian'; renderDashboard(); });
+
+document.addEventListener('change', (event) => {
+    if (event.target.id === 'layout-order-select') {
+        layoutOrder = event.target.value;
+        renderDashboard(); // Re-render the dashboard with the new order
+    }
+});
+
 
 // Initial load
 renderDashboard();

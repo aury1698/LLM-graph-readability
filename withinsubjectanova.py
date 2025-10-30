@@ -97,11 +97,7 @@ def effect_plusminus(df: pd.DataFrame):
         )
         .reset_index()
     )
-
-    print("Effect of + / -:\n")
-    print(df_agg)
-
-    print("\nEffect of + / - on Error\n")
+    print("\n\nEffect of + / - across all aesthetic on Error\n")
     print(
         AnovaRM(
             data=df_agg,
@@ -111,7 +107,48 @@ def effect_plusminus(df: pd.DataFrame):
         ).fit()
     )
 
-    print("Effect of + / - on Output_Tokens\n")
+    print("Effect of + / - across all aesthetic on Output_Tokens\n")
+    print(
+        AnovaRM(
+            data=df_agg,
+            depvar="Output_Tokens",
+            subject="Model",
+            within=["Layout"],
+        ).fit()
+    )
+
+
+def effect_certain_aesthetic(df: pd.DataFrame, aesthetic: str):
+    # filter for certain aesthetic, e.g. 'b' filters for b+ and b-
+    df = df[df["Layout"].astype(str).str.startswith(aesthetic, na=False)]
+
+    grouping_columns = [
+        "Model",
+        "Layout",
+    ]
+
+    df_agg = (
+        df.groupby(grouping_columns)
+        .agg(
+            Samples=("Samples", "sum"),
+            Correct=("Correct", "sum"),
+            Error=("Error", "mean"),
+            Output_Tokens=("Output_Tokens", "mean"),
+        )
+        .reset_index()
+    )
+
+    print(f"\n\nEffect of {aesthetic} + / - on Error\n")
+    print(
+        AnovaRM(
+            data=df_agg,
+            depvar="Error",
+            subject="Model",
+            within=["Layout"],
+        ).fit()
+    )
+
+    print(f"Effect of {aesthetic} + / - on Output_Tokens\n")
     print(
         AnovaRM(
             data=df_agg,
@@ -126,4 +163,7 @@ if __name__ == "__main__":
     master_data_frame = load_and_aggregate_results()
     df_pre = pre_aggregate(master_data_frame)
 
-    effect_plusminus(df_pre)
+    effect_plusminus(df_pre.copy())
+
+    for ae in ["b", "c", "m", "o", "s"]:
+        effect_certain_aesthetic(df_pre.copy(), ae)

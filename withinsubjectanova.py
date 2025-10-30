@@ -79,6 +79,11 @@ def pre_aggregate(df: pd.DataFrame):
 
 
 def calculate_anovaRM(df: pd.DataFrame) -> tuple[AnovaResults, AnovaResults]:
+    #
+    # Here we combine the No CoT/CoT and Zero/Few-shot results for each model
+    # This May Not Be Wanted!
+    #
+
     grouping_columns = [
         "Model",
         "Layout",
@@ -142,7 +147,7 @@ def effect_hypotheses_certain_aesthetic(df: pd.DataFrame, aesthetic: str):
 def effect_aesthetic(df: pd.DataFrame):
     # Ugly ahh hack to get only b c m o s
     df["Layout"] = df["Layout"].astype(str).apply(lambda x: x[0])
-    
+
     r = calculate_anovaRM(df)
     print("\n\nEffect of the aesthetic b/c/m/o/s across + and - for Error\n")
     print(r[0])

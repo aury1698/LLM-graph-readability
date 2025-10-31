@@ -3,16 +3,10 @@ import os
 import pandas as pd
 from statsmodels.stats.anova import AnovaRM, AnovaResults
 
-CURRENT_MODE = "bastian"  # aurora or bastian
 
-if CURRENT_MODE == "aurora":
-    BASE_PATH = "layout_algorithms_performance"
-else:
-    BASE_PATH = "aesthetic_effect_human_performance"
+BASE_PATH = "aesthetic_effect_human_performance"
 
 RESULTS_DIR = os.path.join(BASE_PATH, "results")
-OUTPUT_CSV_FILE = f"average_accuracies_{CURRENT_MODE}_by_difficulty.csv"
-
 MODELS_TO_LOAD = ["gemini-2.5-flash", "mistral-small-3.1-24b", "gpt-5", "glm-4.5v-106b"]
 SHOT_TYPES = ["zero_shot", "few_shot"]
 COT_TYPES = ["cot", "no_cot"]
@@ -84,6 +78,16 @@ def calculate_anovaRM(df: pd.DataFrame) -> tuple[AnovaResults, AnovaResults]:
     # This May Not Be Wanted!
     #
 
+    # combine Model, Shots and Prompt into a single Model identifier
+    df = df.copy()
+    df["Model"] = (
+        df["Model"].astype(str)
+        + "_"
+        + df["Shots"].astype(str).apply(lambda x: x.split("-")[0])
+        + "_"
+        + df["Prompt"].astype(str)
+    )
+
     grouping_columns = [
         "Model",
         "Layout",
@@ -102,7 +106,7 @@ def calculate_anovaRM(df: pd.DataFrame) -> tuple[AnovaResults, AnovaResults]:
 
     # Uncomment this if you want to see the dataframe that goes into
     # the Anova
-    # print(df_agg)
+    print(df_agg)
 
     return (
         AnovaRM(
@@ -173,9 +177,11 @@ if __name__ == "__main__":
     df_pre = pre_aggregate(master_data_frame)
 
     # Purchase's Hypotheses under section 3.1
-    print("="*80)
-    print("Replicated results from section 3.1 - Testing the Five Individual Hypotheses")
-    print("="*80)
+    print("=" * 80)
+    print(
+        "Replicated results from section 3.1 - Testing the Five Individual Hypotheses"
+    )
+    print("=" * 80)
 
     effect_plusminus(df_pre.copy())
 
@@ -183,9 +189,9 @@ if __name__ == "__main__":
         effect_hypotheses_certain_aesthetic(df_pre.copy(), ae)
 
     # Purchase's Prioritising the Aesthetics under section 3.2
-    print("="*80)
+    print("=" * 80)
     print("Replicated results from section 3.2 - Prioritising the Aesthetics")
-    print("="*80)
+    print("=" * 80)
 
     effect_aesthetic(df_pre.copy())
 

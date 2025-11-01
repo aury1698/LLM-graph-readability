@@ -35,10 +35,14 @@ def load_and_aggregate_results():
     return pd.concat(all_data_frames, ignore_index=True)
 
 
-def pre_aggregate(df: pd.DataFrame):
+def pre_transform(df: pd.DataFrame):
+    """
+    Required as the Anova library does not/cannot handle column names with spaces.
+    """
     df.rename(columns={"Model Name": "Model"}, inplace=True)
     df.rename(columns={"LLM Mode": "Shots"}, inplace=True)
-    df.rename(columns={"COT Mode": "Prompt"}, inplace=True)
+    df.rename(columns={"COT Mode": "Cot"}, inplace=True)
+    df.rename(columns={"Output Tokens": "Output_Tokens"}, inplace=True)
 
     df["Layout"] = df["Layout"].str.split("_").str[0]
     df["Correct"] = (
@@ -47,79 +51,47 @@ def pre_aggregate(df: pd.DataFrame):
         .apply(lambda x: 1 if x.strip() == "True" else 0)
     )
 
-    grouping_columns = [
-        "Model",
-        "Shots",
-        "Prompt",
-        "Layout",
-    ]
-
-    df_agg = (
-        df.groupby(grouping_columns)
-        .agg(
-            Accuracy=("Correct", "mean"),
-            Samples=("Correct", "count"),
-            Correct=("Correct", "sum"),
-            Output_Tokens=("Output Tokens", "mean"),
-        )
-        .reset_index()
-    )
-
-    # Purchase uses error rate instead of accuracy
-    df_agg["Error"] = df_agg["Accuracy"].apply(lambda a: 1 - a)
-    df_agg.drop("Accuracy", axis=1, inplace=True)
-
-    return df_agg.sort_values(by=grouping_columns).reset_index(drop=True)
+    return df
 
 
 def calculate_anovaRM(df: pd.DataFrame) -> tuple[AnovaResults, AnovaResults]:
-    #
+    df = df.copy()
+
     # Here we combine the No CoT/CoT and Zero/Few-shot results for each model
     # This May Not Be Wanted!
     #
-
     # combine Model, Shots and Prompt into a single Model identifier
-    df = df.copy()
     df["Model"] = (
         df["Model"].astype(str)
         + "_"
         + df["Shots"].astype(str).apply(lambda x: x.split("-")[0])
         + "_"
-        + df["Prompt"].astype(str)
+        + df["Cot"].astype(str)
     )
 
-    grouping_columns = [
-        "Model",
-        "Layout",
-    ]
+    # Uncomment this if you want to see the dataframe that goes into the Anova
+    # print(df)
 
-    df_agg = (
-        df.groupby(grouping_columns)
-        .agg(
-            Samples=("Samples", "sum"),
-            Correct=("Correct", "sum"),
-            Error=("Error", "mean"),
-            Output_Tokens=("Output_Tokens", "mean"),
-        )
-        .reset_index()
-    )
 
-    # Uncomment this if you want to see the dataframe that goes into
-    # the Anova
-    print(df_agg)
-
+    # Aggregation is required!
+    #
+    # If the data set contains more than a single observation per subject and cell of the specified model,
+    # this function will be used to aggregate the data before running the Anova.
+    # An exception will be raised if aggregation is required, but no aggregation function was specified.
     return (
         AnovaRM(
-            data=df_agg,
-            depvar="Error",
+            data=df,
+            depvar="Correct",
             subject="Model",
             within=["Layout"],
+            aggregate_func="mean",
         ).fit(),
         AnovaRM(
-            data=df_agg,
+            data=df,
             depvar="Output_Tokens",
             subject="Model",
             within=["Layout"],
+            aggregate_func="mean",
         ).fit(),
     )
 
@@ -174,7 +146,7 @@ def effect_aesthetic_for_plus_or_minus(df: pd.DataFrame, plus_or_minus: str):
 
 if __name__ == "__main__":
     master_data_frame = load_and_aggregate_results()
-    df_pre = pre_aggregate(master_data_frame)
+    df_pre = pre_transform(master_data_frame)
 
     # Purchase's Hypotheses under section 3.1
     print("=" * 80)

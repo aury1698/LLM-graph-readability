@@ -1,8 +1,8 @@
 import os
 
 import pandas as pd
-from statsmodels.stats.anova import AnovaRM, AnovaResults
-
+from scipy.stats import shapiro
+from statsmodels.stats.anova import AnovaResults, AnovaRM
 
 BASE_PATH = "aesthetic_effect_human_performance"
 
@@ -54,6 +54,35 @@ def pre_transform(df: pd.DataFrame):
     return df
 
 
+def normality_of_error_rate(df: pd.DataFrame):
+    df = df.copy()
+
+    # combine Model, Shots and Prompt into a single Model identifier
+    df["Model"] = (
+        df["Model"].astype(str)
+        + "_"
+        + df["Shots"].astype(str).apply(lambda x: x.split("-")[0])
+        + "_"
+        + df["Cot"].astype(str)
+    )
+
+    # as we want error rate and not accuracy, flip the bool and convert to int
+    df["Correct"] = df["Correct"].apply(lambda x: not x).astype(int)
+    agg = df.groupby(["Model", "Layout"], as_index=False)["Correct"].mean()
+    agg.rename(columns={"Correct": "mean_error_rate"}, inplace=True)
+
+    print("")
+    for cond, subset in agg.groupby("Layout"):
+        stat, p = shapiro(subset["mean_error_rate"])
+        print(f"{cond}: W={stat:.3f}, p={p:.3f}")
+    print("")
+
+    # for cond, subset in agg.groupby("Layout"):
+    #    probplot(subset["mean_error_rate"], dist="norm", plot=plt)
+    #    plt.title(f"Q-Q Plot for {cond}")
+    #    plt.show()
+
+
 def calculate_anovaRM(df: pd.DataFrame) -> tuple[AnovaResults, AnovaResults]:
     df = df.copy()
 
@@ -71,7 +100,6 @@ def calculate_anovaRM(df: pd.DataFrame) -> tuple[AnovaResults, AnovaResults]:
 
     # Uncomment this if you want to see the dataframe that goes into the Anova
     # print(df)
-
 
     # Aggregation is required!
     #
@@ -147,6 +175,12 @@ def effect_aesthetic_for_plus_or_minus(df: pd.DataFrame, plus_or_minus: str):
 if __name__ == "__main__":
     master_data_frame = load_and_aggregate_results()
     df_pre = pre_transform(master_data_frame)
+
+    print("=" * 80)
+    print("Testing normality of error rates")
+    print("=" * 80)
+
+    normality_of_error_rate(df_pre)
 
     # Purchase's Hypotheses under section 3.1
     print("=" * 80)

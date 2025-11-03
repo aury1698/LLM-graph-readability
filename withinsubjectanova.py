@@ -3,6 +3,10 @@ import os
 import pandas as pd
 from scipy.stats import shapiro
 from statsmodels.stats.anova import AnovaResults, AnovaRM
+import numpy as np
+from scipy.stats import norm
+import matplotlib.pyplot as plt
+
 
 BASE_PATH = "aesthetic_effect_human_performance"
 
@@ -54,7 +58,7 @@ def pre_transform(df: pd.DataFrame):
     return df
 
 
-def normality_of_error_rate(df: pd.DataFrame):
+def error_rate_for_subjects(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
     # combine Model, Shots and Prompt into a single Model identifier
@@ -71,13 +75,42 @@ def normality_of_error_rate(df: pd.DataFrame):
     agg = df.groupby(["Model", "Layout"], as_index=False)["Correct"].mean()
     agg.rename(columns={"Correct": "mean_error_rate"}, inplace=True)
 
+    return pd.DataFrame(agg)
+
+
+def normality_of_error_rate(df: pd.DataFrame):
+    df = error_rate_for_subjects(df)
+
     print("")
-    for cond, subset in agg.groupby("Layout"):
+    stat, p = shapiro(df["mean_error_rate"])
+    print(f"all: W={stat:.3f}, p={p:.3f}{'     <--- oarg' if p < 0.05 else ''}\n")
+
+
+    data = df["mean_error_rate"].dropna()
+    if data.empty:
+        print("no data to plot")
+    else:
+        mu, sigma = data.mean(), data.std(ddof=0)
+        padding = 0.1 * (data.max() - data.min() if data.max() != data.min() else 1.0)
+        xs = np.linspace(data.min() - padding, data.max() + padding, 200)
+
+        plt.figure()
+        plt.hist(data, bins=20, density=True, alpha=0.6, color="C0", edgecolor="k")
+        plt.plot(xs, norm.pdf(xs, loc=mu, scale=sigma), "r-", lw=2, label=f"Normal PDF (μ={mu:.3f}, σ={sigma:.3f})")
+        plt.title("Histogram of mean_error_rate with fitted normal (bell curve)")
+        plt.xlabel("mean_error_rate")
+        plt.ylabel("Density")
+        plt.legend()
+        plt.show()
+
+    for cond, subset in df.groupby("Layout"):
         stat, p = shapiro(subset["mean_error_rate"])
-        print(f"{cond}: W={stat:.3f}, p={p:.3f}")
+        print(
+            f"{cond}: W={stat:.3f}, p={p:.3f}{'     <--- oarg' if p < 0.05 else ''}\n"
+        )
     print("")
 
-    # for cond, subset in agg.groupby("Layout"):
+    # for cond, subset in df.groupby("Layout"):
     #    probplot(subset["mean_error_rate"], dist="norm", plot=plt)
     #    plt.title(f"Q-Q Plot for {cond}")
     #    plt.show()

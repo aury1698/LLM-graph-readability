@@ -1,11 +1,10 @@
 import os
 
-import pandas as pd
-from scipy.stats import shapiro
-from statsmodels.stats.anova import AnovaResults, AnovaRM
-import numpy as np
-from scipy.stats import norm
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from scipy.stats import norm, probplot, shapiro
+from statsmodels.stats.anova import AnovaResults, AnovaRM
 
 
 BASE_PATH = "aesthetic_effect_human_performance"
@@ -70,6 +69,9 @@ def error_rate_for_subjects(df: pd.DataFrame) -> pd.DataFrame:
         + df["Cot"].astype(str)
     )
 
+    # per task normal distribution
+    # df = df[df["Task"].astype(str).str.startswith("task1", na=False)]
+
     # as we want error rate and not accuracy, flip the bool and convert to int
     df["Correct"] = df["Correct"].apply(lambda x: not x).astype(int)
     agg = df.groupby(["Model", "Layout"], as_index=False)["Correct"].mean()
@@ -84,6 +86,9 @@ def normality_of_error_rate(df: pd.DataFrame):
     print("")
     stat, p = shapiro(df["mean_error_rate"])
     print(f"all: W={stat:.3f}, p={p:.3f}{'     <--- oarg' if p < 0.05 else ''}\n")
+    probplot(df["mean_error_rate"], dist="norm", plot=plt)
+    plt.title("Q-Q Plot for all")
+    plt.show()
 
 
     data = df["mean_error_rate"].dropna()

@@ -1,11 +1,13 @@
 import os
+from itertools import combinations
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.stats import norm, probplot, shapiro
+from scipy.stats import norm, probplot, shapiro, ttest_rel, wilcoxon  # noqa: F401
 from statsmodels.stats.anova import AnovaResults, AnovaRM
-
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
+from statsmodels.stats.multitest import multipletests
 
 BASE_PATH = "aesthetic_effect_human_performance"
 
@@ -80,16 +82,25 @@ def error_rate_for_subjects(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(agg)
 
 
+def plot_combined_error_rate_per_layout(df: pd.DataFrame):
+    df = error_rate_for_subjects(df)
+    agg = df.groupby(["Layout"], as_index=False)["mean_error_rate"].mean()
+    print(agg)
+    plt.figure()
+    plt.title("error per layout")
+    plt.bar(agg["Layout"], agg["mean_error_rate"])
+    plt.show()
+
+
 def normality_of_error_rate(df: pd.DataFrame):
     df = error_rate_for_subjects(df)
 
     print("")
     stat, p = shapiro(df["mean_error_rate"])
     print(f"all: W={stat:.3f}, p={p:.3f}{'     <--- oarg' if p < 0.05 else ''}\n")
-    probplot(df["mean_error_rate"], dist="norm", plot=plt)
-    plt.title("Q-Q Plot for all")
-    plt.show()
-
+    # probplot(df["mean_error_rate"], dist="norm", plot=plt)
+    # plt.title("Q-Q Plot for all")
+    # plt.show()
 
     data = df["mean_error_rate"].dropna()
     if data.empty:
@@ -101,7 +112,13 @@ def normality_of_error_rate(df: pd.DataFrame):
 
         plt.figure()
         plt.hist(data, bins=20, density=True, alpha=0.6, color="C0", edgecolor="k")
-        plt.plot(xs, norm.pdf(xs, loc=mu, scale=sigma), "r-", lw=2, label=f"Normal PDF (μ={mu:.3f}, σ={sigma:.3f})")
+        plt.plot(
+            xs,
+            norm.pdf(xs, loc=mu, scale=sigma),
+            "r-",
+            lw=2,
+            label=f"Normal PDF (μ={mu:.3f}, σ={sigma:.3f})",
+        )
         plt.title("Histogram of mean_error_rate with fitted normal (bell curve)")
         plt.xlabel("mean_error_rate")
         plt.ylabel("Density")
@@ -124,9 +141,6 @@ def normality_of_error_rate(df: pd.DataFrame):
 def calculate_anovaRM(df: pd.DataFrame) -> tuple[AnovaResults, AnovaResults]:
     df = df.copy()
 
-    # Here we combine the No CoT/CoT and Zero/Few-shot results for each model
-    # This May Not Be Wanted!
-    #
     # combine Model, Shots and Prompt into a single Model identifier
     df["Model"] = (
         df["Model"].astype(str)
@@ -186,6 +200,165 @@ def effect_hypotheses_certain_aesthetic(df: pd.DataFrame, aesthetic: str):
     print(r[1])
 
 
+def pairwise_comparison(df: pd.DataFrame, alpha: float = 0.05):
+    df = df.copy()
+
+    df["Model"] = (
+        df["Model"].astype(str)
+        + "_"
+        + df["Shots"].astype(str).apply(lambda x: x.split("-")[0])
+        + "_"
+        + df["Cot"].astype(str)
+    )
+
+    err_df = error_rate_for_subjects(df)
+    for sign in ["-", "+"]:
+        subset = err_df[err_df["Layout"].astype(str).str.endswith(sign, na=False)]
+        tuk = pairwise_tukeyhsd(
+            endog=subset["mean_error_rate"], groups=subset["Layout"], alpha=alpha
+        )
+        print(f"\nTukey HSD for mean_error_rate across layouts ending with '{sign}'\n")
+        print(tuk.summary())
+
+    # aggregate output tokens per Model/Layout (mean)
+    out_df = (
+        df.groupby(["Model", "Layout"], as_index=False)["Output_Tokens"]
+        .mean()
+        .rename(columns={"Output_Tokens": "mean_output_tokens"})
+    )
+    for sign in ["-", "+"]:
+        subset = out_df[out_df["Layout"].astype(str).str.endswith(sign, na=False)]
+        tuk = pairwise_tukeyhsd(
+            endog=subset["mean_output_tokens"], groups=subset["Layout"], alpha=alpha
+        )
+        print(
+            f"\nTukey HSD for mean_output_tokens across layouts ending with '{sign}'\n"
+        )
+        print(tuk.summary())
+
+
+# copied from aurora
+def run_parametric_post_hoc(df: pd.DataFrame, dv="mean_error_rate", alpha=0.05):
+    """
+    Performs PARAMETRIC post-hoc tests (paired t-tests + Holm correction).
+    This replicates the "Tukey's WSD" logic from the paper.
+    """
+
+    for sign in ["-", "+"]:
+        err_df = error_rate_for_subjects(df)
+        subset = err_df[err_df["Layout"].astype(str).str.endswith(sign, na=False)]
+
+        print(
+            f"\n--- Parametric Post-Hoc for {dv} (Paired T-tests + Holm Correction) ---"
+        )
+
+        df_agg = subset.groupby(["Model", "Layout"], as_index=False)[dv].mean()
+        df_wide = df_agg.pivot(index="Model", columns="Layout", values=dv)
+
+        layouts = df_wide.columns
+        comparisons = list(combinations(layouts, 2))
+        p_values = []
+        results = []
+
+        for layout_a, layout_b in comparisons:
+            data_a = df_wide[layout_a]
+            data_b = df_wide[layout_b]
+
+            common_data = pd.concat([data_a, data_b], axis=1, keys=["a", "b"]).dropna()
+
+            if len(common_data) < 2:
+                print(f"Skipping {layout_a} vs {layout_b}: insufficient paired data")
+                continue
+
+            stat, p = ttest_rel(common_data["a"], common_data["b"])  # Paired T-test
+            p_values.append(p)
+            results.append((layout_a, layout_b, stat, p))
+
+        if not p_values:
+            print("No post-hoc comparisons were performed.")
+            return
+
+        reject, p_values_corrected, _, _ = multipletests(
+            p_values, alpha=alpha, method="holm"
+        )
+
+        print(
+            "Layout A       | Layout B       |   T-Stat |  p-unc | p-adj (Holm) | Significant"
+        )
+        print("-" * 75)
+        for i, (layout_a, layout_b, stat, p) in enumerate(results):
+            sig_str = "YES" if reject[i] else "no"
+            print(
+                f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>6.3f} | {p_values_corrected[i]:>12.3f} | {sig_str}"
+            )
+
+
+# copied from aurora
+def run_non_parametric_post_hoc(df: pd.DataFrame, dv="mean_error_rate", alpha=0.05):
+    """
+    Performs NON-PARAMETRIC post-hoc tests (Wilcoxon + Bonferroni correction).
+    """
+
+    for sign in ["-", "+"]:
+        err_df = error_rate_for_subjects(df)
+        subset = err_df[err_df["Layout"].astype(str).str.endswith(sign, na=False)]
+
+        print(
+            f"\n--- Non-Parametric Post-Hoc for {dv} (Wilcoxon + Bonferroni Correction) ---"
+        )
+
+        df_agg = subset.groupby(["Model", "Layout"], as_index=False)[dv].mean()
+        df_wide = df_agg.pivot(index="Model", columns="Layout", values=dv)
+
+        layouts = df_wide.columns
+        comparisons = list(combinations(layouts, 2))
+        p_values = []
+        results = []
+
+        for layout_a, layout_b in comparisons:
+            data_a = df_wide[layout_a]
+            data_b = df_wide[layout_b]
+
+            common_data = pd.concat([data_a, data_b], axis=1, keys=["a", "b"]).dropna()
+
+            if len(common_data) < 2:
+                print(f"Skipping {layout_a} vs {layout_b}: insufficient paired data")
+                continue
+
+            # Wilcoxon signed-rank test for paired samples --> should it be Nemenyi instead?
+            try:
+                stat, p = wilcoxon(
+                    common_data["a"], common_data["b"], zero_method="wilcox"
+                )
+            except ValueError:
+                # This can happen if all differences are zero,
+                # in which case p=1.0 and stat=0 (or NaN)
+                stat, p = 0.0, 1.0
+
+            p_values.append(p)
+            results.append((layout_a, layout_b, stat, p))
+
+        if not p_values:
+            print("No post-hoc comparisons were performed.")
+            return
+
+        # Use Bonferroni correction, which is more standard (and conservative)
+        # for non-parametric post-hocs like this.
+        reject, p_values_corrected, _, _ = multipletests(
+            p_values, alpha=alpha, method="bonferroni"
+        )
+
+        print(
+            "Layout A       | Layout B       |   W-Stat |  p-unc | p-adj (Bonf) | Significant"
+        )
+        print("-" * 75)
+        for i, (layout_a, layout_b, stat, p) in enumerate(results):
+            sig_str = "YES" if reject[i] else "no"
+            print(
+                f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>6.3f} | {p_values_corrected[i]:>12.3f} | {sig_str}"
+            )
+
+
 def effect_aesthetic(df: pd.DataFrame):
     # Ugly ahh hack to get only b c m o s
     df["Layout"] = df["Layout"].astype(str).apply(lambda x: x[0])
@@ -241,3 +414,11 @@ if __name__ == "__main__":
 
     for pm in ["-", "+"]:
         effect_aesthetic_for_plus_or_minus(df_pre.copy(), pm)
+
+    # plot_combined_error_rate_per_layout(df_pre)
+
+    pairwise_comparison(df_pre)
+
+    # auroras
+    run_parametric_post_hoc(df_pre)
+    run_non_parametric_post_hoc(df_pre)

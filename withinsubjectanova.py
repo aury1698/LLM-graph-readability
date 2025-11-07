@@ -81,6 +81,21 @@ def error_rate_for_subjects(df: pd.DataFrame) -> pd.DataFrame:
 
     return pd.DataFrame(agg)
 
+def save_error_rate_wide_csv(df: pd.DataFrame) -> str:
+    err_df = error_rate_for_subjects(df)
+    df_wide = err_df.pivot(index="Model", columns="Layout", values="mean_error_rate")
+
+    filename = "error_rate_per_subject_all.csv"
+    out_path = os.path.join("./", filename)
+    df_wide.to_csv(out_path, index=False)
+
+    for sign in ["-", "+"]:
+        subset = err_df[err_df["Layout"].astype(str).str.endswith(sign, na=False)]
+        subset_wide = subset.pivot(index="Model", columns="Layout", values="mean_error_rate")
+
+        filename = f"error_rate_per_subject_type_{sign}.csv"
+        out_path = os.path.join("./", filename)
+        subset_wide.to_csv(out_path, index=False)
 
 def plot_combined_error_rate_per_layout(df: pd.DataFrame):
     df = error_rate_for_subjects(df)
@@ -416,6 +431,8 @@ if __name__ == "__main__":
         effect_aesthetic_for_plus_or_minus(df_pre.copy(), pm)
 
     # plot_combined_error_rate_per_layout(df_pre)
+
+    # save_error_rate_wide_csv(df_pre)
 
     pairwise_comparison(df_pre)
 

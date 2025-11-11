@@ -1,4 +1,4 @@
-# wsd.r - dynamic tukeySEM for any number of Layout levels
+# wsd.r - dynamic tukeySEM
 
 pkgs <- c("readr", "dplyr", "tidyr", "lavaan", "semTools")
 new <- pkgs[!(pkgs %in% installed.packages()[, "Package"])]

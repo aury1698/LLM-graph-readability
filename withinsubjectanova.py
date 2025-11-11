@@ -76,26 +76,48 @@ def error_rate_for_subjects(df: pd.DataFrame) -> pd.DataFrame:
 
     # as we want error rate and not accuracy, flip the bool and convert to int
     df["Correct"] = df["Correct"].apply(lambda x: not x).astype(int)
-    agg = df.groupby(["Model", "Layout"], as_index=False)["Correct"].mean()
-    agg.rename(columns={"Correct": "mean_error_rate"}, inplace=True)
+    agg = df.groupby(["Model", "Layout"], as_index=False).agg(
+        mean_error_rate=("Correct", "mean"),
+        mean_output_tokens=("Output_Tokens", "mean"),
+    )
 
     return pd.DataFrame(agg)
 
-def save_error_rate_wide_csv(df: pd.DataFrame) -> str:
-    err_df = error_rate_for_subjects(df)
-    df_wide = err_df.pivot(index="Model", columns="Layout", values="mean_error_rate")
 
+def save_wide_csv(df: pd.DataFrame) -> str:
+    err_df = error_rate_for_subjects(df)
+
+    df_wide_error = err_df.pivot(
+        index="Model", columns="Layout", values="mean_error_rate"
+    )
     filename = "error_rate_per_subject_all.csv"
     out_path = os.path.join("./", filename)
-    df_wide.to_csv(out_path, index=False)
+    df_wide_error.to_csv(out_path, index=False)
+
+    df_wide_out = err_df.pivot(
+        index="Model", columns="Layout", values="mean_output_tokens"
+    )
+    filename = "output_tokens_per_subject_all.csv"
+    out_path = os.path.join("./", filename)
+    df_wide_out.to_csv(out_path, index=False)
 
     for sign in ["-", "+"]:
         subset = err_df[err_df["Layout"].astype(str).str.endswith(sign, na=False)]
-        subset_wide = subset.pivot(index="Model", columns="Layout", values="mean_error_rate")
 
+        subset_wide_error = subset.pivot(
+            index="Model", columns="Layout", values="mean_error_rate"
+        )
         filename = f"error_rate_per_subject_type_{sign}.csv"
         out_path = os.path.join("./", filename)
-        subset_wide.to_csv(out_path, index=False)
+        subset_wide_error.to_csv(out_path, index=False)
+
+        subset_wide_output_tokens = subset.pivot(
+            index="Model", columns="Layout", values="mean_output_tokens"
+        )
+        filename = f"output_tokens_per_subject_type_{sign}.csv"
+        out_path = os.path.join("./", filename)
+        subset_wide_output_tokens.to_csv(out_path, index=False)
+
 
 def plot_combined_error_rate_per_layout(df: pd.DataFrame):
     df = error_rate_for_subjects(df)
@@ -432,7 +454,7 @@ if __name__ == "__main__":
 
     # plot_combined_error_rate_per_layout(df_pre)
 
-    # save_error_rate_wide_csv(df_pre)
+    save_wide_csv(df_pre)
 
     pairwise_comparison(df_pre)
 

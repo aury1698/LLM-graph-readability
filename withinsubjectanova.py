@@ -213,7 +213,7 @@ def calculate_anovaRM(df: pd.DataFrame) -> tuple[AnovaResults, AnovaResults]:
     )
 
 
-def effect_plusminus(df: pd.DataFrame):
+def purchase_effect_plusminus(df: pd.DataFrame):
     # Ugly ahh hack to get + or -
     df["Layout"] = df["Layout"].astype(str).apply(lambda x: x[1])
 
@@ -225,7 +225,7 @@ def effect_plusminus(df: pd.DataFrame):
     print(r[1])
 
 
-def effect_hypotheses_certain_aesthetic(df: pd.DataFrame, aesthetic: str):
+def purchase_effect_hypotheses_certain_aesthetic(df: pd.DataFrame, aesthetic: str):
     # filter for certain aesthetic, e.g. 'b' filters for b+ and b-
     df = df[df["Layout"].astype(str).str.startswith(aesthetic, na=False)]
 
@@ -237,7 +237,7 @@ def effect_hypotheses_certain_aesthetic(df: pd.DataFrame, aesthetic: str):
     print(r[1])
 
 
-def pairwise_comparison(df: pd.DataFrame, alpha: float = 0.05):
+def purchase_pairwise_comparison(df: pd.DataFrame, alpha: float = 0.05):
     df = df.copy()
 
     df["Model"] = (
@@ -396,7 +396,7 @@ def run_non_parametric_post_hoc(df: pd.DataFrame, dv="mean_error_rate", alpha=0.
             )
 
 
-def effect_aesthetic(df: pd.DataFrame):
+def purchase_effect_aesthetic(df: pd.DataFrame):
     # Ugly ahh hack to get only b c m o s
     df["Layout"] = df["Layout"].astype(str).apply(lambda x: x[0])
 
@@ -408,7 +408,7 @@ def effect_aesthetic(df: pd.DataFrame):
     print(r[1])
 
 
-def effect_aesthetic_for_plus_or_minus(df: pd.DataFrame, plus_or_minus: str):
+def purchase_effect_aesthetic_for_plus_or_minus(df: pd.DataFrame, plus_or_minus: str):
     # filter for certain + or -, e.g. '+' filters for b+, c+, m+, ...
     df = df[df["Layout"].astype(str).str.endswith(plus_or_minus, na=False)]
 
@@ -437,27 +437,27 @@ if __name__ == "__main__":
     )
     print("=" * 80)
 
-    effect_plusminus(df_pre.copy())
+    purchase_effect_plusminus(df_pre.copy())
 
     for ae in ["b", "c", "m", "o", "s"]:
-        effect_hypotheses_certain_aesthetic(df_pre.copy(), ae)
+        purchase_effect_hypotheses_certain_aesthetic(df_pre.copy(), ae)
 
     # Purchase's Prioritising the Aesthetics under section 3.2
     print("=" * 80)
     print("Replicated results from section 3.2 - Prioritising the Aesthetics")
     print("=" * 80)
 
-    effect_aesthetic(df_pre.copy())
+    purchase_effect_aesthetic(df_pre.copy())
 
     for pm in ["-", "+"]:
-        effect_aesthetic_for_plus_or_minus(df_pre.copy(), pm)
+        purchase_effect_aesthetic_for_plus_or_minus(df_pre.copy(), pm)
 
     # plot_combined_error_rate_per_layout(df_pre)
 
-    save_wide_csv(df_pre)
+    # save_wide_csv(df_pre)
 
-    pairwise_comparison(df_pre)
+    purchase_pairwise_comparison(df_pre)
 
     # auroras
-    run_parametric_post_hoc(df_pre)
-    run_non_parametric_post_hoc(df_pre)
+    # run_parametric_post_hoc(df_pre)
+    # run_non_parametric_post_hoc(df_pre)

@@ -4,7 +4,13 @@ from itertools import combinations
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.stats import norm, probplot, shapiro, ttest_rel, wilcoxon  # noqa: F401
+from scipy.stats import (  # noqa: F401
+    friedmanchisquare,
+    norm,
+    probplot,
+    shapiro,
+    wilcoxon,
+)
 from statsmodels.stats.anova import AnovaResults, AnovaRM
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.multitest import multipletests
@@ -238,33 +244,18 @@ def purchase_effect_hypotheses_certain_aesthetic(df: pd.DataFrame, aesthetic: st
 
 
 def purchase_pairwise_comparison(df: pd.DataFrame, alpha: float = 0.05):
-    df = df.copy()
+    df = error_rate_for_subjects(df)
 
-    df["Model"] = (
-        df["Model"].astype(str)
-        + "_"
-        + df["Shots"].astype(str).apply(lambda x: x.split("-")[0])
-        + "_"
-        + df["Cot"].astype(str)
-    )
-
-    err_df = error_rate_for_subjects(df)
     for sign in ["-", "+"]:
-        subset = err_df[err_df["Layout"].astype(str).str.endswith(sign, na=False)]
+        subset = df[df["Layout"].astype(str).str.endswith(sign, na=False)]
         tuk = pairwise_tukeyhsd(
             endog=subset["mean_error_rate"], groups=subset["Layout"], alpha=alpha
         )
         print(f"\nTukey HSD for mean_error_rate across layouts ending with '{sign}'\n")
         print(tuk.summary())
 
-    # aggregate output tokens per Model/Layout (mean)
-    out_df = (
-        df.groupby(["Model", "Layout"], as_index=False)["Output_Tokens"]
-        .mean()
-        .rename(columns={"Output_Tokens": "mean_output_tokens"})
-    )
     for sign in ["-", "+"]:
-        subset = out_df[out_df["Layout"].astype(str).str.endswith(sign, na=False)]
+        subset = df[df["Layout"].astype(str).str.endswith(sign, na=False)]
         tuk = pairwise_tukeyhsd(
             endog=subset["mean_output_tokens"], groups=subset["Layout"], alpha=alpha
         )
@@ -272,128 +263,6 @@ def purchase_pairwise_comparison(df: pd.DataFrame, alpha: float = 0.05):
             f"\nTukey HSD for mean_output_tokens across layouts ending with '{sign}'\n"
         )
         print(tuk.summary())
-
-
-# copied from aurora
-def run_parametric_post_hoc(df: pd.DataFrame, dv="mean_error_rate", alpha=0.05):
-    """
-    Performs PARAMETRIC post-hoc tests (paired t-tests + Holm correction).
-    This replicates the "Tukey's WSD" logic from the paper.
-    """
-
-    for sign in ["-", "+"]:
-        err_df = error_rate_for_subjects(df)
-        subset = err_df[err_df["Layout"].astype(str).str.endswith(sign, na=False)]
-
-        print(
-            f"\n--- Parametric Post-Hoc for {dv} (Paired T-tests + Holm Correction) ---"
-        )
-
-        df_agg = subset.groupby(["Model", "Layout"], as_index=False)[dv].mean()
-        df_wide = df_agg.pivot(index="Model", columns="Layout", values=dv)
-
-        layouts = df_wide.columns
-        comparisons = list(combinations(layouts, 2))
-        p_values = []
-        results = []
-
-        for layout_a, layout_b in comparisons:
-            data_a = df_wide[layout_a]
-            data_b = df_wide[layout_b]
-
-            common_data = pd.concat([data_a, data_b], axis=1, keys=["a", "b"]).dropna()
-
-            if len(common_data) < 2:
-                print(f"Skipping {layout_a} vs {layout_b}: insufficient paired data")
-                continue
-
-            stat, p = ttest_rel(common_data["a"], common_data["b"])  # Paired T-test
-            p_values.append(p)
-            results.append((layout_a, layout_b, stat, p))
-
-        if not p_values:
-            print("No post-hoc comparisons were performed.")
-            return
-
-        reject, p_values_corrected, _, _ = multipletests(
-            p_values, alpha=alpha, method="holm"
-        )
-
-        print(
-            "Layout A       | Layout B       |   T-Stat |  p-unc | p-adj (Holm) | Significant"
-        )
-        print("-" * 75)
-        for i, (layout_a, layout_b, stat, p) in enumerate(results):
-            sig_str = "YES" if reject[i] else "no"
-            print(
-                f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>6.3f} | {p_values_corrected[i]:>12.3f} | {sig_str}"
-            )
-
-
-# copied from aurora
-def run_non_parametric_post_hoc(df: pd.DataFrame, dv="mean_error_rate", alpha=0.05):
-    """
-    Performs NON-PARAMETRIC post-hoc tests (Wilcoxon + Bonferroni correction).
-    """
-
-    for sign in ["-", "+"]:
-        err_df = error_rate_for_subjects(df)
-        subset = err_df[err_df["Layout"].astype(str).str.endswith(sign, na=False)]
-
-        print(
-            f"\n--- Non-Parametric Post-Hoc for {dv} (Wilcoxon + Bonferroni Correction) ---"
-        )
-
-        df_agg = subset.groupby(["Model", "Layout"], as_index=False)[dv].mean()
-        df_wide = df_agg.pivot(index="Model", columns="Layout", values=dv)
-
-        layouts = df_wide.columns
-        comparisons = list(combinations(layouts, 2))
-        p_values = []
-        results = []
-
-        for layout_a, layout_b in comparisons:
-            data_a = df_wide[layout_a]
-            data_b = df_wide[layout_b]
-
-            common_data = pd.concat([data_a, data_b], axis=1, keys=["a", "b"]).dropna()
-
-            if len(common_data) < 2:
-                print(f"Skipping {layout_a} vs {layout_b}: insufficient paired data")
-                continue
-
-            # Wilcoxon signed-rank test for paired samples --> should it be Nemenyi instead?
-            try:
-                stat, p = wilcoxon(
-                    common_data["a"], common_data["b"], zero_method="wilcox"
-                )
-            except ValueError:
-                # This can happen if all differences are zero,
-                # in which case p=1.0 and stat=0 (or NaN)
-                stat, p = 0.0, 1.0
-
-            p_values.append(p)
-            results.append((layout_a, layout_b, stat, p))
-
-        if not p_values:
-            print("No post-hoc comparisons were performed.")
-            return
-
-        # Use Bonferroni correction, which is more standard (and conservative)
-        # for non-parametric post-hocs like this.
-        reject, p_values_corrected, _, _ = multipletests(
-            p_values, alpha=alpha, method="bonferroni"
-        )
-
-        print(
-            "Layout A       | Layout B       |   W-Stat |  p-unc | p-adj (Bonf) | Significant"
-        )
-        print("-" * 75)
-        for i, (layout_a, layout_b, stat, p) in enumerate(results):
-            sig_str = "YES" if reject[i] else "no"
-            print(
-                f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>6.3f} | {p_values_corrected[i]:>12.3f} | {sig_str}"
-            )
 
 
 def purchase_effect_aesthetic(df: pd.DataFrame):
@@ -420,6 +289,154 @@ def purchase_effect_aesthetic_for_plus_or_minus(df: pd.DataFrame, plus_or_minus:
     print(r[1])
 
 
+def our_hypotheses_test_wilcoxon(df: pd.DataFrame):
+    df = error_rate_for_subjects(df)
+    wide_err = df.pivot(index="Model", columns="Layout", values="mean_error_rate")
+    wide_out = df.pivot(index="Model", columns="Layout", values="mean_output_tokens")
+
+    plus_cols = [c for c in wide_err.columns if str(c).endswith("+")]
+    minus_cols = [c for c in wide_err.columns if str(c).endswith("-")]
+
+    plus_mean_err = wide_err[plus_cols].mean(axis=1, skipna=True)
+    minus_mean_err = wide_err[minus_cols].mean(axis=1, skipna=True)
+    paired_err = pd.concat([plus_mean_err, minus_mean_err], axis=1)
+    paired_err.columns = ["plus_mean_err", "minus_mean_err"]
+
+    print("\n")
+    stat, p = wilcoxon(paired_err["plus_mean_err"], paired_err["minus_mean_err"])
+    print(
+        f"Wilcoxon (error): '+' vs '-':         n={len(paired_err)} | W={stat:.4f}, p={p:.6f}"
+    )
+
+    plus_mean_out = wide_out[plus_cols].mean(axis=1, skipna=True)
+    minus_mean_out = wide_out[minus_cols].mean(axis=1, skipna=True)
+    paired_out = pd.concat([plus_mean_out, minus_mean_out], axis=1)
+    paired_out.columns = ["plus_mean_out", "minus_mean_out"]
+
+    stat, p = wilcoxon(paired_out["plus_mean_out"], paired_out["minus_mean_out"])
+    print(
+        f"Wilcoxon (output tokens) '+' vs '-':  n={len(paired_out)} | W={stat:.4f}, p={p:.6f}"
+    )
+
+    for aest in ["b", "c", "m", "o", "s"]:
+        plus_col = f"{aest}+"
+        minus_col = f"{aest}-"
+
+        paired_err_layout = wide_err[[plus_col, minus_col]]
+        stat, p = wilcoxon(paired_err_layout[plus_col], paired_err_layout[minus_col])
+        print(
+            f"\nWilcoxon (error) for {aest} + / -:         n={len(paired_err_layout)} | W={stat:.4f}, p={p:.6f}"
+        )
+
+        paired_out_layout = wide_out[[plus_col, minus_col]]
+        stat, p = wilcoxon(paired_out_layout[plus_col], paired_out_layout[minus_col])
+        print(
+            f"Wilcoxon (output tokens) for {aest} + / -: n={len(paired_out_layout)} | W={stat:.4f}, p={p:.6f}"
+        )
+
+
+def our_prioritizing_aesthetics_effect(df: pd.DataFrame):
+    df = error_rate_for_subjects(df)
+    wide_err = df.pivot(index="Model", columns="Layout", values="mean_error_rate")
+    wide_out = df.pivot(index="Model", columns="Layout", values="mean_output_tokens")
+
+    # Ugly ahh hack to get only b c m o s
+    wide_err = wide_err.T.groupby(by=lambda col: str(col)[0]).mean()
+    wide_out = wide_out.T.groupby(by=lambda col: str(col)[0]).mean()
+
+    stat, p = friedmanchisquare(*[wide_err[col].values for col in wide_err.columns])
+    print(
+        f"\n\nFriedman Chi Square (error) for aesthetics b/c/m/o/s across + and -:\n\nQ={stat:.4f}, p={p:.6f}\n"
+    )
+    stat, p = friedmanchisquare(*[wide_out[col].values for col in wide_out.columns])
+    print(
+        f"Friedman Chi Square (output tokens) for aesthetics b/c/m/o/s across + and -:\n\nQ={stat:.4f}, p={p:.6f}\n\n"
+    )
+
+    for sign in ["-", "+"]:
+        # only compare for all + and all -
+        subset = df[df["Layout"].astype(str).str.endswith(sign, na=False)]
+
+        wide_err = subset.pivot(
+            index="Model", columns="Layout", values="mean_error_rate"
+        )
+        wide_out = subset.pivot(
+            index="Model", columns="Layout", values="mean_output_tokens"
+        )
+
+        stat, p = friedmanchisquare(*[wide_err[col].values for col in wide_err.columns])
+        print(f"Friedman Chi Square Effect of the {sign} aesthetics for Error\n")
+        print(f"Q={stat:.4f}, p={p:.6f}\n")
+
+        stat, p = friedmanchisquare(*[wide_out[col].values for col in wide_out.columns])
+        print(
+            f"Friedman Chi Square Effect of the {sign} aesthetics for Output_Tokens\n"
+        )
+        print(f"Q={stat:.4f}, p={p:.6f}\n\n")
+
+
+def our_pairwise_comparison(df: pd.DataFrame):
+    df = error_rate_for_subjects(df)
+
+    for sign in ["-", "+"]:
+        subset = df[df["Layout"].astype(str).str.endswith(sign, na=False)]
+
+        wide_err = subset.pivot(
+            index="Model", columns="Layout", values="mean_error_rate"
+        )
+        wide_out = subset.pivot(
+            index="Model", columns="Layout", values="mean_output_tokens"
+        )
+
+        # equal set of pairwise comparisons
+        comparisons = list(combinations(wide_err.columns, 2))
+
+        p_values_err = []
+        results_err = []
+
+        p_values_out = []
+        results_out = []
+
+        for a, b in comparisons:
+            stat_err, p_err = wilcoxon(wide_err[a], wide_err[b])
+            p_values_err.append(p_err)
+            results_err.append((a, b, stat_err, p_err))
+
+            stat_out, p_out = wilcoxon(wide_out[a], wide_out[b])
+            p_values_out.append(p_out)
+            results_out.append((a, b, stat_out, p_out))
+
+        reject_err, p_values_err_corrected, _, _ = multipletests(
+            p_values_err, alpha=0.05, method="bonferroni"
+        )
+
+        print(f"\nPair-wise Comparision for {sign} and error rate:\n")
+        print(
+            "Layout A       | Layout B       |   W-Stat |  p-unc | p-adj (Bonf) | Significant"
+        )
+        print("-" * 75)
+        for i, (layout_a, layout_b, stat, p) in enumerate(results_err):
+            sig_str = "YES" if reject_err[i] else "no"
+            print(
+                f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>6.3f} | {p_values_err_corrected[i]:>12.3f} | {sig_str}"
+            )
+
+        reject_out, p_values_out_corrected, _, _ = multipletests(
+            p_values_out, alpha=0.05, method="bonferroni"
+        )
+
+        print(f"\nPair-wise Comparision for {sign} and output tokens:\n")
+        print(
+            "Layout A       | Layout B       |   W-Stat |  p-unc | p-adj (Bonf) | Significant"
+        )
+        print("-" * 75)
+        for i, (layout_a, layout_b, stat, p) in enumerate(results_out):
+            sig_str = "YES" if reject_out[i] else "no"
+            print(
+                f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>6.3f} | {p_values_out_corrected[i]:>12.3f} | {sig_str}"
+            )
+
+
 if __name__ == "__main__":
     master_data_frame = load_and_aggregate_results()
     df_pre = pre_transform(master_data_frame)
@@ -428,7 +445,7 @@ if __name__ == "__main__":
     print("Testing normality of error rates")
     print("=" * 80)
 
-    normality_of_error_rate(df_pre)
+    # normality_of_error_rate(df_pre)
 
     # Purchase's Hypotheses under section 3.1
     print("=" * 80)
@@ -461,3 +478,17 @@ if __name__ == "__main__":
     # auroras
     # run_parametric_post_hoc(df_pre)
     # run_non_parametric_post_hoc(df_pre)
+
+    print("\n" + "=" * 80)
+    print("Non-parametric Tests")
+    print("=" * 80)
+
+    our_hypotheses_test_wilcoxon(df_pre)
+
+    print("\n" + "=" * 80)
+    print("Non-parametric Pair-wise Comparision")
+    print("=" * 80)
+
+    our_prioritizing_aesthetics_effect(df_pre)
+
+    our_pairwise_comparison(df_pre)

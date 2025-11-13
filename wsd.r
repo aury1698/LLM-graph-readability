@@ -6,7 +6,9 @@ if(length(new)) install.packages(new)
 lapply(pkgs, library, character.only = TRUE)
 
 # Path to your CSV (update if needed)
-csv_file <- "error_rate_per_subject_type_-.csv"
+#csv_file <- "error_rate_per_subject_type_-.csv"
+# auro's version:
+csv_file <- "error_per_subject_all_layouts.csv"
 
 wide <- readr::read_csv(csv_file, show_col_types = FALSE)
 
@@ -44,4 +46,8 @@ for(k in seq_len(nrow(pairs))) {
 tukey_results <- do.call(rbind, res_list)
 
 print(tukey_results)
+
+
+
+
 

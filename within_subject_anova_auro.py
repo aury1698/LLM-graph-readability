@@ -1,17 +1,19 @@
 import os
 import pandas as pd
 import numpy as np
-
-# Added imports for non parametric tests: do we want to use wilcoxon or nemenyi?
-from scipy.stats import (
-    norm, probplot, shapiro, ttest_rel, 
-    friedmanchisquare, wilcoxon
-)
-from statsmodels.stats.anova import AnovaResults, AnovaRM
-from statsmodels.stats.multicomp import pairwise_tukeyhsd
-from statsmodels.stats.multitest import multipletests
 import matplotlib.pyplot as plt
 from itertools import combinations
+
+# Import for parametric tests (Purchase's replication)
+from statsmodels.stats.anova import AnovaResults, AnovaRM
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
+
+# Import for non-parametric tests (Our correct analysis)
+from scipy.stats import (
+    norm, probplot, shapiro, 
+    friedmanchisquare, wilcoxon
+)
+from statsmodels.stats.multitest import multipletests
 
 
 BASE_PATH = "layout_algorithms_performance"
@@ -23,38 +25,29 @@ COT_TYPES = ["cot", "no_cot"]
 
 
 def load_and_aggregate_results():
-    """Loads all individual CSVs into one master DataFrame."""
     all_data_frames = []
-
     for model in MODELS_TO_LOAD:
         for shot in SHOT_TYPES:
             for cot in COT_TYPES:
                 config_path = os.path.join(RESULTS_DIR, model, shot, cot)
-
                 if not os.path.isdir(config_path):
                     continue
-
                 for f in os.listdir(config_path):
                     if f.startswith("results_attempt_") and f.endswith(".csv"):
                         file_path = os.path.join(config_path, f)
                         df = pd.read_csv(file_path)
                         all_data_frames.append(df)
-
     if not all_data_frames:
         print(f"Warning: no csv files found in {RESULTS_DIR}")
         return pd.DataFrame()
-
     return pd.concat(all_data_frames, ignore_index=True)
 
 
-def pre_transform(df: pd.DataFrame):
+def pre_transform(df: pd.DataFrame) -> pd.DataFrame:
     """
-    (Aurora's "rich" pre-transform)
-    Cleans data, renames columns, calculates 'Error', 
-    and creates the 'Subject' identifier upfront.
+    Required as the Anova library does not/cannot handle column names with spaces.
     """
     df = df.copy()
-    
     df.rename(columns={"Model Name": "Model"}, inplace=True)
     df.rename(columns={"LLM Mode": "Shots"}, inplace=True)
     df.rename(columns={"COT Mode": "Cot"}, inplace=True)
@@ -66,11 +59,18 @@ def pre_transform(df: pd.DataFrame):
         .astype(str)
         .apply(lambda x: 1 if x.strip() == "True" else 0)
     )
-    
-    # Create the 'Error' metric (1=Error, 0=Correct)
+    # as we want error rate and not accuracy
     df["Error"] = 1 - df["Correct"]
-    
-    # Create the 'Subject' (N=16) - this is the "participant"
+    df = df.drop(columns=["Correct Prediction (True/False)", "Correct"])
+    return df
+
+
+def error_rate_for_subjects(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Creates the 'Subject' ID and aggregates by Subject and Layout.
+    """
+    df = df.copy()
+    # combine Model, Shots and Prompt into a single Subject identifier
     df["Subject"] = (
         df["Model"].astype(str)
         + "_"
@@ -78,395 +78,304 @@ def pre_transform(df: pd.DataFrame):
         + "_"
         + df["Cot"].astype(str)
     )
-    
-    # Drop original columns not needed for analysis
-    df = df.drop(columns=["Correct Prediction (True/False)", "Correct"])
-    
-    return df
+    # per task normal distribution
+    # df = df[df["Task"].astype(str).str.startswith("task1", na=False)]
+
+    agg = df.groupby(["Subject", "Layout"], as_index=False).agg(
+        mean_error_rate=("Error", "mean"),
+        mean_output_tokens=("Output_Tokens", "mean"),
+    )
+    return pd.DataFrame(agg)
 
 
-def check_normality(df: pd.DataFrame, dv="Error"):
+def save_wide_csv(df_agg: pd.DataFrame):
+    """
+    Saves the aggregated data in wide format (one row per subject).
+    """
+    df_wide_error = df_agg.pivot(
+        index="Subject", columns="Layout", values="mean_error_rate"
+    )
+    filename_err = "error_rate_per_subject_all_layouts_auro.csv"
+    out_path_err = os.path.join("./", filename_err)
+    df_wide_error.to_csv(out_path_err, index=True)
+
+    df_wide_out = df_agg.pivot(
+        index="Subject", columns="Layout", values="mean_output_tokens"
+    )
+    filename_out = "output_tokens_per_subject_all_layouts_auro.csv"
+    out_path_out = os.path.join("./", filename_out)
+    df_wide_out.to_csv(out_path_out, index=True)
+
+
+def plot_combined_error_rate_per_layout(df_agg: pd.DataFrame):
+    """
+    Creates a bar plot of the mean error rate per layout, averaged over all subjects.
+    """
+    agg_plot = df_agg.groupby(["Layout"], as_index=False)["mean_error_rate"].mean()
+    
+    plt.figure()
+    plt.bar(agg_plot["Layout"], agg_plot["mean_error_rate"])
+    plt.title("Mean Error Rate per Layout (All Subjects)")
+    plt.xlabel("Layout Algorithm")
+    plt.ylabel("Mean Error Rate")
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig("mean_error_rate_per_layout.png")
+    plt.close()
+
+
+def normality_of_error_rate(df_agg: pd.DataFrame, dv="mean_error_rate"):
     """
     Checks normality using Shapiro-Wilk, Q-Q Plot, and Histogram.
-    This function matches Bastian's checks.
-    Returns True if data appears normal, False otherwise.
+    Takes the AGGREGATED DataFrame.
     """
-    # Aggregate data to get one value per subject/layout
-    df_agg = df.groupby(["Subject", "Layout"], as_index=False)[dv].mean()
-    
     print(f"\n--- Normality Check for {dv} --- \n")
     
     data = df_agg[dv].dropna()
     if data.empty or len(data) < 3:
         print(f"No data for {dv} to check.")
-        return False  # Cannot be normal if no data
-    
-    # Visual inspections 
-    # 1. Q-Q Plot
-    plt.figure()
-    probplot(data, dist="norm", plot=plt)
-    plt.title(f"Q-Q Plot for {dv}")
-    qq_plot_filename = f"qq_plot_{dv}.png"
-    plt.savefig(qq_plot_filename)
-    # print(f"Saving Q-Q plot to {qq_plot_filename}")
-    plt.show() 
-    plt.close()
+        return False
 
-    # 2. Histogram 
-    plt.figure()
-    mu, sigma = data.mean(), data.std(ddof=0)
-    
-    padding = 0.1 * (data.max() - data.min() if data.max() != data.min() else 1.0)
-    if np.isnan(padding) or padding == 0: 
-        padding = 1.0
-    
-    xs_min = data.min() - padding
-    xs_max = data.max() + padding
+    # Visual inspection: decomment if needed for plots
 
-    if np.isnan(xs_min) or np.isnan(xs_max):
-        print("Cannot generate linspace, invalid min/max/padding. Using fallback.")
-        xs = np.linspace(mu - 3 * sigma, mu + 3 * sigma, 200)
-    else:
-        xs = np.linspace(xs_min, xs_max, 200)
+    # probplot(data, dist="norm", plot=plt)
+    # plt.title(f"Q-Q Plot for {dv}")
+    # plt.show() 
 
-    plt.hist(data, bins=20, density=True, alpha=0.6, color="C0", edgecolor="k")
-    plt.plot(xs, norm.pdf(xs, loc=mu, scale=sigma), "r-", lw=2, label=f"Normal PDF (μ={mu:.3f}, σ={sigma:.3f})")
-    plt.title(f"Histogram of {dv} mean with normal curve")
-    plt.xlabel(f"Mean {dv}")
-    plt.ylabel("Density")
-    plt.legend()
-    plot_filename = f"normality_plot_{dv}.png"
-    plt.savefig(plot_filename)
-    # print(f"Saving normality plot to {plot_filename}")
-    plt.show() 
-    plt.close()
+    # Global Shapiro-Wilk
+    stat, p = shapiro(data)
+    print(f"Global Normality (Shapiro-Wilk): W={stat:.3f}, p={p:.3f}{'    <--- NOT NORMAL' if p < 0.05 else ''}\n")
+    is_normal = p > 0.05
 
-    # Global Shapiro-Wilk Normality Check
-    try:
-        stat, p = shapiro(data)
-        print(f"Global Normality Check (Shapiro-Wilk): \n W={stat:.3f}, p={p:.3f}{'     <--- NOT NORMAL' if p < 0.05 else ''}\n")
-        is_global_normal = p > 0.05
-    except Exception as e:
-        print(f"Global Shapiro Error: {e}")
-        return False  # Cannot proceed
-
-    # Per-Group (Layout) Normality Check
-    all_groups_normal = True
-    print("Per-Layout Normality Check (Shapiro-Wilk):\n")
+    # Per-Group Shapiro-Wilk
+    print("Per-Layout Normality (Shapiro-Wilk):\n")
     for cond, subset in df_agg.groupby("Layout"):
         subset_data = subset[dv].dropna()
         if len(subset_data) < 3:
-            print(f"{cond}: SKIPPED (insufficient data, N={len(subset_data)})")
+            print(f"{cond}: SKIPPED (N={len(subset_data)})")
             continue
         stat, p = shapiro(subset_data)
-        print(f"{cond}: W={stat:.3f}, p={p:.3f}{'     <--- NOT NORMAL' if p < 0.05 else ''}\n")
+        print(f"{cond}: W={stat:.3f}, p={p:.3f}{'    <--- NOT NORMAL' if p < 0.05 else ''}\n")
         if p < 0.05:
-            all_groups_normal = False
+            is_normal = False
             
-    if is_global_normal and all_groups_normal:
-        print(f"-> RESULT: Data for {dv} appears sufficiently normal for parametric tests.")
-        return True
-    else:
-        print(f"-> RESULT: Data for {dv} VIOLATES normality assumptions.")
-        return False
+    return is_normal
 
 
-def run_parametric_post_hoc(df: pd.DataFrame, dv="Error", alpha=0.05):
+def calculate_anovaRM(df: pd.DataFrame) -> tuple[AnovaResults, AnovaResults]:
     """
-    Performs PARAMETRIC post-hoc tests (paired t-tests + Holm correction).
-    This replicates the "Tukey's WSD" logic from the paper.
+    Runs the AnovaRM for both DVs (Error and Output_Tokens) at once.
+    Takes the LONG (pre-transformed) DataFrame.
     """
-    print(f"\n--- Parametric Post-Hoc for {dv} (Paired T-tests + Holm Correction) ---")
-    
-    df_agg = df.groupby(["Subject", "Layout"], as_index=False)[dv].mean()
-    df_wide = df_agg.pivot(index="Subject", columns="Layout", values=dv)
-    
-    layouts = df_wide.columns
-    comparisons = list(combinations(layouts, 2))
-    p_values = []
-    results = []
+    df = df.copy()
 
-    for layout_a, layout_b in comparisons:
-        data_a = df_wide[layout_a]
-        data_b = df_wide[layout_b]
-        
-        common_data = pd.concat([data_a, data_b], axis=1, keys=['a', 'b']).dropna()
-        
-        if len(common_data) < 2:
-            print(f"Skipping {layout_a} vs {layout_b}: insufficient paired data")
-            continue
-            
-        stat, p = ttest_rel(common_data['a'], common_data['b'])  # Paired T-test
-        p_values.append(p)
-        results.append((layout_a, layout_b, stat, p))
+    # combine Model, Shots and Prompt into a single Subject identifier
+    df["Subject"] = (
+        df["Model"].astype(str)
+        + "_"
+        + df["Shots"].astype(str).apply(lambda x: x.split("-")[0])
+        + "_"
+        + df["Cot"].astype(str)
+    )
 
-    if not p_values:
-        print("No post-hoc comparisons were performed.")
-        return
+    # Uncomment this if you want to see the dataframe that goes into the Anova
+    # print(df) 
 
-    reject, p_values_corrected, _, _ = multipletests(p_values, alpha=alpha, method='holm')
-    
-    print("Layout A       | Layout B       |   T-Stat |   p-unc | p-adj (Holm) | Significant")
-    print("-" * 75)
-    for i, (layout_a, layout_b, stat, p) in enumerate(results):
-        sig_str = "YES" if reject[i] else "no"
-        print(f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>6.3f} | {p_values_corrected[i]:>12.3f} | {sig_str}")
-
-
-def run_non_parametric_post_hoc(df: pd.DataFrame, dv="Error", alpha=0.05):
-    """
-    Performs NON-PARAMETRIC post-hoc tests (Wilcoxon + Bonferroni correction).
-    """
-    print(f"\n--- Non-Parametric Post-Hoc for {dv} (Wilcoxon + Bonferroni Correction) ---")
-    
-    df_agg = df.groupby(["Subject", "Layout"], as_index=False)[dv].mean()
-    df_wide = df_agg.pivot(index="Subject", columns="Layout", values=dv)
-    
-    layouts = df_wide.columns
-    comparisons = list(combinations(layouts, 2))
-    p_values = []
-    results = []
-
-    for layout_a, layout_b in comparisons:
-        data_a = df_wide[layout_a]
-        data_b = df_wide[layout_b]
-        
-        common_data = pd.concat([data_a, data_b], axis=1, keys=['a', 'b']).dropna()
-        
-        if len(common_data) < 2:
-            print(f"Skipping {layout_a} vs {layout_b}: insufficient paired data")
-            continue
-            
-        # Wilcoxon signed-rank test for paired samples --> should it be Nemenyi instead?
-        try:
-            stat, p = wilcoxon(common_data['a'], common_data['b'], zero_method='wilcox')
-        except ValueError:
-            # This can happen if all differences are zero,
-            # in which case p=1.0 and stat=0 (or NaN)
-            stat, p = 0.0, 1.0
-
-        p_values.append(p)
-        results.append((layout_a, layout_b, stat, p))
-
-    if not p_values:
-        print("No post-hoc comparisons were performed.")
-        return
-
-    # Use Bonferroni correction, which is more standard (and conservative)
-    # for non-parametric post-hocs like this.
-    reject, p_values_corrected, _, _ = multipletests(p_values, alpha=alpha, method='bonferroni')
-    
-    print("Layout A       | Layout B       |   W-Stat |   p-unc | p-adj (Bonf) | Significant")
-    print("-" * 75)
-    for i, (layout_a, layout_b, stat, p) in enumerate(results):
-        sig_str = "YES" if reject[i] else "no"
-        print(f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>6.3f} | {p_values_corrected[i]:>12.3f} | {sig_str}")
-
-
-def run_main_parametric_analysis(df: pd.DataFrame):
-    """
-    Runs the main PARAMETRIC analysis (ANOVA), replicating Section 3 of the paper.
-    This is run regardless of normality, to match Purchase & Bastian.
-    """
-    print("\n\n" + "=" * 80)
-    print("STEP 2: PARAMETRIC ANALYSIS (REPLICATING PAPER)")
-    print("        (ANOVA is run regardless of normality)")
-    print("=" * 80)
-
-    # --- Analysis for Error ---
-    print("\n--- Main Effect of Layout on Error (ANOVA) ---")
-    try:
-        aov_error = AnovaRM(
+    # Aggregation is required!
+    # If the data set contains more than a single observation per subject and cell of the specified model,
+    # this function will be used to aggregate the data before running the Anova.
+    # An exception will be raised if aggregation is required, but no aggregation function was specified.
+    return (
+        AnovaRM(
             data=df,
-            depvar="Error",
+            depvar="Error", # Tu usi 'Error', lui 'Correct'
             subject="Subject",
             within=["Layout"],
-            aggregate_func="mean",  # Automatically aggregates the 3 questions
-        ).fit()
-        print(aov_error)
-        error_p_value = aov_error.anova_table["Pr > F"].iloc[0]
-    except Exception as e:
-        print(f"Error during AnovaRM for Error: {e}")
-        error_p_value = 1.0  # Set to 1 to skip post-hoc
-
-    # --- Analysis for Output Tokens (Response Time) ---
-    print("\n--- Main Effect of Layout on Output_Tokens (ANOVA) ---")
-    try:
-        aov_tokens = AnovaRM(
+            aggregate_func="mean",
+        ).fit(),
+        AnovaRM(
             data=df,
             depvar="Output_Tokens",
             subject="Subject",
             within=["Layout"],
             aggregate_func="mean",
-        ).fit()
-        print(aov_tokens)
-        tokens_p_value = aov_tokens.anova_table["Pr > F"].iloc[0]
-    except Exception as e:
-        print(f"Error during AnovaRM for Output_Tokens: {e}")
-        tokens_p_value = 1.0  # Set to 1 to skip post-hoc
+        ).fit(),
+    )
 
-    # --- Post-Hoc Analysis ---
-    print("\n" + "=" * 80)
-    print("STEP 3: PARAMETRIC POST-HOC (Tukey/T-test)")
+def purchase_parametric_analysis(df: pd.DataFrame):
+    """
+    PURCHASE'S REPLICATION: Runs the main PARAMETRIC analysis (ANOVA) anyways.
+    This function calls calculate_anovaRM once.
+    """
+    print("\n\n" + "=" * 80)
+    print("Purchase's Parametric Analysis (ANOVA)")
     print("=" * 80)
     
-    if error_p_value < 0.05:
-        print(f"Parametric main effect for Error is significant (p={error_p_value:.4f}).")
-        run_parametric_post_hoc(df, dv="Error")
-    else:
-        print(f"No significant parametric main effect for Error (p={error_p_value:.4f}). Skipping post-hoc.")
-        
-    if tokens_p_value < 0.05:
-        print(f"\nParametric main effect for Output_Tokens is significant (p={tokens_p_value:.4f}).")
-        run_parametric_post_hoc(df, dv="Output_Tokens")
-    else:
-        print(f"\nNo significant parametric main effect for Output_Tokens (p={tokens_p_value:.4f}). Skipping post-hoc.")
+    error_p_value = 1.0
+    tokens_p_value = 1.0
 
-
-def run_non_parametric_analysis(df: pd.DataFrame, dv="Error"):
-    """
-    Runs the NON-PARAMETRIC main analysis (Friedman Test).
-    """
-    print(f"\n--- Non-Parametric Main Effect of Layout on {dv} (Friedman Test) ---")
-    
-    # it seems that Friedman test requires wide-form data (one column per condition)
-    df_agg = df.groupby(["Subject", "Layout"], as_index=False)[dv].mean()
-    df_wide = df_agg.pivot(index="Subject", columns="Layout", values=dv)
-    
-    # Friedman in scipy cannot handle any missing data
-    df_wide_clean = df_wide.dropna()
-    
-    if len(df_wide_clean) < 2:
-        print(f"Skipping Friedman test for {dv}: not enough complete subjects (N={len(df_wide_clean)}).")
-        return
-
-    print(f"(Running Friedman on {len(df_wide_clean)} complete subjects)")
-
-    # Unpack the columns as separate arguments
     try:
-        stat, p = friedmanchisquare(*[df_wide_clean[col] for col in df_wide_clean.columns])
-        print(f"Friedman Test for {dv}: Chi-Squared = {stat:.3f}, p = {p:.4f}")
+        # Call the single function that returns both results
+        aov_error, aov_tokens = calculate_anovaRM(df) 
+
+        print("\n--- Main Effect of Layout on Error (ANOVA) ---")
+        print(aov_error)
+        error_p_value = aov_error.anova_table["Pr > F"].iloc[0]
+
+        print("\n--- Main Effect of Layout on Output_Tokens (ANOVA) ---")
+        print(aov_tokens)
+        tokens_p_value = aov_tokens.anova_table["Pr > F"].iloc[0]
         
-        if p < 0.05:
-            print(f"Non-parametric main effect for {dv} is significant. Running post-hoc.")
-            run_non_parametric_post_hoc(df, dv=dv)
-        else:
-            print(f"No significant non-parametric main effect for {dv}. Skipping post-hoc.")
     except Exception as e:
-        print(f"Error during Friedman test for {dv}: {e}")
+        print(f"AnovaRM Error: {e}")
+        
+    return error_p_value, tokens_p_value
 
 
-def pairwise_comparison(df: pd.DataFrame, dv="Error", alpha=0.05):
+def purchase_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.05):
     """
-    Runs the classic Tukey's HSD post-hoc test.
+    PURCHASE'S REPLICATION: Runs the classic Tukey's HSD post-hoc test.
+    Takes the AGGREGATED DataFrame.
     """
-    print(f"\n--- Classic Tukey HSD Post-Hoc for {dv} ---")
-    df = df.copy()
-    
-    df_agg = df.groupby(["Subject", "Layout"], as_index=False)[dv].mean()
-
+    print(f"\n--- Parametric Post-Hoc for {dv} (Tukey HSD) ---")
     try:
         tukey_results = pairwise_tukeyhsd(
             endog=df_agg[dv],        
             groups=df_agg["Layout"],
             alpha=alpha
         )
-        
         print(f"\nTukey HSD Results for {dv}:\n")
         print(tukey_results.summary())
-        
     except Exception as e:
-        print(f"Error running Tukey HSD: {e}")
+        print(f"Tukey HSD Error: {e}")
 
+#END OF PURCHASE'S REPLICATION
 
-# NEW: save wide-format CSV for R analysis like bastian
-def save_wide_format_for_R(df: pd.DataFrame, dv="Error"):
+#START OF OUR NON-PARAMETRIC ANALYSIS
+def our_main_effect_test(df_agg: pd.DataFrame):
     """
-    Aggregates data and pivots to a single wide-format CSV 
-    for the R script (tukeySEM).
-    
-    This version creates ONE file with ALL layouts as columns,
-    as required by the "Performance of Layout Algorithms" paper.
+    OUR ANALYSIS: Runs the NON-PARAMETRIC main analysis (Friedman Test).
+    equivalent to bastian's `our_prioritizing_aesthetics_effect`.
     """
-    print(f"\n--- Saving Wide-Format CSV for R ({dv}) ---")
+    print("\n\n" + "=" * 80)
+    print("NON-Parametric Main Test (Friedman)")
+    print("=" * 80)
     
-    df_agg = df.groupby(["Subject", "Layout"], as_index=False)[dv].mean()
-
+    error_p_value = 1.0
+    tokens_p_value = 1.0
     
-    try:
-        # Index: Subject
-        # Columns: the 8 Layouts
-        # Values: error means
-        df_wide = df_agg.pivot(index="Subject", columns="Layout", values=dv)
+    for dv, name in [("mean_error_rate", "Error"), ("mean_output_tokens", "Output Tokens")]:
+        print(f"\n--- Friedman Test for {name} ---")
+        df_wide = df_agg.pivot(index="Subject", columns="Layout", values=dv).dropna()
         
-        filename = f"{dv.lower()}_per_subject_all_layouts.csv"
-        out_path = os.path.join("./", filename) 
+        if len(df_wide) < 2:
+            print(f"Skipping Friedman: not enough complete subjects (N={len(df_wide)}).")
+            continue
         
-        df_wide.to_csv(out_path, index=False)
-        
-        print(f"Successfully saved wide-format data to: {out_path}")
-        print(f"You can now use this file in the R script for Tukey.")
+        try:
+            data_to_test = [df_wide[col] for col in df_wide.columns]
+            stat, p = friedmanchisquare(*data_to_test)
+            print(f"Friedman Test for {name}: Chi-Squared = {stat:.3f}, p = {p:.4f}")
+            if dv == "mean_error_rate": error_p_value = p
+            else: tokens_p_value = p
+        except Exception as e:
+            print(f"Friedman Error: {e}")
+            
+    return error_p_value, tokens_p_value
 
-    except Exception as e:
-        print(f"Error pivoting or saving wide format: {e}")
+
+def our_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.05):
+    """
+    OUR ANALYSIS: Performs NON-PARAMETRIC post-hoc tests (Wilcoxon + Bonferroni).
+    Takes the AGGREGATED DataFrame.
+    """
+    print(f"\n--- NON-Parametric Post-Hoc for {dv} (Wilcoxon + Bonferroni) ---")
+    
+    df_wide = df_agg.pivot(index="Subject", columns="Layout", values=dv)
+    comparisons = list(combinations(df_wide.columns, 2))
+    p_values = []
+    results = []
+
+    for layout_a, layout_b in comparisons:
+        common_data = df_wide[[layout_a, layout_b]].dropna()
+        if len(common_data) < 2:
+            continue
+        try:
+            stat, p = wilcoxon(common_data[layout_a], common_data[layout_b], zero_method='wilcox')
+        except ValueError:
+             stat, p = 0.0, 1.0 # All differences are zero
+        p_values.append(p)
+        results.append((layout_a, layout_b, stat, p))
+
+    if not p_values:
+        print("No post-hoc comparisons were performed.")
+        return
+
+    reject, p_values_corrected, _, _ = multipletests(p_values, alpha=alpha, method='bonferroni')
+    
+    print("Layout A       | Layout B       |   W-Stat |   p-unc | p-adj (Bonf) | Significant")
+    print("-" * 75)
+    for i, (layout_a, layout_b, stat, p) in enumerate(results):
+        sig_str = "YES" if reject[i] else "no"
+        print(f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>7.4f} | {p_values_corrected[i]:>12.4f} | {sig_str}")
 
 
 if __name__ == "__main__":
+
     master_data_frame = load_and_aggregate_results()
     
     if isinstance(master_data_frame, pd.DataFrame) and not master_data_frame.empty:
         
-        # Transform (clean) the data, create Subjects
-        df_transformed = pre_transform(master_data_frame)
+        df_pre = pre_transform(master_data_frame)
+        df_agg = error_rate_for_subjects(df_pre.copy()) # use copy to be safe
         
-        # Check statistical assumptions (Normality)
+        # --- (Utility) ---
+        save_wide_csv(df_agg.copy())
+        # plot_combined_error_rate_per_layout(df_agg.copy())
+        
+        # --- STEP 1: NORMALITY ---
         print("=" * 80)
         print("STEP 1: CHECKING ASSUMPTIONS (NORMALITY)")
         print("=" * 80)
+        is_error_normal = normality_of_error_rate(df_agg.copy(), dv="mean_error_rate")
+        is_tokens_normal = normality_of_error_rate(df_agg.copy(), dv="mean_output_tokens")
         
-        is_error_normal = check_normality(df_transformed.copy(), dv="Error")
-        is_tokens_normal = check_normality(df_transformed.copy(), dv="Output_Tokens")
-        
-        # Run the main PARAMETRIC analyses (ANOVA + Post-Hoc)
-        #     (This is run ALWAYS to replicate the paper--> is it correct tho?)
-        run_main_parametric_analysis(df_transformed.copy())
-        
-        # Run the NON-PARAMETRIC fallback tests
-        # (This is run ONLY if normality was VIOLATED)
-        print("\n\n" + "=" * 80)
-        print("STEP 4: NON-PARAMETRIC FALLBACK ANALYSIS")
+        # --- STEP 2: PARAMETRIC PURCHASE REPLICATION (ANOVA + TUKEY) ---
+        # Run main ANOVA (takes "long" data)
+        error_p_param, tokens_p_param = purchase_parametric_analysis(df_pre.copy())
+
+        # Run post-hoc Tukey (takes AGGREGATED data)
+        print("\n" + "=" * 80)
+        print("Purchase's Parametric Post-Hoc (Tukey HSD)")
         print("=" * 80)
-        
-        if not is_error_normal:
-            print("-> Normality violated for Error. Running non-parametric tests.")
-            run_non_parametric_analysis(df_transformed.copy(), dv="Error")
+        if error_p_param < 0.05:
+            purchase_pairwise_comparison(df_agg.copy(), dv="mean_error_rate")
         else:
-            print("-> Normality met for Error. Non-parametric test skipped.")
-            
-        if not is_tokens_normal:
-            print("\n-> Normality violated for Output_Tokens. Running non-parametric tests.")
-            run_non_parametric_analysis(df_transformed.copy(), dv="Output_Tokens")
+            print("No significant main effect for Error, skipping Tukey HSD.")
+        if tokens_p_param < 0.05:
+            purchase_pairwise_comparison(df_agg.copy(), dv="mean_output_tokens")
         else:
-            print("\n-> Normality met for Output_Tokens. Non-parametric test skipped.")
+            print("\nNo significant main effect for Output_Tokens, skipping Tukey HSD.")
 
+        # --- STEP 3: NON-PARAMETRIC ANALYSIS (FRIEDMAN + WILCOXON) ---
+        # Run main Friedman (takes AGGREGATED data)
+        error_p_nonparam, tokens_p_nonparam = our_main_effect_test(df_agg.copy())
 
-        # NEW: RUN TUKEY HSD POST-HOC ---
-        print("\n\n" + "=" * 80)
-        print("STEP 5: TUKEY HSD PAIRWISE COMPARISONS")
+        # Run post-hoc Wilcoxon (takes AGGREGATED data)
+        print("\n" + "=" * 80)
+        print("OUR ANALYSIS: Non-Parametric Post-Hoc (Wilcoxon + Bonferroni)")
         print("=" * 80)
-        
-        # Run the Tukey HSD test for the 'Error' variable
-        pairwise_comparison(df_transformed.copy(), dv="Error")
-
-        # New: save wide-format CSV for R analysis
-        print("\n\n" + "=" * 80)
-        print("STEP 6: EXPORTING DATA FOR R (TukeySEM)")
-        print("=" * 80)
-        save_wide_format_for_R(df_transformed.copy(), dv="Error")
+        if error_p_nonparam < 0.05:
+            our_pairwise_comparison(df_agg.copy(), dv="mean_error_rate")
+        else:
+            print("No significant non-parametric main effect for Error, skipping post-hoc.")
+        if tokens_p_nonparam < 0.05:
+            our_pairwise_comparison(df_agg.copy(), dv="mean_output_tokens")
+        else:
+            print("\nNo significant non-parametric main effect for Output_Tokens, skipping post-hoc.")
         
         print("\n\n" + "=" * 80)
         print("Analysis complete.")
         print("=" * 80)
-        
     else:
         print(f"Error: No data loaded. Check path: {RESULTS_DIR}")

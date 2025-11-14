@@ -4,6 +4,7 @@ from itertools import combinations
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
 from scipy.stats import (  # noqa: F401
     friedmanchisquare,
     norm,
@@ -437,6 +438,91 @@ def our_pairwise_comparison(df: pd.DataFrame):
             )
 
 
+def gee_pairwise_tests(res):
+    """
+    Perform pairwise Wald tests between all levels of Layout
+    from a fitted GEE model (statsmodels).
+    """
+
+    # Extract all layout categories used
+    params = res.params
+    cov = res.cov_params()
+
+    # Parse names: baseline is omitted (Layout=b)
+    levels = ["b"]  # baseline always first alphabetically
+    for k in params.index:
+        if k.startswith("C(Layout)[T."):
+            lvl = k.split("[T.")[1].split("]")[0]
+            levels.append(lvl)
+
+    print("\nPairwise comparisons (GEE Wald tests):")
+    print("----------------------------------------")
+
+    for a, b in combinations(levels, 2):
+        # Build contrast vector
+        L = np.zeros(len(params))
+
+        # For baseline comparisons (b), coefficient = 0
+        def index_for(level):
+            if level == "b":
+                return None
+            name = f"C(Layout)[T.{level}]"
+            return params.index.get_loc(name)
+
+        ia = index_for(a)
+        ib = index_for(b)
+
+        if ia is not None:
+            L[ia] = 1
+        if ib is not None:
+            L[ib] = -1
+
+        # Wald test: L^T β = 0
+        diff = float(L @ params)
+        var = float(L @ cov @ L.T)
+        se = np.sqrt(var)
+        z = diff / se
+        p = 2 * (1 - norm.cdf(abs(z)))
+
+        print(f"{a} vs {b}:  diff={diff:+.4f},  z={z:+.3f},  p={p:.4g}")
+
+
+def our_gee_prioritizing_aesthetics_analysis(df: pd.DataFrame):
+    def gee_logistic(subdf):
+        model = sm.GEE.from_formula(
+            "Correct ~ C(Layout)",
+            groups="Model",
+            data=subdf,
+            family=sm.families.Binomial(),
+            cov_struct=sm.cov_struct.Exchangeable(),
+        )
+        res = model.fit()
+        return res
+
+    print(
+        "\n\nGEE logistic regression for Error of aesthetics b/c/m/o/s across + and -\n"
+    )
+
+    just_aesthetic = df.copy()
+    just_aesthetic["Layout"] = (
+        just_aesthetic["Layout"].astype(str).apply(lambda x: x[0])
+    )
+
+    res = gee_logistic(just_aesthetic)
+    print(res.summary())
+
+    for sign in ["-", "+"]:
+        print(
+            f"\n\nGEE Effect of '{sign}' aesthetics (only layouts ending with {sign})\n"
+        )
+
+        subset = df[df["Layout"].astype(str).str.endswith(sign, na=False)]
+
+        res = gee_logistic(subset)
+        print(res.summary())
+        gee_pairwise_tests(res)
+
+
 if __name__ == "__main__":
     master_data_frame = load_and_aggregate_results()
     df_pre = pre_transform(master_data_frame)
@@ -492,3 +578,5 @@ if __name__ == "__main__":
     our_prioritizing_aesthetics_effect(df_pre)
 
     our_pairwise_comparison(df_pre)
+
+    our_gee_prioritizing_aesthetics_analysis(df_pre)

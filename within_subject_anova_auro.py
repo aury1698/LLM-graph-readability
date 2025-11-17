@@ -14,6 +14,7 @@ from scipy.stats import (
     friedmanchisquare, wilcoxon
 )
 from statsmodels.stats.multitest import multipletests
+import statsmodels.api as sm
 
 
 BASE_PATH = "layout_algorithms_performance"
@@ -62,6 +63,15 @@ def pre_transform(df: pd.DataFrame) -> pd.DataFrame:
     # as we want error rate and not accuracy
     df["Error"] = 1 - df["Correct"]
     df = df.drop(columns=["Correct Prediction (True/False)", "Correct"])
+
+    df["Subject"] = (
+        df["Model"].astype(str)
+        + "_"
+        + df["Shots"].astype(str).apply(lambda x: x.split("-")[0])
+        + "_"
+        + df["Cot"].astype(str)
+    )
+
     return df
 
 
@@ -70,14 +80,7 @@ def error_rate_for_subjects(df: pd.DataFrame) -> pd.DataFrame:
     Creates the 'Subject' ID and aggregates by Subject and Layout.
     """
     df = df.copy()
-    # combine Model, Shots and Prompt into a single Subject identifier
-    df["Subject"] = (
-        df["Model"].astype(str)
-        + "_"
-        + df["Shots"].astype(str).apply(lambda x: x.split("-")[0])
-        + "_"
-        + df["Cot"].astype(str)
-    )
+    
     # per task normal distribution
     # df = df[df["Task"].astype(str).str.startswith("task1", na=False)]
 
@@ -95,14 +98,14 @@ def save_wide_csv(df_agg: pd.DataFrame):
     df_wide_error = df_agg.pivot(
         index="Subject", columns="Layout", values="mean_error_rate"
     )
-    filename_err = "error_rate_per_subject_all_layouts_auro.csv"
+    filename_err = "error_rate_per_subject_task3_layouts_auro.csv"  # CHANGE HERE IF FILTERING BY TASK IS ACTIVE (e.g.: error_rate_per_subject_task1_layouts_auro)
     out_path_err = os.path.join("./", filename_err)
     df_wide_error.to_csv(out_path_err, index=True)
 
     df_wide_out = df_agg.pivot(
         index="Subject", columns="Layout", values="mean_output_tokens"
     )
-    filename_out = "output_tokens_per_subject_all_layouts_auro.csv"
+    filename_out = "output_tokens_per_subject_task3_layouts_auro.csv" # CHANGE HERE IF FILTERING BY TASK IS ACTIVE (e.g.: error_rate_per_subject_task1_layouts_auro)
     out_path_out = os.path.join("./", filename_out)
     df_wide_out.to_csv(out_path_out, index=True)
 
@@ -168,15 +171,6 @@ def calculate_anovaRM(df: pd.DataFrame) -> tuple[AnovaResults, AnovaResults]:
     Takes the LONG (pre-transformed) DataFrame.
     """
     df = df.copy()
-
-    # combine Model, Shots and Prompt into a single Subject identifier
-    df["Subject"] = (
-        df["Model"].astype(str)
-        + "_"
-        + df["Shots"].astype(str).apply(lambda x: x.split("-")[0])
-        + "_"
-        + df["Cot"].astype(str)
-    )
 
     # Uncomment this if you want to see the dataframe that goes into the Anova
     # print(df) 
@@ -319,6 +313,102 @@ def our_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.
         sig_str = "YES" if reject[i] else "no"
         print(f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>7.4f} | {p_values_corrected[i]:>12.4f} | {sig_str}")
 
+def gee_pairwise_tests(res):
+    """
+    Perform pairwise Wald tests between all levels of Layout
+    from a fitted GEE model. Copied from Bastian.
+    """
+    # Extract all layout categories used
+    params = res.params
+    cov = res.cov_params()
+
+    # Parse names: baseline is usually the first alphabetical layout
+    levels = []
+    # The intercept represents the baseline, other params are comparisons against it
+    # But to do all-vs-all we need to extract names properly.
+    
+    # Get variable names from the model parameters
+    param_names = params.index.tolist()
+    
+    # Let's extract the explicit levels found in params
+    explicit_levels = []
+    for k in param_names:
+        if k.startswith("C(Layout)[T."):
+            lvl = k.split("[T.")[1].split("]")[0]
+            explicit_levels.append(lvl)
+    
+    levels = ["(baseline)"] + explicit_levels # Placeholder name for baseline
+
+    print("\nPairwise comparisons (GEE Wald tests:")
+    print("Note: Comparisons are relative to the model's reference layout.")
+    print("----------------------------------------")
+
+    # Helper to get index
+    def index_for(lvl_name):
+        if lvl_name == "(baseline)":
+            return None
+        name = f"C(Layout)[T.{lvl_name}]"
+        if name in params.index:
+            return params.index.get_loc(name)
+        return None
+
+    # Generate all combinations of explicit levels
+    # (Comparing everything against everything that has a coefficient)
+    for a, b in combinations(explicit_levels, 2):
+        ia = index_for(a)
+        ib = index_for(b)
+
+        # Contrast vector
+        L = np.zeros(len(params))
+        L[ia] = 1
+        L[ib] = -1
+
+        # Wald test
+        diff = float(L @ params)
+        var = float(L @ cov @ L.T)
+        se = np.sqrt(var)
+        z = diff / se
+        p = 2 * (1 - norm.cdf(abs(z)))
+
+        print(f"{a} vs {b}:  diff={diff:+.4f},  z={z:+.3f},  p={p:.4g}")
+    
+
+
+def our_gee_analysis(df: pd.DataFrame):
+    """
+    Runs GEE (Generalized Estimating Equations) analysis.
+    """
+    print("\n\n" + "=" * 80)
+    print("OUR ANALYSIS: GEE Logistic Regression (Validation)")
+    print("=" * 80)
+
+    df = df.copy()
+
+    if "Correct" not in df.columns:
+        df["Correct"] = 1 - df["Error"]
+    
+    print("\n--- GEE for Error Rate (Correct ~ Layout) ---")
+    
+    try:
+        # Family=Binomial is crucial here (Logistic Regression)
+        model = sm.GEE.from_formula(
+            "Correct ~ C(Layout)",
+            groups="Subject",  
+            data=df,
+            family=sm.families.Binomial(),
+            cov_struct=sm.cov_struct.Exchangeable(),
+        )
+        res = model.fit()
+        print(res.summary())
+        
+        # Run manual pairwise contrasts
+        gee_pairwise_tests(res)
+        
+    except Exception as e:
+        print(f"GEE Analysis failed: {e}")
+        print("Note: GEE might fail if there is perfect separation (e.g., a layout has 0 errors).")
+
+
 
 if __name__ == "__main__":
 
@@ -327,10 +417,14 @@ if __name__ == "__main__":
     if isinstance(master_data_frame, pd.DataFrame) and not master_data_frame.empty:
         
         df_pre = pre_transform(master_data_frame)
+
+        #Comment this line to avoid filtering per task; otherwise select the task here:
+        #df_pre = df_pre[df_pre["Task"].astype(str).str.startswith("task3", na=False)]
+
         df_agg = error_rate_for_subjects(df_pre.copy()) # use copy to be safe
         
         # --- (Utility) ---
-        save_wide_csv(df_agg.copy())
+        #save_wide_csv(df_agg.copy())
         # plot_combined_error_rate_per_layout(df_agg.copy())
         
         # --- STEP 1: NORMALITY ---
@@ -373,6 +467,9 @@ if __name__ == "__main__":
             our_pairwise_comparison(df_agg.copy(), dv="mean_output_tokens")
         else:
             print("\nNo significant non-parametric main effect for Output_Tokens, skipping post-hoc.")
+
+        # --- STEP 4: GEE VALIDATION ---
+        our_gee_analysis(df_pre.copy())
         
         print("\n\n" + "=" * 80)
         print("Analysis complete.")

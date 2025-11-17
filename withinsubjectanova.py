@@ -488,6 +488,18 @@ def gee_pairwise_tests(res):
 
 
 def our_gee_prioritizing_aesthetics_analysis(df: pd.DataFrame):
+
+    df = df.copy()
+
+    # combine Model, Shots and Prompt into a single Model identifier
+    df["Model"] = (
+        df["Model"].astype(str)
+        + "_"
+        + df["Shots"].astype(str).apply(lambda x: x.split("-")[0])
+        + "_"
+        + df["Cot"].astype(str)
+    )
+
     def gee_logistic(subdf):
         model = sm.GEE.from_formula(
             "Correct ~ C(Layout)",

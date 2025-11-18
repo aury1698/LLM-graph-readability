@@ -293,7 +293,6 @@ def purchase_effect_aesthetic_for_plus_or_minus(df: pd.DataFrame, plus_or_minus:
 def our_hypotheses_test_wilcoxon(df: pd.DataFrame):
     df = error_rate_for_subjects(df)
     wide_err = df.pivot(index="Model", columns="Layout", values="mean_error_rate")
-    wide_out = df.pivot(index="Model", columns="Layout", values="mean_output_tokens")
 
     plus_cols = [c for c in wide_err.columns if str(c).endswith("+")]
     minus_cols = [c for c in wide_err.columns if str(c).endswith("-")]
@@ -309,49 +308,17 @@ def our_hypotheses_test_wilcoxon(df: pd.DataFrame):
         f"Wilcoxon (error): '+' vs '-':         n={len(paired_err)} | W={stat:.4f}, p={p:.6f}"
     )
 
-    plus_mean_out = wide_out[plus_cols].mean(axis=1, skipna=True)
-    minus_mean_out = wide_out[minus_cols].mean(axis=1, skipna=True)
-    paired_out = pd.concat([plus_mean_out, minus_mean_out], axis=1)
-    paired_out.columns = ["plus_mean_out", "minus_mean_out"]
-
-    stat, p = wilcoxon(paired_out["plus_mean_out"], paired_out["minus_mean_out"])
-    print(
-        f"Wilcoxon (output tokens) '+' vs '-':  n={len(paired_out)} | W={stat:.4f}, p={p:.6f}"
-    )
-
-    for aest in ["b", "c", "m", "o", "s"]:
-        plus_col = f"{aest}+"
-        minus_col = f"{aest}-"
-
-        paired_err_layout = wide_err[[plus_col, minus_col]]
-        stat, p = wilcoxon(paired_err_layout[plus_col], paired_err_layout[minus_col])
-        print(
-            f"\nWilcoxon (error) for {aest} + / -:         n={len(paired_err_layout)} | W={stat:.4f}, p={p:.6f}"
-        )
-
-        paired_out_layout = wide_out[[plus_col, minus_col]]
-        stat, p = wilcoxon(paired_out_layout[plus_col], paired_out_layout[minus_col])
-        print(
-            f"Wilcoxon (output tokens) for {aest} + / -: n={len(paired_out_layout)} | W={stat:.4f}, p={p:.6f}"
-        )
-
 
 def our_prioritizing_aesthetics_effect(df: pd.DataFrame):
     df = error_rate_for_subjects(df)
     wide_err = df.pivot(index="Model", columns="Layout", values="mean_error_rate")
-    wide_out = df.pivot(index="Model", columns="Layout", values="mean_output_tokens")
 
     # Ugly ahh hack to get only b c m o s
     wide_err = wide_err.T.groupby(by=lambda col: str(col)[0]).mean()
-    wide_out = wide_out.T.groupby(by=lambda col: str(col)[0]).mean()
 
     stat, p = friedmanchisquare(*[wide_err[col].values for col in wide_err.columns])
     print(
         f"\n\nFriedman Chi Square (error) for aesthetics b/c/m/o/s across + and -:\n\nQ={stat:.4f}, p={p:.6f}\n"
-    )
-    stat, p = friedmanchisquare(*[wide_out[col].values for col in wide_out.columns])
-    print(
-        f"Friedman Chi Square (output tokens) for aesthetics b/c/m/o/s across + and -:\n\nQ={stat:.4f}, p={p:.6f}\n\n"
     )
 
     for sign in ["-", "+"]:
@@ -361,19 +328,10 @@ def our_prioritizing_aesthetics_effect(df: pd.DataFrame):
         wide_err = subset.pivot(
             index="Model", columns="Layout", values="mean_error_rate"
         )
-        wide_out = subset.pivot(
-            index="Model", columns="Layout", values="mean_output_tokens"
-        )
 
         stat, p = friedmanchisquare(*[wide_err[col].values for col in wide_err.columns])
         print(f"Friedman Chi Square Effect of the {sign} aesthetics for Error\n")
         print(f"Q={stat:.4f}, p={p:.6f}\n")
-
-        stat, p = friedmanchisquare(*[wide_out[col].values for col in wide_out.columns])
-        print(
-            f"Friedman Chi Square Effect of the {sign} aesthetics for Output_Tokens\n"
-        )
-        print(f"Q={stat:.4f}, p={p:.6f}\n\n")
 
 
 def our_pairwise_comparison(df: pd.DataFrame):
@@ -385,9 +343,6 @@ def our_pairwise_comparison(df: pd.DataFrame):
         wide_err = subset.pivot(
             index="Model", columns="Layout", values="mean_error_rate"
         )
-        wide_out = subset.pivot(
-            index="Model", columns="Layout", values="mean_output_tokens"
-        )
 
         # equal set of pairwise comparisons
         comparisons = list(combinations(wide_err.columns, 2))
@@ -395,17 +350,10 @@ def our_pairwise_comparison(df: pd.DataFrame):
         p_values_err = []
         results_err = []
 
-        p_values_out = []
-        results_out = []
-
         for a, b in comparisons:
             stat_err, p_err = wilcoxon(wide_err[a], wide_err[b])
             p_values_err.append(p_err)
             results_err.append((a, b, stat_err, p_err))
-
-            stat_out, p_out = wilcoxon(wide_out[a], wide_out[b])
-            p_values_out.append(p_out)
-            results_out.append((a, b, stat_out, p_out))
 
         reject_err, p_values_err_corrected, _, _ = multipletests(
             p_values_err, alpha=0.05, method="bonferroni"
@@ -420,21 +368,6 @@ def our_pairwise_comparison(df: pd.DataFrame):
             sig_str = "YES" if reject_err[i] else "no"
             print(
                 f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>6.3f} | {p_values_err_corrected[i]:>12.3f} | {sig_str}"
-            )
-
-        reject_out, p_values_out_corrected, _, _ = multipletests(
-            p_values_out, alpha=0.05, method="bonferroni"
-        )
-
-        print(f"\nPair-wise Comparision for {sign} and output tokens:\n")
-        print(
-            "Layout A       | Layout B       |   W-Stat |  p-unc | p-adj (Bonf) | Significant"
-        )
-        print("-" * 75)
-        for i, (layout_a, layout_b, stat, p) in enumerate(results_out):
-            sig_str = "YES" if reject_out[i] else "no"
-            print(
-                f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>6.3f} | {p_values_out_corrected[i]:>12.3f} | {sig_str}"
             )
 
 
@@ -488,7 +421,6 @@ def gee_pairwise_tests(res):
 
 
 def our_gee_prioritizing_aesthetics_analysis(df: pd.DataFrame):
-
     df = df.copy()
 
     # combine Model, Shots and Prompt into a single Model identifier

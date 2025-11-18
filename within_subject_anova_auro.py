@@ -13,6 +13,7 @@ from scipy.stats import (
     norm, probplot, shapiro, 
     friedmanchisquare, wilcoxon
 )
+import scikit_posthocs as sp
 from statsmodels.stats.multitest import multipletests
 import statsmodels.api as sm
 
@@ -259,6 +260,10 @@ def our_main_effect_test(df_agg: pd.DataFrame):
             error_p_value = p
         except Exception as e:
             print(f"Friedman Error: {e}")
+    
+    print("\n\nPairwise Conover Friedman:\n")
+    print(sp.posthoc_conover_friedman(df_wide, p_adjust="bonferroni"))
+
             
     return error_p_value
 

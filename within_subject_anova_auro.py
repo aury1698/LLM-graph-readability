@@ -86,7 +86,6 @@ def error_rate_for_subjects(df: pd.DataFrame) -> pd.DataFrame:
 
     agg = df.groupby(["Subject", "Layout"], as_index=False).agg(
         mean_error_rate=("Error", "mean"),
-        mean_output_tokens=("Output_Tokens", "mean"),
     )
     return pd.DataFrame(agg)
 
@@ -165,7 +164,7 @@ def normality_of_error_rate(df_agg: pd.DataFrame, dv="mean_error_rate"):
     return is_normal
 
 
-def calculate_anovaRM(df: pd.DataFrame) -> tuple[AnovaResults, AnovaResults]:
+def calculate_anovaRM(df: pd.DataFrame) ->  AnovaResults:
     """
     Runs the AnovaRM for both DVs (Error and Output_Tokens) at once.
     Takes the LONG (pre-transformed) DataFrame.
@@ -179,22 +178,15 @@ def calculate_anovaRM(df: pd.DataFrame) -> tuple[AnovaResults, AnovaResults]:
     # If the data set contains more than a single observation per subject and cell of the specified model,
     # this function will be used to aggregate the data before running the Anova.
     # An exception will be raised if aggregation is required, but no aggregation function was specified.
-    return (
-        AnovaRM(
-            data=df,
-            depvar="Error", # Tu usi 'Error', lui 'Correct'
-            subject="Subject",
-            within=["Layout"],
-            aggregate_func="mean",
-        ).fit(),
-        AnovaRM(
-            data=df,
-            depvar="Output_Tokens",
-            subject="Subject",
-            within=["Layout"],
-            aggregate_func="mean",
-        ).fit(),
-    )
+    return AnovaRM(
+        data=df,
+        depvar="Error", 
+        subject="Subject",
+        within=["Layout"],
+        aggregate_func="mean",
+    ).fit()
+    
+    
 
 def purchase_parametric_analysis(df: pd.DataFrame):
     """
@@ -206,24 +198,19 @@ def purchase_parametric_analysis(df: pd.DataFrame):
     print("=" * 80)
     
     error_p_value = 1.0
-    tokens_p_value = 1.0
 
     try:
         # Call the single function that returns both results
-        aov_error, aov_tokens = calculate_anovaRM(df) 
+        aov_error = calculate_anovaRM(df) 
 
         print("\n--- Main Effect of Layout on Error (ANOVA) ---")
         print(aov_error)
         error_p_value = aov_error.anova_table["Pr > F"].iloc[0]
 
-        print("\n--- Main Effect of Layout on Output_Tokens (ANOVA) ---")
-        print(aov_tokens)
-        tokens_p_value = aov_tokens.anova_table["Pr > F"].iloc[0]
-        
     except Exception as e:
         print(f"AnovaRM Error: {e}")
         
-    return error_p_value, tokens_p_value
+    return error_p_value
 
 
 def purchase_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.05):
@@ -256,26 +243,24 @@ def our_main_effect_test(df_agg: pd.DataFrame):
     print("=" * 80)
     
     error_p_value = 1.0
-    tokens_p_value = 1.0
     
-    for dv, name in [("mean_error_rate", "Error"), ("mean_output_tokens", "Output Tokens")]:
-        print(f"\n--- Friedman Test for {name} ---")
-        df_wide = df_agg.pivot(index="Subject", columns="Layout", values=dv).dropna()
-        
-        if len(df_wide) < 2:
-            print(f"Skipping Friedman: not enough complete subjects (N={len(df_wide)}).")
-            continue
-        
+    dv, name = "mean_error_rate", "Error"
+
+    print(f"\n--- Friedman Test for {name} ---")
+    df_wide = df_agg.pivot(index="Subject", columns="Layout", values=dv).dropna()
+    
+    if len(df_wide) < 2:
+        print(f"Skipping Friedman: not enough complete subjects (N={len(df_wide)}).")
+    else:
         try:
             data_to_test = [df_wide[col] for col in df_wide.columns]
             stat, p = friedmanchisquare(*data_to_test)
             print(f"Friedman Test for {name}: Chi-Squared = {stat:.3f}, p = {p:.4f}")
-            if dv == "mean_error_rate": error_p_value = p
-            else: tokens_p_value = p
+            error_p_value = p
         except Exception as e:
             print(f"Friedman Error: {e}")
             
-    return error_p_value, tokens_p_value
+    return error_p_value
 
 
 def our_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.05):
@@ -432,11 +417,10 @@ if __name__ == "__main__":
         print("STEP 1: CHECKING ASSUMPTIONS (NORMALITY)")
         print("=" * 80)
         is_error_normal = normality_of_error_rate(df_agg.copy(), dv="mean_error_rate")
-        is_tokens_normal = normality_of_error_rate(df_agg.copy(), dv="mean_output_tokens")
         
         # --- STEP 2: PARAMETRIC PURCHASE REPLICATION (ANOVA + TUKEY) ---
         # Run main ANOVA (takes "long" data)
-        error_p_param, tokens_p_param = purchase_parametric_analysis(df_pre.copy())
+        error_p_param= purchase_parametric_analysis(df_pre.copy())
 
         # Run post-hoc Tukey (takes AGGREGATED data)
         print("\n" + "=" * 80)
@@ -446,14 +430,11 @@ if __name__ == "__main__":
             purchase_pairwise_comparison(df_agg.copy(), dv="mean_error_rate")
         else:
             print("No significant main effect for Error, skipping Tukey HSD.")
-        if tokens_p_param < 0.05:
-            purchase_pairwise_comparison(df_agg.copy(), dv="mean_output_tokens")
-        else:
-            print("\nNo significant main effect for Output_Tokens, skipping Tukey HSD.")
+        
 
         # --- STEP 3: NON-PARAMETRIC ANALYSIS (FRIEDMAN + WILCOXON) ---
         # Run main Friedman (takes AGGREGATED data)
-        error_p_nonparam, tokens_p_nonparam = our_main_effect_test(df_agg.copy())
+        error_p_nonparam = our_main_effect_test(df_agg.copy())
 
         # Run post-hoc Wilcoxon (takes AGGREGATED data)
         print("\n" + "=" * 80)
@@ -463,11 +444,7 @@ if __name__ == "__main__":
             our_pairwise_comparison(df_agg.copy(), dv="mean_error_rate")
         else:
             print("No significant non-parametric main effect for Error, skipping post-hoc.")
-        if tokens_p_nonparam < 0.05:
-            our_pairwise_comparison(df_agg.copy(), dv="mean_output_tokens")
-        else:
-            print("\nNo significant non-parametric main effect for Output_Tokens, skipping post-hoc.")
-
+        
         # --- STEP 4: GEE VALIDATION ---
         our_gee_analysis(df_pre.copy())
         

@@ -539,6 +539,8 @@ if __name__ == "__main__":
     master_data_frame = load_and_aggregate_results()
     df_pre = pre_transform(master_data_frame)
 
+    # df_pre = df_pre[df_pre["Task"].astype(str).str.startswith("task3", na=False)]
+
     print("=" * 80)
     print("Testing normality of error rates")
     print("=" * 80)

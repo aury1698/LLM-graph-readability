@@ -15,6 +15,7 @@ from scipy.stats import (
 )
 from statsmodels.stats.multitest import multipletests
 import statsmodels.api as sm
+import scikit_posthocs as sp
 
 
 BASE_PATH = "layout_algorithms_performance"
@@ -262,41 +263,85 @@ def our_main_effect_test(df_agg: pd.DataFrame):
             
     return error_p_value
 
-
 def our_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.05):
     """
-    OUR ANALYSIS: Performs NON-PARAMETRIC post-hoc tests (Wilcoxon + Bonferroni).
-    Takes the AGGREGATED DataFrame.
+    OUR ANALYSIS: Performs NON-PARAMETRIC post-hoc tests.
+    Primary: Wilcoxon Signed-Rank (Pairwise) + Bonferroni
+    Secondary: Conover's Test (Global Variance) + Bonferroni (for reference)
     """
-    print(f"\n--- NON-Parametric Post-Hoc for {dv} (Wilcoxon + Bonferroni) ---")
+    print(f"\n--- NON-Parametric Post-Hoc for {dv} ---")
     
-    df_wide = df_agg.pivot(index="Subject", columns="Layout", values=dv)
-    comparisons = list(combinations(df_wide.columns, 2))
-    p_values = []
-    results = []
-
-    for layout_a, layout_b in comparisons:
-        common_data = df_wide[[layout_a, layout_b]].dropna()
-        if len(common_data) < 2:
+    # --- 1. WILCOXON SIGNED-RANK TEST (Primary) ---
+    print(f"\n>>> PRIMARY TEST: Wilcoxon Signed-Rank (Pairwise) + Bonferroni")
+    
+    layouts = df_agg["Layout"].unique()
+    layouts.sort() # Ensure consistent order
+    
+    comparisons = []
+    p_vals = []
+    
+    # Generate all pairs
+    layout_pairs = list(combinations(layouts, 2))
+    
+    for (l1, l2) in layout_pairs:
+        # Filter data for the two layouts, ensuring paired subjects
+        sub_df = df_agg[df_agg["Layout"].isin([l1, l2])]
+        
+        # Pivot to wide format to ensure we have pairs for the same subject
+        pivot_df = sub_df.pivot(index="Subject", columns="Layout", values=dv).dropna()
+        
+        if pivot_df.empty:
             continue
+            
+        # Wilcoxon test
         try:
-            stat, p = wilcoxon(common_data[layout_a], common_data[layout_b], zero_method='wilcox')
-        except ValueError:
-             stat, p = 0.0, 1.0 # All differences are zero
-        p_values.append(p)
-        results.append((layout_a, layout_b, stat, p))
+            stat, p = wilcoxon(pivot_df[l1], pivot_df[l2]) 
+            stat, p = wilcoxon(pivot_df[l1], pivot_df[l2])
+            
+            comparisons.append((l1, l2))
+            p_vals.append(p)
+        except Exception as e:
+            print(f"Error calculating Wilcoxon for {l1} vs {l2}: {e}")
 
-    if not p_values:
-        print("No post-hoc comparisons were performed.")
-        return
-
-    reject, p_values_corrected, _, _ = multipletests(p_values, alpha=alpha, method='bonferroni')
+    # Apply Bonferroni correction
+    reject, p_adj, _, _ = multipletests(p_vals, alpha=alpha, method='bonferroni')
     
-    print("Layout A       | Layout B       |   W-Stat |   p-unc | p-adj (Bonf) | Significant")
+    print(f"{'Layout A':<14} | {'Layout B':<14} | {'p-unc':<10} | {'p-adj (Bonf)':<12} | {'Significant'}")
     print("-" * 75)
-    for i, (layout_a, layout_b, stat, p) in enumerate(results):
+    
+    for i, (l1, l2) in enumerate(comparisons):
         sig_str = "YES" if reject[i] else "no"
-        print(f"{layout_a:<14} | {layout_b:<14} | {stat:>8.3f} | {p:>7.4f} | {p_values_corrected[i]:>12.4f} | {sig_str}")
+        print(f"{l1:<14} | {l2:<14} | {p_vals[i]:<10.4f} | {p_adj[i]:<12.4f} | {sig_str}")
+
+
+    # --- 2. CONOVER'S TEST (Secondary - For completeness) --
+    print(f"\n\n>>> SECONDARY TEST: Conover's Friedman Test (Global) + Bonferroni")
+    print("(Note: Replicating Sebastian's method exactly via sp.posthoc_conover_friedman)")
+
+    try:
+        df_wide = df_agg.pivot(index="Subject", columns="Layout", values=dv).dropna()
+        
+        #Use the CONOVER test from scikit-posthocs
+        p_values_con = sp.posthoc_conover_friedman(
+            df_wide, 
+            p_adjust='bonferroni'
+        )
+        
+        print(f"{'Layout A':<14} | {'Layout B':<14} | {'p-adj (Bonf)':<12} | {'Significant'}")
+        print("-" * 60)
+        
+        layouts_con = p_values_con.columns
+        # Iterate over upper triangle
+        for i in range(len(layouts_con)):
+            for j in range(i + 1, len(layouts_con)):
+                layout_a = layouts_con[i]
+                layout_b = layouts_con[j]
+                p_val = p_values_con.iloc[i, j]
+                
+                sig_str = "YES" if p_val < alpha else "NO"
+                print(f"{layout_a:<14} | {layout_b:<14} | {p_val:<12.4f} | {sig_str}")
+    except Exception as e:
+        print(f"Conover Test Error: {e}")
 
 def gee_pairwise_tests(res):
     """
@@ -432,13 +477,13 @@ if __name__ == "__main__":
             print("No significant main effect for Error, skipping Tukey HSD.")
         
 
-        # --- STEP 3: NON-PARAMETRIC ANALYSIS (FRIEDMAN + WILCOXON) ---
+        # --- STEP 3: NON-PARAMETRIC ANALYSIS (FRIEDMAN + CONOVER) ---
         # Run main Friedman (takes AGGREGATED data)
         error_p_nonparam = our_main_effect_test(df_agg.copy())
 
-        # Run post-hoc Wilcoxon (takes AGGREGATED data)
+        # Run post-hoc Conover (takes AGGREGATED data)
         print("\n" + "=" * 80)
-        print("OUR ANALYSIS: Non-Parametric Post-Hoc (Wilcoxon + Bonferroni)")
+        print("OUR ANALYSIS: Non-Parametric Post-Hoc")
         print("=" * 80)
         if error_p_nonparam < 0.05:
             our_pairwise_comparison(df_agg.copy(), dv="mean_error_rate")

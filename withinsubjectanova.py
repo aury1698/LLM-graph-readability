@@ -15,7 +15,7 @@ from scipy.stats import (  # noqa: F401
 import scikit_posthocs as sp
 from statsmodels.stats.anova import AnovaResults, AnovaRM
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
-from statsmodels.stats.multitest import multipletests # noqa: F401
+from statsmodels.stats.multitest import multipletests  # noqa: F401
 
 BASE_PATH = "aesthetic_effect_human_performance"
 
@@ -368,53 +368,58 @@ def our_prioritizing_aesthetics_effect(df: pd.DataFrame):
         print(sp.posthoc_conover_friedman(subset_wide_err, p_adjust="bonferroni"))
 
 
-def gee_pairwise_tests(res):
-    """
-    Perform pairwise Wald tests between all levels of Layout
-    from a fitted GEE model (statsmodels).
-    """
-
-    # Extract all layout categories used
+def gee_pairwise_tests(res, method="bonferroni"):
     params = res.params
     cov = res.cov_params()
 
-    # Parse names: baseline is omitted (Layout=b)
-    levels = ["b"]  # baseline always first alphabetically
+    levels = ["b"]
     for k in params.index:
         if k.startswith("C(Layout)[T."):
-            lvl = k.split("[T.")[1].split("]")[0]
-            levels.append(lvl)
+            levels.append(k.split("[T.")[1].split("]")[0])
 
-    print("\nPairwise comparisons (GEE Wald tests):")
-    print("----------------------------------------")
+    comparisons = []
+    effects = []
+    pvals = []
 
     for a, b in combinations(levels, 2):
-        # Build contrast vector
         L = np.zeros(len(params))
 
-        # For baseline comparisons (b), coefficient = 0
-        def index_for(level):
-            if level == "b":
+        def idx(x):
+            if x == "b":
                 return None
-            name = f"C(Layout)[T.{level}]"
-            return params.index.get_loc(name)
+            return params.index.get_loc(f"C(Layout)[T.{x}]")
 
-        ia = index_for(a)
-        ib = index_for(b)
-
+        ia, ib = idx(a), idx(b)
         if ia is not None:
             L[ia] = 1
         if ib is not None:
             L[ib] = -1
 
-        # Wald test: L^T β = 0
         diff = float(L @ params)
         var = float(L @ cov @ L.T)
         se = np.sqrt(var)
         z = diff / se
         p = 2 * (1 - norm.cdf(abs(z)))
 
-        print(f"{a} vs {b}:  diff={diff:+.4f},  z={z:+.3f},  p={p:.5f}")
+        comparisons.append((a, b))
+        effects.append(diff)
+        pvals.append(p)
+
+    reject, pvals_corrected, _, _ = multipletests(pvals, method=method)
+
+    print(
+        "\nPairwise comparisons (GEE Wald tests) with multiple-comparison correction:"
+    )
+    print(f"Correction method: {method}")
+    print("--------------------------------------------------------")
+
+    for (a, b), d, p_raw, p_corr, sig in zip(
+        comparisons, effects, pvals, pvals_corrected, reject
+    ):
+        star = "*" if sig else ""
+        print(
+            f"{a} vs {b}: diff={d:+.4f}, raw p={p_raw:.5f}, corrected p={p_corr:.5f} {star}"
+        )
 
 
 def our_gee_hypotheses(df: pd.DataFrame):
@@ -500,6 +505,7 @@ if __name__ == "__main__":
     master_data_frame = load_and_aggregate_results()
     df_pre = pre_transform(master_data_frame)
 
+    # Filter results for one task only and run equivalent analysis
     # df_pre = df_pre[df_pre["Task"].astype(str).str.startswith("task3", na=False)]
 
     print("=" * 80)

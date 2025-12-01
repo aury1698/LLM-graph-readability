@@ -1,6 +1,6 @@
-# Do Graph Drawing Aesthetics Matter for AI?
-## A Replication of Foundational Studies in Graph Readability
+# Do Graph Drawing Aesthetics Matter for AI? A Replication of Foundational Studies in Graph Readability
 
+## Overview
 This repository contains the source code, experimental data, and analysis scripts for the paper **"Do Graph Drawing Aesthetics Matter for AI? A Replication of Foundational Studies in Graph Readability"**.
 
 We replicated two foundational user studies on graph layouts written by Helen Purchase —originally designed for humans—substituting human participants with Multimodal Large Language Models (LLMs). This repository provides the tools to reproduce our experiments and the statistical analysis of the results.

@@ -1,4 +1,4 @@
-#Script to perform Tukey's HSD test using lavaan's tukeySEM function for R
+#Script to perform Tukey's WSD test 
 
 
 # wsd.r - dynamic tukeySEM

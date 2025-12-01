@@ -10,10 +10,10 @@ python3 -m http.server
 then navigate with your browser to 
 
 ```
-127.0.0.1:8000/visualization/index.html
+127.0.0.1:8000/visualization/visualization.html
 ```
-
-### Switching between aurora and bastian's results
-
-just commend or uncomment line 25 or 26 in visualization/index.html. 
+or to:
+```
+127.0.0.1:8000/visualization/charts_visualization.html
+```
 

@@ -263,6 +263,7 @@ def our_main_effect_test(df_agg: pd.DataFrame):
             
     return error_p_value
 
+#TO DO: remove Wilcoxon and keep Conover 
 def our_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.05):
     """
     OUR ANALYSIS: Performs NON-PARAMETRIC post-hoc tests.
@@ -296,7 +297,6 @@ def our_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.
         # Wilcoxon test
         try:
             stat, p = wilcoxon(pivot_df[l1], pivot_df[l2]) 
-            stat, p = wilcoxon(pivot_df[l1], pivot_df[l2])
             
             comparisons.append((l1, l2))
             p_vals.append(p)

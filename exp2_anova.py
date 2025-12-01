@@ -4,11 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from itertools import combinations
 
-# Import for parametric tests (Purchase's replication)
 from statsmodels.stats.anova import AnovaResults, AnovaRM
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
-# Import for non-parametric tests (Our correct analysis)
 from scipy.stats import (
     norm, probplot, shapiro, 
     friedmanchisquare, wilcoxon
@@ -17,7 +15,7 @@ from statsmodels.stats.multitest import multipletests
 import statsmodels.api as sm
 import scikit_posthocs as sp
 
-
+#This is the base path for EXPERIMENT 2
 BASE_PATH = "layout_algorithms_performance"
 
 RESULTS_DIR = os.path.join(BASE_PATH, "results")
@@ -98,16 +96,10 @@ def save_wide_csv(df_agg: pd.DataFrame):
     df_wide_error = df_agg.pivot(
         index="Subject", columns="Layout", values="mean_error_rate"
     )
-    filename_err = "error_rate_per_subject_task3_layouts_auro.csv"  # CHANGE HERE IF FILTERING BY TASK IS ACTIVE (e.g.: error_rate_per_subject_task1_layouts_auro)
+    filename_err = "error_rate_per_subject_task3_layouts_exp2.csv"  # CHANGE HERE IF FILTERING BY TASK IS ACTIVE (e.g.: error_rate_per_subject_task1_layouts_exp2)
     out_path_err = os.path.join("./", filename_err)
     df_wide_error.to_csv(out_path_err, index=True)
 
-    df_wide_out = df_agg.pivot(
-        index="Subject", columns="Layout", values="mean_output_tokens"
-    )
-    filename_out = "output_tokens_per_subject_task3_layouts_auro.csv" # CHANGE HERE IF FILTERING BY TASK IS ACTIVE (e.g.: error_rate_per_subject_task1_layouts_auro)
-    out_path_out = os.path.join("./", filename_out)
-    df_wide_out.to_csv(out_path_out, index=True)
 
 
 def plot_combined_error_rate_per_layout(df_agg: pd.DataFrame):
@@ -167,8 +159,7 @@ def normality_of_error_rate(df_agg: pd.DataFrame, dv="mean_error_rate"):
 
 def calculate_anovaRM(df: pd.DataFrame) ->  AnovaResults:
     """
-    Runs the AnovaRM for both DVs (Error and Output_Tokens) at once.
-    Takes the LONG (pre-transformed) DataFrame.
+    Runs the AnovaRM Error at once.
     """
     df = df.copy()
 
@@ -192,7 +183,6 @@ def calculate_anovaRM(df: pd.DataFrame) ->  AnovaResults:
 def purchase_parametric_analysis(df: pd.DataFrame):
     """
     PURCHASE'S REPLICATION: Runs the main PARAMETRIC analysis (ANOVA) anyways.
-    This function calls calculate_anovaRM once.
     """
     print("\n\n" + "=" * 80)
     print("Purchase's Parametric Analysis (ANOVA)")
@@ -201,7 +191,6 @@ def purchase_parametric_analysis(df: pd.DataFrame):
     error_p_value = 1.0
 
     try:
-        # Call the single function that returns both results
         aov_error = calculate_anovaRM(df) 
 
         print("\n--- Main Effect of Layout on Error (ANOVA) ---")
@@ -217,7 +206,6 @@ def purchase_parametric_analysis(df: pd.DataFrame):
 def purchase_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.05):
     """
     PURCHASE'S REPLICATION: Runs the classic Tukey's HSD post-hoc test.
-    Takes the AGGREGATED DataFrame.
     """
     print(f"\n--- Parametric Post-Hoc for {dv} (Tukey HSD) ---")
     try:
@@ -231,13 +219,12 @@ def purchase_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alp
     except Exception as e:
         print(f"Tukey HSD Error: {e}")
 
-#END OF PURCHASE'S REPLICATION
+#END OF PURCHASE'S ANALYSIS REPLICATION
 
 #START OF OUR NON-PARAMETRIC ANALYSIS
 def our_main_effect_test(df_agg: pd.DataFrame):
     """
     OUR ANALYSIS: Runs the NON-PARAMETRIC main analysis (Friedman Test).
-    equivalent to bastian's `our_prioritizing_aesthetics_effect`.
     """
     print("\n\n" + "=" * 80)
     print("NON-Parametric Main Test (Friedman)")
@@ -268,15 +255,15 @@ def our_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.
     """
     OUR ANALYSIS: Performs NON-PARAMETRIC post-hoc tests.
     Primary: Wilcoxon Signed-Rank (Pairwise) + Bonferroni
-    Secondary: Conover's Test (Global Variance) + Bonferroni (for reference)
+    Secondary: Conover's Test (Global Variance) + Bonferroni 
     """
     print(f"\n--- NON-Parametric Post-Hoc for {dv} ---")
     
-    # --- 1. WILCOXON SIGNED-RANK TEST (Primary) ---
+    # --- WILCOXON SIGNED-RANK TEST (Primary) ---
     print(f"\n>>> PRIMARY TEST: Wilcoxon Signed-Rank (Pairwise) + Bonferroni")
     
     layouts = df_agg["Layout"].unique()
-    layouts.sort() # Ensure consistent order
+    layouts.sort() 
     
     comparisons = []
     p_vals = []
@@ -285,10 +272,8 @@ def our_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.
     layout_pairs = list(combinations(layouts, 2))
     
     for (l1, l2) in layout_pairs:
-        # Filter data for the two layouts, ensuring paired subjects
         sub_df = df_agg[df_agg["Layout"].isin([l1, l2])]
         
-        # Pivot to wide format to ensure we have pairs for the same subject
         pivot_df = sub_df.pivot(index="Subject", columns="Layout", values=dv).dropna()
         
         if pivot_df.empty:
@@ -314,14 +299,13 @@ def our_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.
         print(f"{l1:<14} | {l2:<14} | {p_vals[i]:<10.4f} | {p_adj[i]:<12.4f} | {sig_str}")
 
 
-    # --- 2. CONOVER'S TEST (Secondary - For completeness) --
+    # --- CONOVER'S TEST --
     print(f"\n\n>>> SECONDARY TEST: Conover's Friedman Test (Global) + Bonferroni")
-    print("(Note: Replicating Sebastian's method exactly via sp.posthoc_conover_friedman)")
 
     try:
         df_wide = df_agg.pivot(index="Subject", columns="Layout", values=dv).dropna()
         
-        #Use the CONOVER test from scikit-posthocs
+        #Use the CONOVER test 
         p_values_con = sp.posthoc_conover_friedman(
             df_wide, 
             p_adjust='bonferroni'
@@ -345,29 +329,22 @@ def our_pairwise_comparison(df_agg: pd.DataFrame, dv="mean_error_rate", alpha=0.
 
 def gee_pairwise_tests(res):
     """
-    Perform pairwise Wald tests between all levels of Layout
-    from a fitted GEE model. Copied from Bastian.
+    Perform pairwise Wald tests between all levels of Layout from a fitted GEE model.
     """
-    # Extract all layout categories used
     params = res.params
     cov = res.cov_params()
 
-    # Parse names: baseline is usually the first alphabetical layout
     levels = []
-    # The intercept represents the baseline, other params are comparisons against it
-    # But to do all-vs-all we need to extract names properly.
     
-    # Get variable names from the model parameters
     param_names = params.index.tolist()
-    
-    # Let's extract the explicit levels found in params
+  
     explicit_levels = []
     for k in param_names:
         if k.startswith("C(Layout)[T."):
             lvl = k.split("[T.")[1].split("]")[0]
             explicit_levels.append(lvl)
     
-    levels = ["(baseline)"] + explicit_levels # Placeholder name for baseline
+    levels = ["(baseline)"] + explicit_levels 
 
     print("\nPairwise comparisons (GEE Wald tests:")
     print("Note: Comparisons are relative to the model's reference layout.")
@@ -383,17 +360,14 @@ def gee_pairwise_tests(res):
         return None
 
     # Generate all combinations of explicit levels
-    # (Comparing everything against everything that has a coefficient)
     for a, b in combinations(explicit_levels, 2):
         ia = index_for(a)
         ib = index_for(b)
 
-        # Contrast vector
         L = np.zeros(len(params))
         L[ia] = 1
         L[ib] = -1
 
-        # Wald test
         diff = float(L @ params)
         var = float(L @ cov @ L.T)
         se = np.sqrt(var)
@@ -453,21 +427,22 @@ if __name__ == "__main__":
 
         df_agg = error_rate_for_subjects(df_pre.copy()) # use copy to be safe
         
-        # --- (Utility) ---
+        # --- (Utility), decomment if needed ---
+
         #save_wide_csv(df_agg.copy())
         # plot_combined_error_rate_per_layout(df_agg.copy())
         
-        # --- STEP 1: NORMALITY ---
+        # --- NORMALITY ---
         print("=" * 80)
-        print("STEP 1: CHECKING ASSUMPTIONS (NORMALITY)")
+        print("CHECKING ASSUMPTIONS (NORMALITY)")
         print("=" * 80)
         is_error_normal = normality_of_error_rate(df_agg.copy(), dv="mean_error_rate")
         
-        # --- STEP 2: PARAMETRIC PURCHASE REPLICATION (ANOVA + TUKEY) ---
-        # Run main ANOVA (takes "long" data)
+        # --- PARAMETRIC PURCHASE REPLICATION (ANOVA + TUKEY) ---
+        # Run main ANOVA 
         error_p_param= purchase_parametric_analysis(df_pre.copy())
 
-        # Run post-hoc Tukey (takes AGGREGATED data)
+        # Run post-hoc Tukey 
         print("\n" + "=" * 80)
         print("Purchase's Parametric Post-Hoc (Tukey HSD)")
         print("=" * 80)
@@ -477,11 +452,11 @@ if __name__ == "__main__":
             print("No significant main effect for Error, skipping Tukey HSD.")
         
 
-        # --- STEP 3: NON-PARAMETRIC ANALYSIS (FRIEDMAN + CONOVER) ---
-        # Run main Friedman (takes AGGREGATED data)
+        # ---NON-PARAMETRIC ANALYSIS (FRIEDMAN + CONOVER) ---
+        # Run main Friedman 
         error_p_nonparam = our_main_effect_test(df_agg.copy())
 
-        # Run post-hoc Conover (takes AGGREGATED data)
+        # Run post-hoc Conover 
         print("\n" + "=" * 80)
         print("OUR ANALYSIS: Non-Parametric Post-Hoc")
         print("=" * 80)
@@ -490,7 +465,7 @@ if __name__ == "__main__":
         else:
             print("No significant non-parametric main effect for Error, skipping post-hoc.")
         
-        # --- STEP 4: GEE VALIDATION ---
+        # --- GEE VALIDATION ---
         our_gee_analysis(df_pre.copy())
         
         print("\n\n" + "=" * 80)

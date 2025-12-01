@@ -1,10 +1,9 @@
 import os
 import pandas as pd
 
-# --- CONFIGURATION ---
-CURRENT_MODE = 'bastian' #aurora or bastian
+CURRENT_MODE = 'Exp1' #Exp1 or Exp2
 
-if CURRENT_MODE == 'aurora':
+if CURRENT_MODE == 'Exp2':
     BASE_PATH = 'layout_algorithms_performance'
 else:
     BASE_PATH = 'aesthetic_effect_human_performance'
@@ -56,35 +55,29 @@ def calculate_average_accuracy(df):
         print("[!] DataFrame is empty. No data to process.")
         return None
         
-    # 1. Prepare columns for grouping
     df['Task_Group'] = df['Task'].str.split('_').str[0]
     df['Layout_Group'] = df['Layout'].str.split('_').str[0]
     
-    # 2. <<< CORRECTION >>> Extract Ground Truth from the 'Layout' column, not the 'Task' column.
     df['Ground_Truth'] = df['Layout'].str.extract(r'(_gt\d+)').fillna('_gtN/A')
-    df['Ground_Truth'] = df['Ground_Truth'].str.replace('_', '') # Clean up the value (e.g., 'gt1')
+    df['Ground_Truth'] = df['Ground_Truth'].str.replace('_', '') 
     
-    # 3. Convert correctness column to numeric
     df['Is_Correct'] = df['Correct Prediction (True/False)'].astype(str).apply(lambda x: 1 if x.strip() == 'True' else 0)
     
-    # 4. Update the list of columns to group by
     grouping_columns = [
         'Model Name', 
         'LLM Mode', 
         'COT Mode', 
         'Task_Group', 
-        'Ground_Truth',  # The new grouping level
+        'Ground_Truth',  
         'Layout_Group'
     ]
     
-    # 5. Calculate aggregations
     aggregated_results = df.groupby(grouping_columns).agg(
         Accuracy=('Is_Correct', 'mean'),
         Sample_Count=('Is_Correct', 'count'),
         Total_Correct=('Is_Correct', 'sum')
     ).reset_index()
     
-    # Convert accuracy to percentage
     aggregated_results['Accuracy'] = aggregated_results['Accuracy'] * 100
     
     print("\nFirst few aggregated results (now with Ground_Truth):")

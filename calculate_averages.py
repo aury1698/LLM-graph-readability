@@ -1,9 +1,9 @@
 import os
 import pandas as pd
 
-CURRENT_MODE = 'Exp1' #Exp1 or Exp2
+CURRENT_MODE = 'exp1' #exp1 or exp2
 
-if CURRENT_MODE == 'Exp2':
+if CURRENT_MODE == 'exp2':
     BASE_PATH = 'layout_algorithms_performance'
 else:
     BASE_PATH = 'aesthetic_effect_human_performance'

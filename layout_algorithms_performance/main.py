@@ -46,16 +46,6 @@ def initialize_model(model_name):
             temperature=0.1,
             api_key=api_key
         )
-    # add proxied requests to tuwien aqueduct
-    elif model_name in ["mistral-small-3.1-24b", "mistral-small-3.2-24b", "glm-4.5v-106b"]:
-        api_key = os.getenv("AQUEDUCT_KEY")
-        return ChatOpenAI(
-            model=model_name,
-            temperature=0.1,
-            base_url="https://aqueduct.ai.datalab.tuwien.ac.at",
-            api_key=SecretStr(api_key),
-            timeout=295.0
-        )
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 

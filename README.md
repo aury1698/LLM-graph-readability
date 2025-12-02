@@ -3,7 +3,7 @@
 ## Overview
 This repository contains the source code, experimental data, and analysis scripts for the paper **"Do Graph Drawing Aesthetics Matter for AI? A Replication of Foundational Studies in Graph Readability"**.
 
-We replicated two foundational user studies on graph layouts written by Helen Purchase —originally designed for humans—substituting human participants with Multimodal Large Language Models (LLMs). This repository provides the tools to reproduce our experiments and the statistical analysis of the results.
+We replicated two foundational user studies on graph layouts written by Helen Purchase—originally designed for humans—substituting human participants with Multimodal Large Language Models (LLMs). This repository provides the tools to reproduce our experiments and the statistical analysis of the results.
 
 ---
 
@@ -21,10 +21,12 @@ The folders **`aesthetic_effect_human_performance`** and **`layout_algorithms_pe
 * **`run.sh`**: Shell script for batch execution.
 
 ### 2. Analysis
-* **`statistical_analysis/`**: Contains R and Python scripts for performing the statistical tests used:
+* These are the R and Python scripts for performing the statistical tests that were used:
     * `exp1_anova.py` / `exp2_anova.py`: Specific analysis scripts, one for each experiment.
     * `wsd.r`: R script for post-hoc analysis. It performs Tukey's WSD tests.
     * `calculate_averages.py`: Utility to process raw results into CSV files.
 
 ### 3. Visualization
-* **`visualization/`**: Contains the HTML scripts and data used to generate the interactive charts and figures presented in the paper.
+* **`visualization/`**: Contains instructions on how to view our interactive charts and visualizations presented in the paper.
+
+

@@ -23,12 +23,8 @@ The folders **`aesthetic_effect_human_performance`** and **`layout_algorithms_pe
 ### 2. Analysis
 * **`statistical_analysis/`**: Contains R and Python scripts for performing the statistical tests used:
     * `exp1_anova.py` / `exp2_anova.py`: Specific analysis scripts, one for each experiment.
-    * `wsd.r`: R script for post-hoc analysis. It performs **Tukey's WSD tests**.
+    * `wsd.r`: R script for post-hoc analysis. It performs Tukey's WSD tests.
     * `calculate_averages.py`: Utility to process raw results into CSV files.
 
 ### 3. Visualization
 * **`visualization/`**: Contains the HTML scripts and data used to generate the interactive charts and figures presented in the paper.
-
-
----
-

@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>LLM Results Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="icon.ico">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="js/beeswarm.js"></script>
+    <script src="js/grouped_barchart.js"></script>
+
+    <style>
+        /* --- General Page Styles --- */
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 2rem;
+            background: #fafbfc;
+            color: #222;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        p {
+            text-align: center;
+            max-width: 800px;
+            margin: 1rem auto;
+            color: #555;
+        }
+        a {
+            color: #1a73e8;
+        }
+        .controls-container {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #eee;
+        }
+        .controls {
+            text-align: center;
+        }
+        .controls h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        .controls button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            margin: 0 5px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: #fff;
+            border-radius: 5px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .mode-controls button.active {
+            background: #e8711a;
+            color: white;
+            border-color: #e8711a;
+        }
+        .mode-controls button:not(.active) {
+            background: #80868b;
+            color: white;
+            border-color: #80868b;
+        }
+
+        /* --- Chart Specific Styles --- */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr; /* Single column layout */
+            gap: 2rem;
+        }
+        /* Main wrapper for all charts (e.g., Matrix, Overall Accuracy) */
+        .chart-wrapper {
+            max-width: 1800px;
+            margin: 1rem auto;
+            padding: 1.5rem;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background: #fff;
+        }
+        
+        /* to split Grouped Charts from Legend */
+        .chart-and-legend-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px; /* space between chart and legend */
+            max-width: 1200px; /* max overall width for the entire block */
+            margin: 1rem auto;
+            padding: 1.5rem;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background: #fff;
+        }
+        /* N.B. inner container hosting ONLY the CHART's SVG */
+        .chart-container-inner {
+            /* width is controlled by JS, but this keeps them organized */
+            flex-shrink: 0;
+        }
+        /* separate legend container (outside the main SVG dimensions) */
+        .legend-container {
+            flex-shrink: 0;
+            width: 300px; 
+            padding-top: 50px; /* vertically align legend with chart start */
+        }
+        /* ------------------------------------------------ */
+
+        .chart-title {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 2rem;
+            color: #333;
+        }
+        .axis-label {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        .axis-label, .col-label, .row-label, .tick text {
+            fill: #696969; /* Dark gray for labels */
+            color: #696969; 
+        }
+        .legend {
+            font-size: 0.85rem;
+            font-weight: bold;
+            fill: #696969;
+        }
+
+        /* --- Thicker axis lines and ticks --- */
+        .domain {
+            stroke-width: 2.5px; 
+        }
+        .tick text {
+            font-size: 1rem; 
+            font-weight: 600; 
+        }
+        .tick line {
+            stroke-width: 2px; 
+        }
+        g.tick > line {
+            stroke: #555;
+        }
+        path.domain {
+            stroke: #555;
+        }
+
+        /* --- Tooltip Style --- */
+        .tooltip {
+            position: absolute;
+            visibility: hidden;
+            background-color: rgba(3, 1, 1, 0.8);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+        /* Specific style for beeswarm points */
+        .beeswarm-point { stroke: #333; stroke-width: 0.5px; }
+        .mean-line { stroke: red; stroke-width: 2px; stroke-dasharray: 4; }
+    </style>
+</head>
+<body>
+    <h1>LLM Results Dashboard</h1>
+    <p>
+        This dashboard provides a high-level summary of model performance.
+        For a detailed, instance-by-instance view, see the <a href="visualization.html">main visualization page</a>.
+    </p>
+
+    <div class="controls-container">
+        <div class="controls mode-controls">
+            <h3>Select Dataset</h3>
+            <button id="btn-aurora">Aurora</button>
+            <button id="btn-bastian">Bastian</button>
+        </div>
+    </div>
+
+    <div id="charts-container" class="chart-grid">
+    </div>
+    
+    <div id="tooltip" class="tooltip"></div>
+
+</body>
+<script>
+
+// ===================================================================================
+// SCRIPT FOR CHARTS VISUALIZATION 
+// ===================================================================================
+
+let currentMode = 'bastian';
+let layoutOrder = 'alphabetical'; // or 'avg_accuracy'
+
+
+function getGlobalColor(modelName, llmMode, cotMode) {
+    const name = modelName.toLowerCase();
+    const llm = (llmMode || '').toLowerCase();
+    const cot = (cotMode || '').toLowerCase();
+
+    // New: color scheme definition based on model and shot/cot
+    // No-Cot is lighter, Cot is darker, 
+    // In order: Zero-Shot No-Cot, Zero-Shot Cot, Few-Shot No-Cot, Few-Shot Cot
+    const colorOpenAI = ["#b2dde6", "#90e0ef", "#00b4d8", "#0077b6", "#090ca0"];
+    const colorMistral = ["#ffd700", "#ffaf01", "#ff8204", "#fa500f", "#e00500"];
+    const colorGemini = ["#fb8cad", "#e75c9d", "#c80d9b", "#bf1a3b", "#910824"]
+    const colorGLM = ["#91f79f", "#53efb6", "#37c18e", "#118e60", "#056355"];
+    const colorHuman = "#888888"; // Dark grey color for humans to differentiate from models
+    const colorDefault = "#cccccc";
+
+
+    let i = 0;
+    if (cot === 'cot') i += 1;
+    if (llm.includes('few')) i += 2;
+
+    if (name.includes('gpt-5')) return colorOpenAI[i];
+    if (name.includes('mistral')) return colorMistral[i];
+    if (name.includes('gemini')) return colorGemini[i];
+    if (name.includes('glm')) return colorGLM[i];
+    if (name.includes('human')) return colorHuman;
+    
+    return colorDefault; // Fallback for any unknown model
+}
+
+// --- DATA LOADING ---
+async function loadAndAggregateResults(basePath, mode) {
+    let allFilePaths = [];
+    const modelsToLoad = ["gemini-2.5-flash", "mistral-small-3.1-24b", "gpt-5", "glm-4.5v-106b"];
+    for (const modelName of modelsToLoad) {
+        const shotTypes = ["zero_shot", "few_shot"];
+        const cotTypes = ["cot", "no_cot"];
+        const MAX_ATTEMPTS_TO_CHECK = 20;
+        for (const shot of shotTypes) {
+            for (const cot of cotTypes) {
+                for (let attempt = 1; attempt <= MAX_ATTEMPTS_TO_CHECK; attempt++) {
+                    const fileName = `results_attempt_${attempt}.csv`;
+                    // Note: Path depends on the final file structure. Using current structure:
+                    let basePathForModel = (mode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
+                    const filePath = `${basePathForModel}/results/${modelName}/${shot}/${cot}/${fileName}`;
+                    allFilePaths.push(filePath);
+                }
+            }
+        }
+    }
+    const promises = allFilePaths.map(path => d3.csv(path).catch(error => []));
+    const resultsFromAllFiles = await Promise.all(promises);
+    return resultsFromAllFiles.flat();
+}
+
+// --- DATA PROCESSING FUNCTIONS ---
+
+// 1. Process data for the OVERALL ACCURACY chart
+function processDataForOverallChart(rawData, humanResults) {
+    const groupedData = d3.group(rawData, d => d["Model Name"], d => d["LLM Mode"], d => d["COT Mode"]);
+    const summary = [];
+    for (const [modelName, modelData] of groupedData) {
+        for (const [llmMode, llmModeData] of modelData) {
+            for (const [cotMode, results] of llmModeData) {
+                if (results.length === 0) continue;
+                const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+                const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+                
+                let displayModelName;
+                if (modelName.includes('mistral')) {
+                    displayModelName = 'Mistral';
+                } else if (modelName.includes('gemini')) {
+                    displayModelName = 'Gemini';
+                } else if (modelName.includes('gpt-5')) {
+                    displayModelName = 'GPT-5';
+                } else if (modelName.includes('glm')) {
+                    displayModelName = 'GLM4.5';
+                } else {
+                    displayModelName = modelName;
+                }
+
+                summary.push({
+                    model: displayModelName,
+                    category: `${llmMode} (${cotMode})`,
+                    accuracy: accuracy
+                });
+            }
+        }
+    }
+    const humanAccuracy = (1 - d3.mean(Object.values(humanResults.errors))) * 100;
+    summary.push({ model: 'Human', category: 'Performance', accuracy: humanAccuracy });
+    return summary;
+}
+
+// 2. Process data for the ACCURACY BY TASK chart
+function processDataForTaskChart(rawData) {
+    // Group by Task (task1, task2, etc.) and then by configuration
+    const groupedData = d3.group(rawData, 
+        d => d.Task.split('_')[0], // Extracts 'task1', 'task2', etc.
+        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : d["Model Name"].includes('gpt-5') ? 'GPT-5' : d["Model Name"].includes('glm') ? 'GLM4.5' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
+    );
+    
+    const summary = [];
+    const categories = new Set(); // To keep track of all unique configurations
+    
+    for (const [task, taskData] of groupedData) {
+        const taskSummary = { task: task };
+        for (const [config, results] of taskData) {
+            if (results.length === 0) continue;
+            const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+            const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+            taskSummary[config] = accuracy;
+            categories.add(config);
+        }
+        summary.push(taskSummary);
+    }
+
+    console.log(summary, categories)
+
+    return { data: summary, categories: Array.from(categories) };
+}
+
+// 3. Process data for the ACCURACY BY LAYOUT chart
+function processDataForLayoutChart(rawData) {
+    // Group by Layout Type (FD-FR, PG, etc.)
+    const groupedData = d3.group(rawData, 
+        d => d.Layout.split('_')[0], // Extracts 'FD-FR', 'PG', etc.
+        d => `${d["Model Name"].includes('mistral') ? 'Mistral' : d["Model Name"].includes('gpt-5') ? 'GPT-5' : d["Model Name"].includes('glm') ? 'GLM4.5' : 'Gemini'} ${d["LLM Mode"]} (${d["COT Mode"]})`
+    );
+
+    const summary = [];
+    const categories = new Set();
+    
+    for (const [layout, layoutData] of groupedData) {
+        const layoutSummary = { layout: layout };
+        for (const [config, results] of layoutData) {
+             if (results.length === 0) continue;
+            const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+            const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+            layoutSummary[config] = accuracy;
+            categories.add(config);
+        }
+        summary.push(layoutSummary);
+    }
+    return { data: summary, categories: Array.from(categories).sort() };
+}
+
+
+// NEW: Process data for layout charts, but separated by model
+function processDataForLayoutChartByModel(rawData) {
+    const modelsData = {}; // { 'GPT-5': { data: [], categories: [] }, 'Mistral': ... }
+
+    // First, group all raw data by a simplified model name
+    const getModelName = (d) => {
+        const modelName = d["Model Name"];
+        if (modelName.includes('mistral')) return 'Mistral';
+        if (modelName.includes('gemini')) return 'Gemini';
+        if (modelName.includes('gpt-5')) return 'GPT-5';
+        if (modelName.includes('glm')) return 'GLM4.5';
+        return modelName; // fallback
+    };
+    
+    const groupedByModel = d3.group(rawData, getModelName);
+
+    // Now, process each model's data individually
+    for (const [modelName, modelRawData] of groupedByModel) {
+        // Group by Layout Type and then by configuration
+        const groupedData = d3.group(modelRawData,
+            d => d.Layout.split('_')[0], // 'FD-FR', 'PG', etc.
+            d => `${d["LLM Mode"]} (${d["COT Mode"]})` // 'zero_shot (cot)', etc.
+        );
+
+        const summary = [];
+        const categories = new Set();
+
+        for (const [layout, layoutData] of groupedData) {
+            const layoutSummary = { layout: layout };
+            for (const [config, results] of layoutData) {
+                if (results.length === 0) continue;
+                const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+                const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+                layoutSummary[config] = accuracy;
+                categories.add(config);
+            }
+            summary.push(layoutSummary);
+        }
+
+        modelsData[modelName] = {
+            data: summary,
+            categories: Array.from(categories).sort()
+        };
+    }
+    return modelsData;
+}
+
+
+// 3.5 Re-order layout categories for "bastian mode" (i.e. "m+" next to "m-")
+function reorderLayoutData(layoutSummary) {
+    const data = layoutSummary.data || [];
+    // Map baseName -> items
+    const baseMap = new Map();
+    const baseOrder = [];
+    data.forEach(item => {
+        const name = item.layout;
+        const m = name.match(/^(.+?)([+\-])?$/);
+        const base = m ? m[1] : name;
+        if (!baseMap.has(base)) {
+            baseMap.set(base, []);
+            baseOrder.push(base);
+        }
+        baseMap.get(base).push(item);
+    });
+
+    const ordered = [];
+    baseOrder.forEach(base => {
+        const entries = baseMap.get(base);
+        // Prefer to add '-' then '+' (so pair appears adjacent). If only one exists, keep it.
+        const minus = entries.find(e => /-$/.test(e.layout));
+        const plus = entries.find(e => /\+$/.test(e.layout));
+        
+        if (plus) ordered.push(plus);
+        if (minus) ordered.push(minus);
+        // Add any other variants (no +/-) afterwards
+        entries.forEach(e => {
+            if (!/\+$/.test(e.layout) && !/-$/.test(e.layout)) ordered.push(e);
+        });
+    });
+
+    return { data: ordered, categories: layoutSummary.categories };
+}
+
+// 4. Process data for the ACCURACY MATRIX chart
+function processDataForMatrix(rawData) {
+    const tasks = ['task1', 'task2', 'task3'];
+    // Remove .sort() here. The sorting is now handled dynamically in drawBeeswarmMatrix.
+    const layouts = Array.from(new Set(rawData.map(d => (d.Layout || '').split('_')[0]))).filter(Boolean);
+    const models = Array.from(new Set(rawData.map(d => d["Model Name"]))).sort();
+
+    const cells = {};
+    for (const t of tasks) {
+        cells[t] = {};
+        for (const l of layouts) {
+            cells[t][l] = {};
+            for (const m of models) cells[t][l][m] = [];
+        }
+    }
+
+    const splitLayout = d => (d.Layout || '').split('_').slice(0, 3).join('_'); // e.g., 'FD-FR_task1_gt2'
+    const grouped = d3.group(rawData, d => splitLayout(d), d => d["Model Name"]);
+
+    for (const [testId, modelMap] of grouped) {
+        const parts = testId.split('_');
+        const layout = parts[0];
+        const taskToken = parts.slice(1).find(p => p.toLowerCase().startsWith('task')) || parts.slice(1).join('_');
+        const task = (taskToken || '').toLowerCase();
+
+        // skip unknown tasks/layouts
+        if (!cells[task] || !cells[task][layout]) continue;
+
+        for (const modelLabel of models) {
+            const results = modelMap.get(modelLabel) || [];
+            if (results.length === 0) continue;
+
+            // group results by the triple: LLM Mode x COT Mode x gtN
+            const tripleGroups = d3.group(results, r => {
+                const llm = (r["LLM Mode"] || '').trim();
+                const cot = (r["COT Mode"] || '').trim();
+                const m = (r.Layout || '').match(/_gt(\d+)/i);
+                const gt = m ? `gt${m[1]}` : 'gt_unknown';
+                return `${llm}||${cot}||${gt}`;
+            });
+
+            // compute average
+            for (const [key, arr] of tripleGroups) {
+                if (arr.length === 0) continue;
+                const [llmMode, cotMode, gtToken] = key.split('||');
+                const correct = arr.filter(r => r["Correct Prediction (True/False)"] === 'True').length;
+                const accuracy = (arr.length > 0) ? (correct / arr.length) * 100 : 0;
+                const point = {
+                    test: testId,
+                    llmMode,
+                    cotMode,
+                    accuracy,
+                    count: arr.length,
+                    rawModelName: arr[0]["Model Name"],
+                    gt: gtToken
+                };
+                cells[task][layout][modelLabel].push(point);
+            }
+        }
+    }
+    return { tasks, layouts, models, cells };
+}
+
+
+// 5. Process data for ACCURACY BY LAYOUT (Aggregated by Model Family)
+function processDataForLayoutChartByModelFamily(rawData) {
+    
+    // Helper function to get simplified model name
+    const getModelName = (d) => {
+        const modelName = d["Model Name"];
+        if (modelName.includes('mistral')) return 'Mistral';
+        if (modelName.includes('gemini')) return 'Gemini';
+        if (modelName.includes('gpt-5')) return 'GPT-5';
+        if (modelName.includes('glm')) return 'GLM4.5';
+        return modelName; // fallback
+    };
+
+    // Group by Layout Type (FD-FR, PG, etc.) and then by Model Family
+    const groupedData = d3.group(rawData, 
+        d => d.Layout.split('_')[0], // Extracts 'FD-FR', 'PG', etc.
+        d => getModelName(d) // Extracts 'Mistral', 'GPT-5', etc.
+    );
+
+    const summary = [];
+    const categories = new Set(); // To keep track of all unique model families
+    
+    for (const [layout, layoutData] of groupedData) {
+        const layoutSummary = { layout: layout };
+        
+        for (const [modelFamily, results] of layoutData) {
+            // 'results' now contains ALL configs for that model (zero, few, cot, no_cot)
+            if (results.length === 0) continue;
+            
+            const correct = results.filter(d => d["Correct Prediction (True/False)"] === 'True').length;
+            // The accuracy is the average over all configurations for this model family
+            const accuracy = (results.length > 0) ? (correct / results.length) * 100 : 0;
+            
+            layoutSummary[modelFamily] = accuracy;
+            categories.add(modelFamily);
+        }
+        summary.push(layoutSummary);
+    }
+    
+    // Sort categories (model families) alphabetically
+    return { data: summary, categories: Array.from(categories).sort() };
+}
+
+
+
+//Helper: To shorten labels for X-axis (useful for Overall Accuracy chart to avoid label clutter)
+function shortLabel(label) {
+    return label.replace("Few-Shot", "FS\n")
+              .replace("Zero-Shot", "ZS\n");
+}
+
+
+// --- D3.JS CHART DRAWING FUNCTIONS ---
+
+const tooltip = d3.select("#tooltip");
+
+
+// Draw the OVERALL ACCURACY bar chart
+function drawOverallAccuracyChart(summaryData) {
+    const containerId = "#overall-accuracy-chart-container";
+    d3.select(containerId).select("svg").remove();
+
+    const margin = { top: 20, right: 10, bottom: 120, left: 80 };
+    const width = 520 - margin.left - margin.right;
+    const height = 650 - margin.top - margin.bottom;
+    
+    const svg = d3.select(containerId).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleBand()
+        .domain(summaryData.map(d => `${d.model} ${d.category}`))
+        .range([0, width]).padding(0.2);
+
+    const y = d3.scaleLinear().domain([0, 100]).range([height, 0]);
+
+
+    // Draw X Axis
+    svg.append("g")
+        .attr("transform", `translate(5, ${height})`)
+        .call(d3.axisBottom(x).tickFormat(shortLabel))
+        .selectAll("text")
+        .attr("transform", "rotate(-25)")
+        .style("text-anchor", "end")
+        .attr("font-weight", "bold")
+        .style("font-size", "0.85rem");
+    svg.append("g").call(d3.axisLeft(y));
+
+    // Draw X Axis Label
+    svg.append("text")
+    .attr("class", "axis-label")
+    .attr("text-anchor", "middle")
+    .attr("x", width / 2)
+    .attr("y", height + 110)
+    .text("Configuration");
+    
+    // Draw Y Axis Label
+    svg.append("text").attr("class", "axis-label").attr("text-anchor", "end").attr("y", -margin.left + 20).attr("x", -height / 2 + 50).attr("transform", "rotate(-90)").text("Average Accuracy (%)");
+
+    // Draw Bars
+    svg.selectAll(".bar").data(summaryData).join("rect")
+        .attr("x", d => x(`${d.model} ${d.category}`)).attr("y", d => y(d.accuracy))
+        .attr("width", x.bandwidth()).attr("height", d => height - y(d.accuracy))
+        .attr("fill", d => {
+            const category = d.category.toLowerCase();
+            const cotMode = category.includes('(cot)') ? 'cot' : 'no_cot';
+            
+            // new logic for colors to match new color scheme
+            let llmMode = 'zero_shot'; 
+            if (category.includes('few_shot') || category.includes('few-shot')) {
+                llmMode = 'few_shot';
+            }
+            
+            return getGlobalColor(d.model, llmMode, cotMode);
+        })
+        .on("mouseover", () => tooltip.style("visibility", "visible"))
+        .on("mousemove", (event, d) => {
+            tooltip.html(`<b>${d.model} ${d.category}</b><br>Accuracy: ${d.accuracy.toFixed(2)}%`)
+                .style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");
+        })
+        .on("mouseout", () => tooltip.style("visibility", "hidden"));
+}
+
+/* Draws the legend separately outside the main chart SVG.*/
+function drawGroupedBarChartLegend(containerId, categories, getColorMap) {
+    d3.select(containerId).select("svg").remove();
+
+    const colorMap = getColorMap(categories);
+    const fallbackColor = d3.scaleOrdinal(d3.schemeTableau10);
+    const legendWidth = 300; 
+    const legendHeight = categories.length * 25;
+
+    const svg = d3.select(containerId).append("svg")
+        .attr("width", legendWidth)
+        .attr("height", legendHeight)
+        .append("g").attr("transform", `translate(10, 10)`);
+    
+    // Legend 
+    const legend = svg.selectAll(".legend").data(categories).join("g")
+        .attr("class", "legend")
+        .attr("transform", (d, i) => `translate(0,${i * 22})`);
+        
+    legend.append("rect")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", d => colorMap[d] || fallbackColor(d));
+
+    legend.append("text")
+        .attr("x", 24)
+        .attr("y", 9)
+        .attr("dy", ".35em")
+        .style("text-anchor", "start")
+        .text(d => d);
+}
+
+
+// --- MAIN RENDER FUNCTION ---
+async function renderDashboard() {
+    document.getElementById('charts-container').innerHTML = '<h2>Loading and processing results...</h2>';
+    
+    document.getElementById('btn-aurora').classList.toggle('active', currentMode === 'aurora');
+    document.getElementById('btn-bastian').classList.toggle('active', currentMode === 'bastian');
+
+    //Load human results 
+    let human_results_bastian = { "errors": {"b-": 0.53, "b+": 0.24, "c-": 0.80, "c+": 0.29, "m-": 0.38, "m+": 0.36, "o-": 0.36, "o+": 0.36, "s-": 0.31, "s+": 0.29} };
+    let human_results_aurora = { "errors": {"FD-FR": 0.164, "FD-K": 0.109, "PG": 0.291, "PGS": 0.236, "POGBa": 0.236, "POGBb": 0.255, "SEIS": 0.436, "Tu": 0.145} };
+    let human_results = (currentMode === 'bastian') ? human_results_bastian : human_results_aurora;
+    let path = (currentMode === 'bastian') ? '../aesthetic_effect_human_performance' : '../layout_algorithms_performance';
+
+    const rawData = await loadAndAggregateResults(path, currentMode);
+    
+    if (rawData.length === 0) {
+        document.getElementById('charts-container').innerHTML = `<h1>No result files found for the ${currentMode} dataset.</h1>`;
+        return;
+    }
+
+    // Process data for all charts
+    const overallSummary = processDataForOverallChart(rawData, human_results);
+    const taskSummary = processDataForTaskChart(rawData);
+    let layoutSummary = processDataForLayoutChart(rawData);
+    const matrixData = processDataForMatrix(rawData);
+    const modelSpecificLayoutData = processDataForLayoutChartByModel(rawData); // NEW: Data for specific charts
+
+    let layoutSummaryByFamily = processDataForLayoutChartByModelFamily(rawData);
+
+    // Re-order layout data for "bastian mode"
+    if (currentMode === 'bastian') {
+        layoutSummary = reorderLayoutData(layoutSummary);
+        layoutSummaryByFamily = reorderLayoutData(layoutSummaryByFamily);
+    }
+
+    // Render the page structure with containers for all charts
+    document.getElementById('charts-container').innerHTML = `
+
+        <div class="chart-wrapper">
+
+        <div id="violin-container"></div>
+
+            <h2 class="chart-title">Matrix</h2>
+            <div id="violin-matrix"></div>
+            <div class="controls order-controls matrix-order-control">
+                <h3>Order Layouts by:</h3>
+                <select id="layout-order-select">
+                    <option value="alphabetical" ${layoutOrder === 'alphabetical' ? 'selected' : ''}>Alphabetical</option>
+                    <option value="avg_accuracy" ${layoutOrder === 'avg_accuracy' ? 'selected' : ''}>Average Accuracy (Best Left)</option>
+                </select>
+            </div>
+
+            <div id="beeswarm-matrix"></div>
+            <div class="controls order-controls matrix-order-control">
+                <h3>Order Layouts by:</h3>
+                <select id="layout-order-select">
+                    <option value="alphabetical" ${layoutOrder === 'alphabetical' ? 'selected' : ''}>Alphabetical</option>
+                    <option value="avg_accuracy" ${layoutOrder === 'avg_accuracy' ? 'selected' : ''}>Average Accuracy (Best Left)</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="chart-wrapper">
+            <h2 class="chart-title">Overall Accuracy by Configuration</h2>
+            <div id="overall-accuracy-chart-container"></div>
+        </div>
+
+        <div class="chart-and-legend-wrapper">
+            <div class="chart-container-inner">
+                <h2 class="chart-title">Accuracy by Task</h2>
+                <div id="task-accuracy-chart-container"></div>
+            </div>
+            <div class="legend-container">
+                <h3>Configuration Legend</h3>
+                <div id="task-legend-container"></div>
+            </div>
+        </div>
+
+
+
+        <div class="chart-and-legend-wrapper">
+            <div class="chart-container-inner">
+                <h2 class="chart-title">Accuracy by Layout Algorithm</h2>
+                <div id="layout-accuracy-chart-container"></div>
+            </div>
+            <div class="legend-container">
+                <h3>Configuration Legend</h3>
+                <div id="layout-legend-container"></div>
+            </div>
+        </div>
+
+        <div class="chart-and-legend-wrapper">
+            <div class="chart-container-inner">
+                <h2 class="chart-title">Accuracy by Layout (Aggregated by Model)</h2>
+                <div id="layout-accuracy-family-chart-container"></div>
+            </div>
+            <div class="legend-container">
+                <h3>Model Legend</h3>
+                <div id="layout-family-legend-container"></div>
+            </div>
+        </div>
+        <div id="model-specific-charts-container">
+        </div>
+
+        <div id="model-specific-charts-container"></div>
+        `;
+
+    // drawSingleViolinPlots("#violin-container", rawData, currentMode);
+
+    // // Draw each all charts
+    drawOverallAccuracyChart(overallSummary);
+    drawBeeswarmMatrix("#beeswarm-matrix", matrixData, layoutOrder);
+    // drawViolinPlot("#violin-matrix", matrixData, layoutOrder);
+    
+    // Draw Task chart and get legend data
+    const taskLegendData = drawGroupedBarChart("#task-accuracy-chart-container", taskSummary, "task");
+    drawGroupedBarChartLegend("#task-legend-container", taskLegendData.categories, taskLegendData.getColorMap);
+
+    // Draw Layout chart and get legend data
+    const layoutLegendData = drawGroupedBarChart("#layout-accuracy-chart-container", layoutSummary, "layout");
+    drawGroupedBarChartLegend("#layout-legend-container", layoutLegendData.categories, layoutLegendData.getColorMap);
+
+    // Draw the model-specific layout charts 
+    const modelChartsContainer = document.getElementById('model-specific-charts-container');
+    const modelNames = Object.keys(modelSpecificLayoutData).sort(); // Sort for consistent order
+
+    // NEW: Draw Layout by Model Family chart and legend
+    const layoutFamilyLegendData = drawGroupedBarChart("#layout-accuracy-family-chart-container", layoutSummaryByFamily, "layout");
+    drawGroupedBarChartLegend("#layout-family-legend-container", layoutFamilyLegendData.categories, layoutFamilyLegendData.getColorMap);
+
+
+    for (const modelName of modelNames) {
+        const chartData = modelSpecificLayoutData[modelName];
+
+        // Create wrapper for this model's chart
+        const chartWrapper = document.createElement('div');
+        chartWrapper.className = 'chart-and-legend-wrapper';
+        
+        const chartId = `layout-accuracy-chart-${modelName.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        const legendId = `layout-legend-${modelName.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+
+        chartWrapper.innerHTML = `
+            <div class="chart-container-inner">
+                <h2 class="chart-title">Accuracy by Layout for ${modelName}</h2>
+                <div id="${chartId}"></div>
+            </div>
+            <div class="legend-container">
+                <h3>Configuration Legend</h3>
+                <div id="${legendId}"></div>
+            </div>
+        `;
+        modelChartsContainer.appendChild(chartWrapper);
+
+        // Re-order if bastian mode
+        let finalChartData = chartData;
+        if (currentMode === 'bastian') {
+            finalChartData = reorderLayoutData(chartData);
+        }
+
+        // Draw the chart and legend, passing the modelName for correct coloring
+        const legendData = drawGroupedBarChart(`#${chartId}`, finalChartData, "layout", modelName);
+        drawGroupedBarChartLegend(`#${legendId}`, legendData.categories, legendData.getColorMap);
+    }
+
+    for (const modelName of modelNames) {
+        const chartData = modelSpecificLayoutData[modelName];
+
+        // Create wrapper for this model's chart
+        const chartWrapper = document.createElement('div');
+        chartWrapper.className = 'chart-and-legend-wrapper';
+        
+        const chartId = `layout-accuracy-chart-${modelName.toLowerCase().replace(/[^a-z0-9]/g, '')}` + 'b';
+        const legendId = `layout-legend-${modelName.toLowerCase().replace(/[^a-z0-9]/g, '')}` + 'b';
+
+        chartWrapper.innerHTML = `
+            <div class="chart-container-inner">
+                <h2 class="chart-title">Accuracy by Layout for ${modelName}</h2>
+                <div id="${chartId}"></div>
+            </div>
+            <div class="legend-container">
+                <h3>Configuration Legend</h3>
+                <div id="${legendId}"></div>
+            </div>
+        `;
+        modelChartsContainer.appendChild(chartWrapper);
+
+        // Re-order if bastian mode
+        let finalChartData = chartData;
+        if (currentMode === 'bastian') {
+            finalChartData = reorderLayoutData(chartData);
+        }
+
+        drawGroupedViolinChart(`#${chartId}`, matrixData, "layout", modelName);
+    }
+
+    drawTasksViolinPlots("#violin-container", matrixData);
+    drawPromptsViolinPlots("#violin-container", matrixData);
+}
+
+// --- Event Listeners ---
+document.getElementById('btn-aurora').addEventListener('click', () => { currentMode = 'aurora'; renderDashboard(); });
+document.getElementById('btn-bastian').addEventListener('click', () => { currentMode = 'bastian'; renderDashboard(); });
+
+document.addEventListener('change', (event) => {
+    if (event.target.id === 'layout-order-select') {
+        layoutOrder = event.target.value;
+        renderDashboard(); // Re-render the dashboard with the new order
+    }
+});
+
+
+// Initial load
+renderDashboard();
+
+</script>
+</html>
